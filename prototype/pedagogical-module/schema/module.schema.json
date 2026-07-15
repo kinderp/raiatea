@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raiatea.dev/schema/pedagogical-module.schema.json",
+  "title": "Raiatea Pedagogical Visual Module",
+  "type": "object",
+  "required": ["id", "title", "language", "route", "prerequisites", "steps", "concepts", "next"],
+  "properties": {
+    "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "title": {"type": "string", "minLength": 1},
+    "subtitle": {"type": "string"},
+    "language": {"type": "string", "default": "it"},
+    "source": {
+      "type": "object",
+      "properties": {
+        "title": {"type": "string"},
+        "chapter": {"type": "string"},
+        "section": {"type": "string"},
+        "pages": {"type": "array", "items": {"type": "integer"}},
+        "figure": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "route": {
+      "type": "object",
+      "required": ["summary", "previous"],
+      "properties": {
+        "summary": {"type": "string"},
+        "previous": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "difficulty": {
+      "type": "object",
+      "properties": {
+        "conceptual": {"type": "integer", "minimum": 1, "maximum": 5},
+        "mathematics": {"type": "integer", "minimum": 1, "maximum": 5},
+        "code": {"type": "integer", "minimum": 1, "maximum": 5},
+        "minutes": {"type": "integer", "minimum": 1}
+      }
+    },
+    "prerequisites": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["concept", "level", "summary"],
+        "properties": {
+          "concept": {"type": "string"},
+          "level": {"enum": ["required", "useful", "optional"]},
+          "summary": {"type": "string"},
+          "conceptRef": {"type": "string"}
+        }
+      }
+    },
+    "visual": {
+      "type": "object",
+      "required": ["type", "markup"],
+      "properties": {
+        "type": {"enum": ["svg", "html"]},
+        "markup": {"type": "string"}
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["title", "explanation", "goal", "observe", "quiz"],
+        "properties": {
+          "eyebrow": {"type": "string"},
+          "title": {"type": "string"},
+          "explanation": {"type": "string"},
+          "goal": {"type": "string"},
+          "observe": {"type": "string"},
+          "equation": {"type": "string"},
+          "activeNodes": {"type": "array", "items": {"type": "string"}},
+          "animatedFlows": {"type": "array", "items": {"type": "string"}},
+          "quiz": {
+            "type": "object",
+            "required": ["question", "answers", "correctIndex", "correctFeedback", "incorrectFeedback"],
+            "properties": {
+              "question": {"type": "string"},
+              "answers": {"type": "array", "minItems": 2, "items": {"type": "string"}},
+              "correctIndex": {"type": "integer", "minimum": 0},
+              "correctFeedback": {"type": "string"},
+              "incorrectFeedback": {"type": "string"}
+            }
+          }
+        }
+      }
+    },
+    "concepts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "definition"],
+        "properties": {
+          "id": {"type": "string"},
+          "label": {"type": "string"},
+          "definition": {"type": "string"},
+          "usedFor": {"type": "string"},
+          "confusedWith": {"type": "string"}
+        }
+      }
+    },
+    "next": {
+      "type": "object",
+      "required": ["summary", "items"],
+      "properties": {
+        "summary": {"type": "string"},
+        "items": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  },
+  "additionalProperties": false
+}

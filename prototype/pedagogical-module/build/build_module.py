@@ -4,9 +4,14 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import sys
 from pathlib import Path
 
-from validate_module import (
+BUILD_DIR = Path(__file__).resolve().parent
+if str(BUILD_DIR) not in sys.path:
+    sys.path.insert(0, str(BUILD_DIR))
+
+from validate_module import (  # noqa: E402
     ModuleValidationError,
     load_and_validate,
     raise_for_issues,

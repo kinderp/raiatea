@@ -1,26 +1,18 @@
 from __future__ import annotations
 
-import importlib.util
 import json
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).parents[1]
+BUILD_DIR = ROOT / "build"
+sys.path.insert(0, str(BUILD_DIR))
 
-
-def load_module(name: str, path: Path):
-    spec = importlib.util.spec_from_file_location(name, path)
-    if spec is None or spec.loader is None:
-        raise RuntimeError(f"Cannot import {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-validator = load_module("raiatea_validate_module", ROOT / "build" / "validate_module.py")
-builder = load_module("raiatea_build_module", ROOT / "build" / "build_module.py")
+import build_module as builder  # noqa: E402
+import validate_module as validator  # noqa: E402
 
 
 class ModuleValidationTests(unittest.TestCase):

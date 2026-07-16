@@ -1,0 +1,194 @@
+{
+  "id": "self-attention-procedure",
+  "title": "Dalla query al vettore di contesto",
+  "subtitle": "Un modulo procedurale che usa token, vettori, matrice degli score e somma pesata come primitive semantiche.",
+  "language": "it",
+  "source": {
+    "title": "Build a Large Language Model (From Scratch)",
+    "chapter": "3",
+    "section": "3.3.1–3.3.2",
+    "pages": [57, 63],
+    "figure": "3.8–3.12"
+  },
+  "route": {
+    "summary": "Hai già collocato la self-attention nel modello. Ora ricostruisci il calcolo che trasforma una query in un vettore di contesto.",
+    "previous": ["Token", "Embedding", "Matrice X", "Prodotto scalare", "Ruolo della self-attention"]
+  },
+  "difficulty": {"conceptual": 3, "mathematics": 2, "code": 1, "minutes": 18},
+  "prerequisites": [
+    {"concept": "embedding", "level": "required", "summary": "Saper leggere un embedding come vettore numerico.", "conceptRef": "embedding"},
+    {"concept": "dot-product", "level": "required", "summary": "Saper calcolare un prodotto scalare componente per componente.", "conceptRef": "dot-product"},
+    {"concept": "softmax", "level": "useful", "summary": "Sapere che la softmax produce pesi positivi che sommano a uno.", "conceptRef": "softmax"}
+  ],
+  "visual": {
+    "type": "primitives",
+    "width": 1040,
+    "height": 650,
+    "title": "Procedimento semplificato della self-attention",
+    "description": "La query journey viene confrontata con sei token, gli score vengono normalizzati e i vettori sono combinati in una somma pesata.",
+    "items": [
+      {
+        "kind": "token-row",
+        "id": "tokens",
+        "x": 45,
+        "y": 60,
+        "label": "Sequenza di input",
+        "tokens": ["Your", "journey", "starts", "with", "one", "step"],
+        "activeIndex": 1,
+        "cellWidth": 148
+      },
+      {
+        "kind": "vector",
+        "id": "query",
+        "x": 65,
+        "y": 175,
+        "label": "Query x² = journey",
+        "values": [0.55, 0.87, 0.66],
+        "cellWidth": 72,
+        "tone": "attention"
+      },
+      {
+        "kind": "matrix",
+        "id": "scores",
+        "x": 350,
+        "y": 155,
+        "label": "Score ω₂ⱼ",
+        "values": [[0.9544, 1.4950, 1.4754, 0.8434, 0.7070, 1.0865]],
+        "columnLabels": ["Your", "journey", "starts", "with", "one", "step"],
+        "highlightColumn": 1,
+        "cellWidth": 94,
+        "cellHeight": 38,
+        "tone": "warning"
+      },
+      {
+        "kind": "edge",
+        "id": "query-to-scores",
+        "path": "M285 195 H330",
+        "label": "prodotto scalare",
+        "labelX": 270,
+        "labelY": 175
+      },
+      {
+        "kind": "matrix",
+        "id": "weights",
+        "x": 350,
+        "y": 300,
+        "label": "Pesi α₂ⱼ = softmax(ω₂ⱼ)",
+        "values": [[0.1385, 0.2379, 0.2333, 0.1240, 0.1082, 0.1581]],
+        "columnLabels": ["Your", "journey", "starts", "with", "one", "step"],
+        "highlightColumn": 1,
+        "cellWidth": 94,
+        "cellHeight": 38,
+        "tone": "attention"
+      },
+      {
+        "kind": "edge",
+        "id": "scores-to-weights",
+        "path": "M630 245 V285",
+        "label": "softmax",
+        "labelX": 645,
+        "labelY": 270
+      },
+      {
+        "kind": "weighted-sum",
+        "id": "context-sum",
+        "x": 45,
+        "y": 465,
+        "label": "Somma pesata per z²",
+        "terms": [
+          {"weight": 0.1385, "label": "x¹"},
+          {"weight": 0.2379, "label": "x²"},
+          {"weight": 0.2333, "label": "x³"},
+          {"weight": 0.1240, "label": "x⁴"},
+          {"weight": 0.1082, "label": "x⁵"},
+          {"weight": 0.1581, "label": "x⁶"}
+        ],
+        "result": [0.4419, 0.6515, 0.5683],
+        "tone": "output"
+      },
+      {
+        "kind": "edge",
+        "id": "weights-to-context",
+        "path": "M630 390 V445",
+        "label": "combina i vettori",
+        "labelX": 650,
+        "labelY": 425
+      },
+      {
+        "kind": "text",
+        "id": "interpretation",
+        "x": 45,
+        "y": 590,
+        "text": "z² è la rappresentazione di journey arricchita dal contesto della sequenza."
+      }
+    ]
+  },
+  "steps": [
+    {
+      "eyebrow": "Passo 1",
+      "title": "Scegliere il token query",
+      "explanation": "<p>Costruiamo la rappresentazione contestuale di <b>journey</b>. Il suo embedding x² diventa la query dell'esempio.</p>",
+      "goal": "<b>Obiettivo:</b> fissare il punto di vista da cui confrontiamo la sequenza.",
+      "observe": "<b>Osserva:</b> journey è evidenziato nella riga dei token.",
+      "equation": "query = x² = [0.55, 0.87, 0.66]",
+      "activeNodes": ["tokens", "query"],
+      "animatedFlows": [],
+      "quiz": {"question": "Quante query servono per ottenere il contesto di tutti i sei token?", "answers": ["Una", "Sei"], "correctIndex": 1, "correctFeedback": "Esatto: ogni token diventa query a turno.", "incorrectFeedback": "Una sola query produce un solo vettore di contesto."}
+    },
+    {
+      "eyebrow": "Passo 2",
+      "title": "Calcolare gli score",
+      "explanation": "<p>Confrontiamo x² con ciascun input mediante il prodotto scalare. Otteniamo un numero per token.</p>",
+      "goal": "<b>Risultato:</b> sei score grezzi, ancora non normalizzati.",
+      "observe": "<b>Non confondere:</b> uno score non è ancora un peso di attenzione.",
+      "equation": "ω₂ⱼ = x² · xʲ",
+      "activeNodes": ["query", "scores"],
+      "animatedFlows": ["query-to-scores"],
+      "quiz": {"question": "Perché la riga contiene sei score?", "answers": ["Perché la query ha sei dimensioni", "Perché viene confrontata con sei token"], "correctIndex": 1, "correctFeedback": "Corretto.", "incorrectFeedback": "Il numero di score dipende dal numero di token confrontati."}
+    },
+    {
+      "eyebrow": "Passo 3",
+      "title": "Normalizzare con softmax",
+      "explanation": "<p>La softmax trasforma gli score in una distribuzione positiva che somma a uno.</p>",
+      "goal": "<b>Distinzione:</b> ω indica score grezzi; α indica pesi normalizzati.",
+      "observe": "<b>Controllo:</b> la somma dei sei pesi è circa 1.",
+      "equation": "α₂ = softmax(ω₂)",
+      "activeNodes": ["scores", "weights"],
+      "animatedFlows": ["scores-to-weights"],
+      "quiz": {"question": "Se tutti gli score fossero uguali, i pesi sarebbero?", "answers": ["Uniformi", "Tutti zero"], "correctIndex": 0, "correctFeedback": "Esatto.", "incorrectFeedback": "La softmax assegnerebbe la stessa quota a ogni token."}
+    },
+    {
+      "eyebrow": "Passo 4",
+      "title": "Costruire la somma pesata",
+      "explanation": "<p>Ogni embedding xʲ viene moltiplicato per il proprio peso α₂ⱼ. La somma produce z².</p>",
+      "goal": "<b>Risultato:</b> una rappresentazione contestuale con la stessa dimensionalità degli input.",
+      "observe": "<b>Osserva:</b> i coefficienti della somma coincidono con la riga dei pesi.",
+      "equation": "z² = Σⱼ α₂ⱼxʲ",
+      "activeNodes": ["weights", "context-sum"],
+      "animatedFlows": ["weights-to-context"],
+      "quiz": {"question": "Perché z² ha tre componenti?", "answers": ["Perché sommiamo vettori di tre componenti", "Perché usiamo tre token"], "correctIndex": 0, "correctFeedback": "Corretto.", "incorrectFeedback": "La dimensionalità deriva dagli embedding, non dal numero di token."}
+    },
+    {
+      "eyebrow": "Dopo il calcolo",
+      "title": "Interpretare z²",
+      "explanation": "<p>z² non è testo e non è ancora una predizione. È un vettore intermedio che rappresenta journey alla luce dell'intera sequenza.</p>",
+      "goal": "<b>Comprensione:</b> la self-attention produce rappresentazioni contestualizzate.",
+      "observe": "<b>Limite dell'esempio:</b> nel modello reale query, key e value vengono apprese separatamente.",
+      "equation": "x² isolato → z² contestualizzato",
+      "activeNodes": ["context-sum", "interpretation"],
+      "animatedFlows": [],
+      "quiz": {"question": "z² è già il token finale generato?", "answers": ["Sì", "No"], "correctIndex": 1, "correctFeedback": "Esatto: è una rappresentazione intermedia.", "incorrectFeedback": "Restano gli altri blocchi del modello e il livello di output."}
+    }
+  ],
+  "concepts": [
+    {"id": "embedding", "label": "Embedding", "definition": "Vettore numerico associato a un token.", "usedFor": "alimentare la self-attention"},
+    {"id": "dot-product", "label": "Prodotto scalare", "definition": "Somma dei prodotti delle componenti corrispondenti di due vettori.", "usedFor": "calcolare gli score"},
+    {"id": "softmax", "label": "Softmax", "definition": "Funzione che trasforma score in pesi positivi normalizzati.", "usedFor": "costruire la distribuzione di attenzione"},
+    {"id": "attention-weight", "label": "Peso di attenzione", "definition": "Contributo relativo assegnato a un token dopo la softmax.", "confusedWith": "score grezzo"},
+    {"id": "context", "label": "Vettore di contesto", "definition": "Somma pesata degli embedding della sequenza.", "usedFor": "rappresentare il token nel contesto"}
+  ],
+  "next": {
+    "summary": "La prossima unità sostituisce il confronto diretto tra embedding con query, key e value apprese.",
+    "items": ["Costruire Q, K e V", "Scalare gli score", "Applicare la causal mask", "Passare alla multi-head attention"]
+  }
+}

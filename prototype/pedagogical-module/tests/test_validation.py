@@ -114,6 +114,15 @@ class ModuleValidationTests(unittest.TestCase):
         issues = validator.validate_rendered_html(output)
         self.assertIn("broken internal reference", self.messages(issues))
 
+    def test_dynamic_javascript_internal_link_is_not_treated_as_static(self) -> None:
+        output = (
+            '<!doctype html><html><script>window.RAIATEA_MODULE={};'
+            'const x = `<a href="#concept-${escapeHtml(ref)}">x</a>`;'
+            '</script></html>'
+        )
+        issues = validator.validate_rendered_html(output)
+        self.assertNotIn("broken internal reference", self.messages(issues))
+
     def test_unresolved_template_placeholder_is_rejected(self) -> None:
         output = '<!doctype html><html><script>window.RAIATEA_MODULE={}</script>{{ missing }}</html>'
         issues = validator.validate_rendered_html(output)

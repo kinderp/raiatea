@@ -27,65 +27,13 @@
     "title": "Il ruolo della self-attention nel modello GPT",
     "description": "Il testo viene convertito in embedding, elaborato dalla self-attention e inviato agli altri blocchi GPT.",
     "items": [
-      {
-        "kind": "box",
-        "id": "input",
-        "x": 35,
-        "y": 60,
-        "width": 190,
-        "height": 80,
-        "title": "Testo in ingresso",
-        "subtitle": "Your journey starts…",
-        "tone": "input"
-      },
-      {
-        "kind": "edge",
-        "id": "f1",
-        "path": "M225 100 H320"
-      },
-      {
-        "kind": "box",
-        "id": "embedding",
-        "x": 320,
-        "y": 60,
-        "width": 210,
-        "height": 80,
-        "title": "Tokenizzazione + embedding",
-        "subtitle": "X = [x¹, x², …]",
-        "tone": "process"
-      },
-      {
-        "kind": "edge",
-        "id": "f2",
-        "path": "M530 100 H625"
-      },
-      {
-        "kind": "box",
-        "id": "attention",
-        "x": 625,
-        "y": 45,
-        "width": 225,
-        "height": 110,
-        "title": "Self-attention",
-        "subtitle": "Embedding → contesto",
-        "tone": "attention"
-      },
-      {
-        "kind": "edge",
-        "id": "f3",
-        "path": "M737 155 V245"
-      },
-      {
-        "kind": "box",
-        "id": "rest",
-        "x": 600,
-        "y": 245,
-        "width": 275,
-        "height": 95,
-        "title": "Altri blocchi GPT",
-        "subtitle": "Predizione del token successivo",
-        "tone": "warning"
-      }
+      {"kind": "box", "id": "input", "x": 35, "y": 60, "width": 190, "height": 80, "title": "Testo in ingresso", "subtitle": "Your journey starts…", "tone": "input"},
+      {"kind": "edge", "id": "f1", "path": "M225 100 H320"},
+      {"kind": "box", "id": "embedding", "x": 320, "y": 60, "width": 210, "height": 80, "title": "Tokenizzazione + embedding", "subtitle": "X = [x¹, x², …]", "tone": "process"},
+      {"kind": "edge", "id": "f2", "path": "M530 100 H625"},
+      {"kind": "box", "id": "attention", "x": 625, "y": 45, "width": 225, "height": 110, "title": "Self-attention", "subtitle": "Embedding → contesto", "tone": "attention"},
+      {"kind": "edge", "id": "f3", "path": "M737 155 V245"},
+      {"kind": "box", "id": "rest", "x": 600, "y": 245, "width": 275, "height": 95, "title": "Altri blocchi GPT", "subtitle": "Predizione del token successivo", "tone": "warning"}
     ]
   },
   "steps": [
@@ -98,7 +46,20 @@
       "equation": "testo → embedding → self-attention → modello",
       "activeNodes": ["input", "embedding", "attention", "rest"],
       "animatedFlows": ["f1", "f2", "f3"],
-      "quiz": {"question": "Questa figura mostra già tutti i calcoli dell'attention?", "answers": ["Sì", "No"], "correctIndex": 1, "correctFeedback": "Esatto: è una mappa di orientamento.", "incorrectFeedback": "I calcoli saranno sviluppati nella tappa successiva."}
+      "quiz": {
+        "question": "Questa figura mostra già tutti i calcoli dell'attention?",
+        "answers": ["Sì", "No"],
+        "correctIndex": 1,
+        "correctFeedback": "Esatto: è una mappa di orientamento.",
+        "incorrectFeedback": "La figura mostra il ruolo del blocco, non il procedimento interno.",
+        "remediation": {
+          "title": "Distingui mappa e procedimento",
+          "explanation": "Una mappa indica dove si trova un componente nel sistema; il procedimento mostra le operazioni eseguite al suo interno.",
+          "conceptRef": "self-attention",
+          "actionLabel": "Ripassa self-attention",
+          "retryLabel": "Riprova la domanda"
+        }
+      }
     },
     {
       "eyebrow": "Passo 1",
@@ -109,7 +70,19 @@
       "equation": "token → x⁽ⁱ⁾",
       "activeNodes": ["input", "embedding"],
       "animatedFlows": ["f1"],
-      "quiz": {"question": "Che cosa riceve la self-attention?", "answers": ["Stringhe grezze", "Vettori numerici"], "correctIndex": 1, "correctFeedback": "Corretto.", "incorrectFeedback": "La rete elabora tensori numerici."}
+      "quiz": {
+        "question": "Che cosa riceve la self-attention?",
+        "answers": ["Stringhe grezze", "Vettori numerici"],
+        "correctIndex": 1,
+        "correctFeedback": "Corretto.",
+        "incorrectFeedback": "La rete non elabora direttamente le parole visualizzate.",
+        "remediation": {
+          "title": "Torna alla rappresentazione numerica",
+          "explanation": "Il token è un'unità simbolica; l'embedding è il vettore numerico che entra nei calcoli della rete.",
+          "conceptRef": "embedding",
+          "actionLabel": "Rivedi embedding"
+        }
+      }
     },
     {
       "eyebrow": "Passo 2",
@@ -120,7 +93,19 @@
       "equation": "X → Z",
       "activeNodes": ["embedding", "attention"],
       "animatedFlows": ["f2"],
-      "quiz": {"question": "La self-attention sostituisce tutto il modello GPT?", "answers": ["Sì", "No"], "correctIndex": 1, "correctFeedback": "Esatto: è un blocco del modello.", "incorrectFeedback": "Dopo l'attention restano altri blocchi e il livello di output."}
+      "quiz": {
+        "question": "La self-attention sostituisce tutto il modello GPT?",
+        "answers": ["Sì", "No"],
+        "correctIndex": 1,
+        "correctFeedback": "Esatto: è un blocco del modello.",
+        "incorrectFeedback": "Dopo l'attention restano altri blocchi e il livello di output.",
+        "remediation": {
+          "title": "Ricolloca il blocco nel flusso",
+          "explanation": "La self-attention produce rappresentazioni contestuali che vengono elaborate dai blocchi successivi del transformer.",
+          "conceptRef": "context",
+          "actionLabel": "Ripassa il vettore di contesto"
+        }
+      }
     },
     {
       "eyebrow": "Dopo la figura",

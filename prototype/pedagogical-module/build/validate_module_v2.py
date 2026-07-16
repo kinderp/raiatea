@@ -9,8 +9,27 @@ import validate_module as base
 
 ValidationIssue = base.ValidationIssue
 ModuleValidationError = base.ModuleValidationError
-validate_rendered_html = base.validate_rendered_html
 raise_for_issues = base.raise_for_issues
+
+
+def validate_rendered_html(output: str) -> list[ValidationIssue]:
+    """Validate generated HTML while ignoring JavaScript template URLs.
+
+    The base validator scans every ``href="#..."`` occurrence in the complete
+    self-contained document. This includes JavaScript template literals such as
+    ``href="#concept-${escapeHtml(remediation.conceptRef)}"``. That target is
+    constructed at runtime, so it is not a broken static HTML reference.
+    """
+    issues = base.validate_rendered_html(output)
+    return [
+        issue
+        for issue in issues
+        if not (
+            issue.path == "output"
+            and "broken internal reference" in issue.message
+            and "${" in issue.message
+        )
+    ]
 
 
 def _non_empty(value: Any, path: str, issues: list[ValidationIssue]) -> None:

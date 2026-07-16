@@ -1,0 +1,50 @@
+name: Pedagogical module
+
+on:
+  push:
+    paths:
+      - "prototype/pedagogical-module/**"
+      - ".github/workflows/pedagogical-module.yml"
+  pull_request:
+    paths:
+      - "prototype/pedagogical-module/**"
+      - ".github/workflows/pedagogical-module.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run unit tests
+        run: |
+          python -m unittest discover \
+            -s prototype/pedagogical-module/tests \
+            -p 'test_*.py' \
+            -v
+
+      - name: Validate example module
+        run: |
+          python prototype/pedagogical-module/build/validate_module.py \
+            prototype/pedagogical-module/examples/self-attention.json
+
+      - name: Build example module
+        run: |
+          python prototype/pedagogical-module/build/build_module.py \
+            prototype/pedagogical-module/examples/self-attention.json \
+            --output /tmp/self-attention.html
+
+      - name: Verify generated artifact
+        run: |
+          test -s /tmp/self-attention.html
+          grep -qi '<!doctype html>' /tmp/self-attention.html
+          grep -q 'window.RAIATEA_MODULE' /tmp/self-attention.html

@@ -16,6 +16,8 @@ EXTERNAL_RESOURCE_PATTERN = re.compile(
     r"(?:src|href)=[\"'](?:https?:)?//|@import\s+url\(|url\([\"']?(?:https?:)?//",
     re.IGNORECASE,
 )
+PRIMITIVE_KINDS = {"box", "vector", "text", "edge"}
+PRIMITIVE_TONES = {"neutral", "input", "process", "attention", "output", "warning"}
 
 
 @dataclass(frozen=True)
@@ -61,6 +63,29 @@ def _require_keys(
             issues.append(ValidationIssue(f"{path}.{key}", "required field is missing"))
 
 
+def _non_empty_string(value: Any, path: str, issues: list[ValidationIssue]) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        issues.append(ValidationIssue(path, "must be a non-empty string"))
+        return False
+    return True
+
+
+def _valid_identifier(value: Any, path: str, issues: list[ValidationIssue]) -> bool:
+    if not isinstance(value, str) or not ID_PATTERN.fullmatch(value):
+        issues.append(
+            ValidationIssue(path, "must contain only lowercase letters, digits, and hyphens")
+        )
+        return False
+    return True
+
+
+def _positive_number(value: Any, path: str, issues: list[ValidationIssue]) -> bool:
+    if not isinstance(value, (int, float)) or isinstance(value, bool) or value <= 0:
+        issues.append(ValidationIssue(path, "must be a positive number"))
+        return False
+    return True
+
+
 def _validate_quiz(quiz: Any, path: str, issues: list[ValidationIssue]) -> None:
     if not _expect_type(quiz, dict, path, issues):
         return
@@ -72,17 +97,18 @@ def _validate_quiz(quiz: Any, path: str, issues: list[ValidationIssue]) -> None:
         "incorrectFeedback",
     )
     _require_keys(quiz, required, path, issues)
+    for field in ("question", "correctFeedback", "incorrectFeedback"):
+        _non_empty_string(quiz.get(field), f"{path}.{field}", issues)
+
     answers = quiz.get("answers")
     if _expect_type(answers, list, f"{path}.answers", issues):
         if len(answers) < 2:
             issues.append(ValidationIssue(f"{path}.answers", "must contain at least two answers"))
         for index, answer in enumerate(answers):
-            if not isinstance(answer, str) or not answer.strip():
-                issues.append(
-                    ValidationIssue(f"{path}.answers[{index}]", "must be a non-empty string")
-                )
+            _non_empty_string(answer, f"{path}.answers[{index}]", issues)
+
     correct_index = quiz.get("correctIndex")
-    if not isinstance(correct_index, int):
+    if not isinstance(correct_index, int) or isinstance(correct_index, bool):
         issues.append(ValidationIssue(f"{path}.correctIndex", "must be an integer"))
     elif isinstance(answers, list) and not 0 <= correct_index < len(answers):
         issues.append(
@@ -91,6 +117,107 @@ def _validate_quiz(quiz: Any, path: str, issues: list[ValidationIssue]) -> None:
                 f"must refer to an answer between 0 and {max(len(answers) - 1, 0)}",
             )
         )
+
+
+def _validate_primitive(
+    primitive: Any,
+    path: str,
+    issues: list[ValidationIssue],
+    primitive_ids: set[str],
+) -> None:
+    if not _expect_type(primitive, dict, path, issues):
+        return
+    _require_keys(primitive, ("kind", "id"), path, issues)
+    kind = primitive.get("kind")
+    if kind not in PRIMITIVE_KINDS:
+        issues.append(
+            ValidationIssue(f"{path}.kind", f"must be one of {sorted(PRIMITIVE_KINDS)}")
+        )
+        return
+
+    primitive_id = primitive.get("id")
+    if _valid_identifier(primitive_id, f"{path}.id", issues):
+        if primitive_id in primitive_ids:
+            issues.append(ValidationIssue(f"{path}.id", f"duplicate primitive id '{primitive_id}'"))
+        else:
+            primitive_ids.add(primitive_id)
+
+    if kind in {"box", "vector", "text"}:
+        for coordinate in ("x", "y"):
+            value = primitive.get(coordinate)
+            if not isinstance(value, (int, float)) or isinstance(value, bool):
+                issues.append(ValidationIssue(f"{path}.{coordinate}", "must be a number"))
+
+    if kind == "box":
+        _require_keys(primitive, ("x", "y", "title"), path, issues)
+        _non_empty_string(primitive.get("title"), f"{path}.title", issues)
+        if "width" in primitive:
+            _positive_number(primitive["width"], f"{path}.width", issues)
+        if "height" in primitive:
+            _positive_number(primitive["height"], f"{path}.height", issues)
+        tone = primitive.get("tone", "neutral")
+        if tone not in PRIMITIVE_TONES:
+            issues.append(
+                ValidationIssue(f"{path}.tone", f"must be one of {sorted(PRIMITIVE_TONES)}")
+            )
+    elif kind == "vector":
+        _require_keys(primitive, ("x", "y", "values"), path, issues)
+        values = primitive.get("values")
+        if _expect_type(values, list, f"{path}.values", issues) and not values:
+            issues.append(ValidationIssue(f"{path}.values", "must contain at least one value"))
+        if "cellWidth" in primitive:
+            _positive_number(primitive["cellWidth"], f"{path}.cellWidth", issues)
+    elif kind == "text":
+        _require_keys(primitive, ("x", "y", "text"), path, issues)
+        _non_empty_string(primitive.get("text"), f"{path}.text", issues)
+    elif kind == "edge":
+        _require_keys(primitive, ("path",), path, issues)
+        _non_empty_string(primitive.get("path"), f"{path}.path", issues)
+        for coordinate in ("labelX", "labelY"):
+            if coordinate in primitive and (
+                not isinstance(primitive[coordinate], (int, float))
+                or isinstance(primitive[coordinate], bool)
+            ):
+                issues.append(ValidationIssue(f"{path}.{coordinate}", "must be a number"))
+
+
+def _validate_visual(visual: Any, issues: list[ValidationIssue]) -> tuple[str, set[str]]:
+    visual_markup = ""
+    visual_ids: set[str] = set()
+    if not _expect_type(visual, dict, "$.visual", issues):
+        return visual_markup, visual_ids
+
+    _require_keys(visual, ("type",), "$.visual", issues)
+    visual_type = visual.get("type")
+    if visual_type in {"svg", "html"}:
+        _require_keys(visual, ("markup",), "$.visual", issues)
+        markup = visual.get("markup")
+        if isinstance(markup, str) and markup.strip():
+            visual_markup = markup
+            visual_ids = set(HTML_ID_PATTERN.findall(markup))
+        else:
+            issues.append(ValidationIssue("$.visual.markup", "must be a non-empty string"))
+    elif visual_type == "primitives":
+        for dimension in ("width", "height"):
+            if dimension in visual:
+                _positive_number(visual[dimension], f"$.visual.{dimension}", issues)
+        items = visual.get("items")
+        if not _expect_type(items, list, "$.visual.items", issues):
+            return visual_markup, visual_ids
+        if not items:
+            issues.append(ValidationIssue("$.visual.items", "must contain at least one primitive"))
+        primitive_ids: set[str] = set()
+        for index, primitive in enumerate(items):
+            _validate_primitive(
+                primitive,
+                f"$.visual.items[{index}]",
+                issues,
+                primitive_ids,
+            )
+        visual_ids = primitive_ids
+    else:
+        issues.append(ValidationIssue("$.visual.type", "must be svg, html, or primitives"))
+    return visual_markup, visual_ids
 
 
 def validate_module(data: Any) -> list[ValidationIssue]:
@@ -104,35 +231,25 @@ def validate_module(data: Any) -> list[ValidationIssue]:
         "language",
         "route",
         "prerequisites",
+        "visual",
         "steps",
         "concepts",
         "next",
     )
     _require_keys(data, required, "$", issues)
 
-    module_id = data.get("id")
-    if not isinstance(module_id, str) or not ID_PATTERN.fullmatch(module_id):
-        issues.append(
-            ValidationIssue("$.id", "must contain only lowercase letters, digits, and hyphens")
-        )
-
+    _valid_identifier(data.get("id"), "$.id", issues)
     for field in ("title", "language"):
-        value = data.get(field)
-        if not isinstance(value, str) or not value.strip():
-            issues.append(ValidationIssue(f"$.{field}", "must be a non-empty string"))
+        _non_empty_string(data.get(field), f"$.{field}", issues)
 
     route = data.get("route")
     if _expect_type(route, dict, "$.route", issues):
         _require_keys(route, ("summary", "previous"), "$.route", issues)
-        if not isinstance(route.get("summary"), str) or not route.get("summary", "").strip():
-            issues.append(ValidationIssue("$.route.summary", "must be a non-empty string"))
+        _non_empty_string(route.get("summary"), "$.route.summary", issues)
         previous = route.get("previous")
         if _expect_type(previous, list, "$.route.previous", issues):
             for index, item in enumerate(previous):
-                if not isinstance(item, str) or not item.strip():
-                    issues.append(
-                        ValidationIssue(f"$.route.previous[{index}]", "must be a non-empty string")
-                    )
+                _non_empty_string(item, f"$.route.previous[{index}]", issues)
 
     prerequisites = data.get("prerequisites")
     concept_refs: list[tuple[str, str]] = []
@@ -142,6 +259,8 @@ def validate_module(data: Any) -> list[ValidationIssue]:
             if not _expect_type(prerequisite, dict, path, issues):
                 continue
             _require_keys(prerequisite, ("concept", "level", "summary"), path, issues)
+            _non_empty_string(prerequisite.get("concept"), f"{path}.concept", issues)
+            _non_empty_string(prerequisite.get("summary"), f"{path}.summary", issues)
             if prerequisite.get("level") not in {"required", "useful", "optional"}:
                 issues.append(
                     ValidationIssue(f"{path}.level", "must be required, useful, or optional")
@@ -153,18 +272,7 @@ def validate_module(data: Any) -> list[ValidationIssue]:
                 else:
                     issues.append(ValidationIssue(f"{path}.conceptRef", "must be a non-empty string"))
 
-    visual = data.get("visual", {})
-    visual_markup = ""
-    visual_ids: set[str] = set()
-    if _expect_type(visual, dict, "$.visual", issues):
-        _require_keys(visual, ("type", "markup"), "$.visual", issues)
-        if visual.get("type") not in {"svg", "html"}:
-            issues.append(ValidationIssue("$.visual.type", "must be svg or html"))
-        if isinstance(visual.get("markup"), str):
-            visual_markup = visual["markup"]
-            visual_ids = set(HTML_ID_PATTERN.findall(visual_markup))
-        else:
-            issues.append(ValidationIssue("$.visual.markup", "must be a string"))
+    visual_markup, visual_ids = _validate_visual(data.get("visual"), issues)
 
     steps = data.get("steps")
     if _expect_type(steps, list, "$.steps", issues):
@@ -176,8 +284,7 @@ def validate_module(data: Any) -> list[ValidationIssue]:
                 continue
             _require_keys(step, ("title", "explanation", "goal", "observe", "quiz"), path, issues)
             for field in ("title", "explanation", "goal", "observe"):
-                if not isinstance(step.get(field), str) or not step.get(field, "").strip():
-                    issues.append(ValidationIssue(f"{path}.{field}", "must be a non-empty string"))
+                _non_empty_string(step.get(field), f"{path}.{field}", issues)
             _validate_quiz(step.get("quiz"), f"{path}.quiz", issues)
             for field in ("activeNodes", "animatedFlows"):
                 refs = step.get(field, [])
@@ -191,6 +298,19 @@ def validate_module(data: Any) -> list[ValidationIssue]:
                         issues.append(
                             ValidationIssue(ref_path, f"visual element id '{ref}' does not exist")
                         )
+                    elif field == "animatedFlows" and data.get("visual", {}).get("type") == "primitives":
+                        matching = next(
+                            (
+                                primitive
+                                for primitive in data["visual"].get("items", [])
+                                if isinstance(primitive, dict) and primitive.get("id") == ref
+                            ),
+                            None,
+                        )
+                        if matching and matching.get("kind") != "edge":
+                            issues.append(
+                                ValidationIssue(ref_path, "animatedFlows may reference only edge primitives")
+                            )
 
     concepts = data.get("concepts")
     concept_ids: set[str] = set()
@@ -201,15 +321,13 @@ def validate_module(data: Any) -> list[ValidationIssue]:
                 continue
             _require_keys(concept, ("id", "label", "definition"), path, issues)
             concept_id = concept.get("id")
-            if not isinstance(concept_id, str) or not ID_PATTERN.fullmatch(concept_id):
-                issues.append(ValidationIssue(f"{path}.id", "must be a lowercase hyphenated id"))
-            elif concept_id in concept_ids:
-                issues.append(ValidationIssue(f"{path}.id", f"duplicate concept id '{concept_id}'"))
-            else:
-                concept_ids.add(concept_id)
+            if _valid_identifier(concept_id, f"{path}.id", issues):
+                if concept_id in concept_ids:
+                    issues.append(ValidationIssue(f"{path}.id", f"duplicate concept id '{concept_id}'"))
+                else:
+                    concept_ids.add(concept_id)
             for field in ("label", "definition"):
-                if not isinstance(concept.get(field), str) or not concept.get(field, "").strip():
-                    issues.append(ValidationIssue(f"{path}.{field}", "must be a non-empty string"))
+                _non_empty_string(concept.get(field), f"{path}.{field}", issues)
 
     for path, concept_ref in concept_refs:
         normalized_ref = concept_ref.removeprefix("concept-")
@@ -219,12 +337,14 @@ def validate_module(data: Any) -> list[ValidationIssue]:
     next_section = data.get("next")
     if _expect_type(next_section, dict, "$.next", issues):
         _require_keys(next_section, ("summary", "items"), "$.next", issues)
+        _non_empty_string(next_section.get("summary"), "$.next.summary", issues)
         items = next_section.get("items")
         if _expect_type(items, list, "$.next.items", issues):
             if not items:
                 issues.append(ValidationIssue("$.next.items", "must contain at least one next step"))
+            for index, item in enumerate(items):
+                _non_empty_string(item, f"$.next.items[{index}]", issues)
 
-    # Check concept links included in authored HTML fragments.
     html_fragments: list[str] = [visual_markup]
     if isinstance(steps, list):
         for step in steps:

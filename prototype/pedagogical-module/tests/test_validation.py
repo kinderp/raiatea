@@ -12,6 +12,7 @@ BUILD_DIR = ROOT / "build"
 sys.path.insert(0, str(BUILD_DIR))
 
 import build_module as builder  # noqa: E402
+import render_visual  # noqa: E402
 import validate_module as validator  # noqa: E402
 
 
@@ -34,6 +35,20 @@ class ModuleValidationTests(unittest.TestCase):
         issues = validator.validate_module(self.clone_example())
         self.assertEqual([], issues, self.messages(issues))
 
+    def test_example_uses_semantic_primitives(self) -> None:
+        data = self.clone_example()
+        self.assertEqual("primitives", data["visual"]["type"])
+        kinds = {item["kind"] for item in data["visual"]["items"]}
+        self.assertEqual({"box", "edge"}, kinds)
+
+    def test_primitive_renderer_generates_accessible_svg(self) -> None:
+        visual = self.clone_example()["visual"]
+        markup = render_visual.render_visual(visual)
+        self.assertIn('<svg viewBox="0 0 900 420"', markup)
+        self.assertIn('<title id="visual-title">', markup)
+        self.assertIn('id="attention" data-node', markup)
+        self.assertIn('id="f2" data-flow', markup)
+
     def test_quiz_correct_index_must_exist(self) -> None:
         data = self.clone_example()
         data["steps"][0]["quiz"]["correctIndex"] = 99
@@ -46,11 +61,30 @@ class ModuleValidationTests(unittest.TestCase):
         issues = validator.validate_module(data)
         self.assertIn("duplicate concept id", self.messages(issues))
 
+    def test_duplicate_primitive_ids_are_rejected(self) -> None:
+        data = self.clone_example()
+        duplicate = dict(data["visual"]["items"][0])
+        data["visual"]["items"].append(duplicate)
+        issues = validator.validate_module(data)
+        self.assertIn("duplicate primitive id", self.messages(issues))
+
+    def test_unknown_primitive_kind_is_rejected(self) -> None:
+        data = self.clone_example()
+        data["visual"]["items"][0]["kind"] = "circle"
+        issues = validator.validate_module(data)
+        self.assertIn("must be one of", self.messages(issues))
+
     def test_unknown_visual_node_is_rejected(self) -> None:
         data = self.clone_example()
         data["steps"][0].setdefault("activeNodes", []).append("missing-node")
         issues = validator.validate_module(data)
         self.assertIn("does not exist", self.messages(issues))
+
+    def test_animated_flow_must_reference_edge(self) -> None:
+        data = self.clone_example()
+        data["steps"][0]["animatedFlows"] = ["input"]
+        issues = validator.validate_module(data)
+        self.assertIn("edge primitives", self.messages(issues))
 
     def test_unknown_prerequisite_concept_reference_is_rejected(self) -> None:
         data = self.clone_example()
@@ -78,6 +112,8 @@ class ModuleValidationTests(unittest.TestCase):
         output = builder.render_module(data, self.template, self.css, self.js)
         issues = validator.validate_rendered_html(output)
         self.assertEqual([], issues, self.messages(issues))
+        self.assertIn('class="primitive-node primitive-attention"', output)
+        self.assertNotIn("<svg viewBox=\\\"", json.dumps(data["visual"], ensure_ascii=False))
 
     def test_load_and_validate_reports_invalid_json(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

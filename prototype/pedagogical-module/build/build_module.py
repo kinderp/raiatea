@@ -6,6 +6,13 @@ import html
 import json
 from pathlib import Path
 
+from validate_module import (
+    ModuleValidationError,
+    load_and_validate,
+    raise_for_issues,
+    validate_rendered_html,
+)
+
 
 def escape(text: str) -> str:
     return html.escape(text, quote=True)
@@ -32,15 +39,19 @@ def render_module(data: dict, template: str, css: str, js: str) -> str:
         f'<div class="concept" id="concept-{escape(item["id"])}" tabindex="-1">'
         f'<h4>{escape(item["label"])}</h4><p>{escape(item["definition"])}</p>'
         f'{f"<p><small>Serve per: {escape(item["usedFor"])}</small></p>" if item.get("usedFor") else ""}'
+        f'{f"<p><small>Da non confondere con: {escape(item["confusedWith"])}</small></p>" if item.get("confusedWith") else ""}'
         f'</div>'
         for item in data["concepts"]
     )
 
     source = data.get("source", {})
+    pages = source.get("pages", [])
+    page_text = ", ".join(str(page) for page in pages)
     provenance = "".join(
         [
             f"<p><b>Fonte:</b> {escape(source.get('title', 'Non specificata'))}</p>",
             f"<p><b>Capitolo/sezione:</b> {escape(source.get('chapter', ''))} {escape(source.get('section', ''))}</p>",
+            f"<p><b>Pagine:</b> {escape(page_text)}</p>" if page_text else "",
             f"<p><b>Figura:</b> {escape(source.get('figure', ''))}</p>",
         ]
     )
@@ -61,7 +72,7 @@ def render_module(data: dict, template: str, css: str, js: str) -> str:
         "{{ next_items }}": render_list(data["next"]["items"]),
         "{{ provenance }}": provenance,
         "{{ concept_cards }}": concept_cards,
-        "{{ module_json }}": json.dumps(data, ensure_ascii=False).replace("</", "<\\/"),
+        "{{ module_json }}": json.dumps(data, ensure_ascii=False).replace("</", "<\/"),
     }
 
     output = template
@@ -91,15 +102,33 @@ def main() -> None:
         type=Path,
         default=Path(__file__).parents[1] / "src/module.js",
     )
+    parser.add_argument(
+        "--skip-validation",
+        action="store_true",
+        help="Skip source and output validation (intended only for template debugging)",
+    )
     args = parser.parse_args()
 
-    data = json.loads(args.module.read_text(encoding="utf-8"))
-    output = render_module(
-        data,
-        args.template.read_text(encoding="utf-8"),
-        args.css.read_text(encoding="utf-8"),
-        args.js.read_text(encoding="utf-8"),
-    )
+    try:
+        data = (
+            json.loads(args.module.read_text(encoding="utf-8"))
+            if args.skip_validation
+            else load_and_validate(args.module)
+        )
+        output = render_module(
+            data,
+            args.template.read_text(encoding="utf-8"),
+            args.css.read_text(encoding="utf-8"),
+            args.js.read_text(encoding="utf-8"),
+        )
+        if not args.skip_validation:
+            raise_for_issues(validate_rendered_html(output))
+    except ModuleValidationError as exc:
+        print("Build failed validation:")
+        for issue in exc.issues:
+            print(f"- {issue}")
+        raise SystemExit(1) from exc
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(output, encoding="utf-8")
     print(args.output)

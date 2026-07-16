@@ -12,29 +12,64 @@ ModuleValidationError = base.ModuleValidationError
 raise_for_issues = base.raise_for_issues
 
 
-def validate_rendered_html(output: str) -> list[ValidationIssue]:
-    """Validate generated HTML while ignoring JavaScript template URLs.
-
-    The base validator scans every ``href="#..."`` occurrence in the complete
-    self-contained document. This includes JavaScript template literals such as
-    ``href="#concept-${escapeHtml(remediation.conceptRef)}"``. That target is
-    constructed at runtime, so it is not a broken static HTML reference.
-    """
-    issues = base.validate_rendered_html(output)
-    return [
-        issue
-        for issue in issues
-        if not (
-            issue.path == "output"
-            and "broken internal reference" in issue.message
-            and "${" in issue.message
-        )
-    ]
-
-
 def _non_empty(value: Any, path: str, issues: list[ValidationIssue]) -> None:
     if not isinstance(value, str) or not value.strip():
         issues.append(ValidationIssue(path, "must be a non-empty string"))
+
+
+def _validate_activity(activity: Any, path: str, issues: list[ValidationIssue]) -> None:
+    if not isinstance(activity, dict):
+        issues.append(ValidationIssue(path, "must be an object"))
+        return
+
+    allowed = {
+        "type",
+        "prompt",
+        "answers",
+        "correctIndex",
+        "correctFeedback",
+        "incorrectFeedback",
+    }
+    for field in sorted(set(activity) - allowed):
+        issues.append(ValidationIssue(f"{path}.{field}", "field is not supported"))
+
+    required = (
+        "type",
+        "prompt",
+        "answers",
+        "correctIndex",
+        "correctFeedback",
+        "incorrectFeedback",
+    )
+    for field in required:
+        if field not in activity:
+            issues.append(ValidationIssue(f"{path}.{field}", "required field is missing"))
+
+    if activity.get("type") != "choice":
+        issues.append(ValidationIssue(f"{path}.type", "must be choice"))
+
+    for field in ("prompt", "correctFeedback", "incorrectFeedback"):
+        _non_empty(activity.get(field), f"{path}.{field}", issues)
+
+    answers = activity.get("answers")
+    if not isinstance(answers, list):
+        issues.append(ValidationIssue(f"{path}.answers", "must be an array"))
+    else:
+        if len(answers) < 2:
+            issues.append(ValidationIssue(f"{path}.answers", "must contain at least two answers"))
+        for index, answer in enumerate(answers):
+            _non_empty(answer, f"{path}.answers[{index}]", issues)
+
+    correct_index = activity.get("correctIndex")
+    if not isinstance(correct_index, int) or isinstance(correct_index, bool):
+        issues.append(ValidationIssue(f"{path}.correctIndex", "must be an integer"))
+    elif isinstance(answers, list) and not 0 <= correct_index < len(answers):
+        issues.append(
+            ValidationIssue(
+                f"{path}.correctIndex",
+                f"must refer to an answer between 0 and {max(len(answers) - 1, 0)}",
+            )
+        )
 
 
 def validate_module(data: Any) -> list[ValidationIssue]:
@@ -63,9 +98,15 @@ def validate_module(data: Any) -> list[ValidationIssue]:
             issues.append(ValidationIssue(path, "must be an object"))
             continue
 
-        allowed = {"title", "explanation", "conceptRef", "actionLabel", "retryLabel"}
-        unknown = sorted(set(remediation) - allowed)
-        for field in unknown:
+        allowed = {
+            "title",
+            "explanation",
+            "conceptRef",
+            "actionLabel",
+            "retryLabel",
+            "activity",
+        }
+        for field in sorted(set(remediation) - allowed):
             issues.append(ValidationIssue(f"{path}.{field}", "field is not supported"))
 
         for field in ("title", "explanation"):
@@ -89,7 +130,22 @@ def validate_module(data: Any) -> list[ValidationIssue]:
                     )
                 )
 
+        if "activity" in remediation:
+            _validate_activity(remediation["activity"], f"{path}.activity", issues)
+
     return issues
+
+
+def validate_rendered_html(output: str) -> list[ValidationIssue]:
+    issues = list(base.validate_rendered_html(output))
+    return [
+        issue
+        for issue in issues
+        if not (
+            "broken internal reference" in issue.message
+            and "${" in issue.message
+        )
+    ]
 
 
 def load_and_validate(path: Path) -> dict[str, Any]:

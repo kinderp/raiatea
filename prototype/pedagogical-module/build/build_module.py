@@ -72,7 +72,7 @@ def render_module(data: dict, template: str, css: str, js: str) -> str:
         "{{ next_items }}": render_list(data["next"]["items"]),
         "{{ provenance }}": provenance,
         "{{ concept_cards }}": concept_cards,
-        "{{ module_json }}": json.dumps(data, ensure_ascii=False).replace("</", "<\/"),
+        "{{ module_json }}": json.dumps(data, ensure_ascii=False).replace("</", "<\\/"),
     }
 
     output = template

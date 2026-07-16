@@ -11,6 +11,7 @@ BUILD_DIR = Path(__file__).resolve().parent
 if str(BUILD_DIR) not in sys.path:
     sys.path.insert(0, str(BUILD_DIR))
 
+from render_visual import render_visual  # noqa: E402
 from validate_module import (  # noqa: E402
     ModuleValidationError,
     load_and_validate,
@@ -71,13 +72,13 @@ def render_module(data: dict, template: str, css: str, js: str) -> str:
         "{{ previous_chips }}": previous_chips,
         "{{ prerequisite_items }}": prerequisite_items,
         "{{ estimated_minutes }}": str(data.get("difficulty", {}).get("minutes", "—")),
-        "{{ visual_markup }}": data.get("visual", {}).get("markup", ""),
+        "{{ visual_markup }}": render_visual(data.get("visual", {})),
         "{{ step_buttons }}": step_buttons,
         "{{ next_summary }}": escape(data["next"]["summary"]),
         "{{ next_items }}": render_list(data["next"]["items"]),
         "{{ provenance }}": provenance,
         "{{ concept_cards }}": concept_cards,
-        "{{ module_json }}": json.dumps(data, ensure_ascii=False).replace("</", "<\\/"),
+        "{{ module_json }}": json.dumps(data, ensure_ascii=False).replace("</", "<\/"),
     }
 
     output = template
@@ -128,10 +129,13 @@ def main() -> None:
         )
         if not args.skip_validation:
             raise_for_issues(validate_rendered_html(output))
-    except ModuleValidationError as exc:
+    except (ModuleValidationError, ValueError) as exc:
         print("Build failed validation:")
-        for issue in exc.issues:
-            print(f"- {issue}")
+        if isinstance(exc, ModuleValidationError):
+            for issue in exc.issues:
+                print(f"- {issue}")
+        else:
+            print(f"- {exc}")
         raise SystemExit(1) from exc
 
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -3,6 +3,32 @@
   const $ = (s) => document.querySelector(s);
   let step = 0;
   let timer = null;
+  const attempts = Array(data.steps.length).fill(0);
+
+  function escapeHtml(value) {
+    return String(value)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  function remediationMarkup(remediation) {
+    if (!remediation) return '';
+    const conceptLink = remediation.conceptRef
+      ? `<a class="remediation-action" href="#concept-${escapeHtml(remediation.conceptRef)}">${escapeHtml(remediation.actionLabel || 'Ripassa il concetto')}</a>`
+      : '';
+    return `
+      <div class="remediation" role="region" aria-label="Recupero mirato">
+        <h4>${escapeHtml(remediation.title)}</h4>
+        <p>${escapeHtml(remediation.explanation)}</p>
+        <div class="remediation-actions">
+          ${conceptLink}
+          <button type="button" data-retry>${escapeHtml(remediation.retryLabel || 'Riprova')}</button>
+        </div>
+      </div>`;
+  }
 
   function renderStep() {
     const item = data.steps[step];
@@ -28,13 +54,33 @@
     $('#quizQuestion').textContent = item.quiz.question;
     $('#quizAnswers').innerHTML = '';
     $('#quizFeedback').className = 'feedback';
+    $('#quizFeedback').innerHTML = '';
     item.quiz.answers.forEach((answer, index) => {
       const button = document.createElement('button');
       button.textContent = answer;
       button.addEventListener('click', () => {
         const correct = index === item.quiz.correctIndex;
+        attempts[step] += 1;
+        $('#quizAnswers').querySelectorAll('button').forEach((candidate) => {
+          candidate.disabled = true;
+        });
         $('#quizFeedback').className = `feedback ${correct ? 'ok' : 'no'}`;
-        $('#quizFeedback').textContent = correct ? item.quiz.correctFeedback : item.quiz.incorrectFeedback;
+        if (correct) {
+          $('#quizFeedback').textContent = item.quiz.correctFeedback;
+          return;
+        }
+        $('#quizFeedback').innerHTML = `
+          <p>${escapeHtml(item.quiz.incorrectFeedback)}</p>
+          ${remediationMarkup(item.quiz.remediation)}
+          <small>Tentativo ${attempts[step]}</small>`;
+        $('#quizFeedback').querySelector('[data-retry]')?.addEventListener('click', () => {
+          $('#quizFeedback').className = 'feedback';
+          $('#quizFeedback').innerHTML = '';
+          $('#quizAnswers').querySelectorAll('button').forEach((candidate) => {
+            candidate.disabled = false;
+          });
+          $('#quizAnswers button')?.focus();
+        });
       });
       $('#quizAnswers').appendChild(button);
     });
@@ -108,6 +154,7 @@
       target.classList.remove('target-flash');
       void target.offsetWidth;
       target.classList.add('target-flash');
+      target.focus({preventScroll:true});
     }, root.dataset.motion === 'reduced' ? 50 : 450);
   });
 

@@ -1,0 +1,84 @@
+{
+  "id": "self-attention-orientation",
+  "title": "Il ruolo della self-attention nel modello GPT",
+  "subtitle": "Una figura statica viene trasformata in una sequenza pedagogica controllabile, con prerequisiti, verifiche e collegamenti concettuali.",
+  "language": "it",
+  "source": {
+    "title": "Build a Large Language Model (From Scratch)",
+    "chapter": "3",
+    "section": "3.3",
+    "pages": [55],
+    "figure": "3.6"
+  },
+  "route": {
+    "summary": "Hai già visto come il testo diventa token, embedding e matrice X. Ora collochi la self-attention nel flusso complessivo del modello.",
+    "previous": ["Testo → token", "Token → embedding", "Embedding → matrice X", "Prodotto scalare"]
+  },
+  "difficulty": {"conceptual": 2, "mathematics": 1, "code": 1, "minutes": 10},
+  "prerequisites": [
+    {"concept": "token", "level": "required", "summary": "Sapere che il testo viene suddiviso in token.", "conceptRef": "token"},
+    {"concept": "embedding", "level": "required", "summary": "Sapere che ogni token viene rappresentato da un vettore.", "conceptRef": "embedding"},
+    {"concept": "product", "level": "useful", "summary": "Avere un'idea operativa del prodotto scalare.", "conceptRef": "dot-product"}
+  ],
+  "visual": {
+    "type": "svg",
+    "markup": "<svg viewBox=\"0 0 900 420\" role=\"img\"><g id=\"input\" data-node><rect x=\"35\" y=\"60\" width=\"190\" height=\"80\" rx=\"10\" fill=\"#ddf4ff\" stroke=\"#54aeff\"/><text x=\"130\" y=\"95\" text-anchor=\"middle\">Testo in ingresso</text><text x=\"130\" y=\"120\" text-anchor=\"middle\">Your journey starts…</text></g><path id=\"f1\" data-flow class=\"flow\" d=\"M225 100 H320\" stroke=\"#66737e\" stroke-width=\"4\"/><g id=\"embedding\" data-node><rect x=\"320\" y=\"60\" width=\"210\" height=\"80\" rx=\"10\" fill=\"#fff\" stroke=\"#d0d7de\"/><text x=\"425\" y=\"95\" text-anchor=\"middle\">Tokenizzazione + embedding</text><text x=\"425\" y=\"120\" text-anchor=\"middle\">X = [x¹, x², …]</text></g><path id=\"f2\" data-flow class=\"flow\" d=\"M530 100 H625\" stroke=\"#66737e\" stroke-width=\"4\"/><g id=\"attention\" data-node><rect x=\"625\" y=\"45\" width=\"225\" height=\"110\" rx=\"10\" fill=\"#dafbe1\" stroke=\"#4ac26b\"/><text x=\"737\" y=\"85\" text-anchor=\"middle\">Self-attention</text><text x=\"737\" y=\"115\" text-anchor=\"middle\">Embedding → contesto</text></g><path id=\"f3\" data-flow class=\"flow\" d=\"M737 155 V245\" stroke=\"#66737e\" stroke-width=\"4\"/><g id=\"rest\" data-node><rect x=\"600\" y=\"245\" width=\"275\" height=\"95\" rx=\"10\" fill=\"#fff8c5\" stroke=\"#bf8700\"/><text x=\"737\" y=\"285\" text-anchor=\"middle\">Altri blocchi GPT</text><text x=\"737\" y=\"315\" text-anchor=\"middle\">Predizione del token successivo</text></g></svg>"
+  },
+  "steps": [
+    {
+      "eyebrow": "Prima di osservare",
+      "title": "Usare la figura come mappa",
+      "explanation": "<p>La figura mostra dove agisce la self-attention, non ancora i suoi calcoli interni.</p>",
+      "goal": "<b>Obiettivo:</b> distinguere input, preparazione, self-attention e fasi successive.",
+      "observe": "<b>Osserva:</b> il blocco verde è l'argomento corrente.",
+      "equation": "testo → embedding → self-attention → modello",
+      "activeNodes": ["input", "embedding", "attention", "rest"],
+      "animatedFlows": ["f1", "f2", "f3"],
+      "quiz": {"question": "Questa figura mostra già tutti i calcoli dell'attention?", "answers": ["Sì", "No"], "correctIndex": 1, "correctFeedback": "Esatto: è una mappa di orientamento.", "incorrectFeedback": "I calcoli saranno sviluppati nella tappa successiva."}
+    },
+    {
+      "eyebrow": "Passo 1",
+      "title": "Dal testo agli embedding",
+      "explanation": "<p>Il modello deve convertire i token in vettori prima che la self-attention possa lavorare.</p>",
+      "goal": "<b>Risultato:</b> una matrice X con un vettore per token.",
+      "observe": "<b>Errore tipico:</b> confondere il token testuale con il suo embedding.",
+      "equation": "token → x⁽ⁱ⁾",
+      "activeNodes": ["input", "embedding"],
+      "animatedFlows": ["f1"],
+      "quiz": {"question": "Che cosa riceve la self-attention?", "answers": ["Stringhe grezze", "Vettori numerici"], "correctIndex": 1, "correctFeedback": "Corretto.", "incorrectFeedback": "La rete elabora tensori numerici."}
+    },
+    {
+      "eyebrow": "Passo 2",
+      "title": "Arricchire ogni token con il contesto",
+      "explanation": "<p>La self-attention combina informazioni provenienti dagli altri token e produce rappresentazioni contestualizzate.</p>",
+      "goal": "<b>Idea:</b> embedding isolato → vettore di contesto.",
+      "observe": "<b>Non confondere:</b> la self-attention non genera ancora il testo finale.",
+      "equation": "X → Z",
+      "activeNodes": ["embedding", "attention"],
+      "animatedFlows": ["f2"],
+      "quiz": {"question": "La self-attention sostituisce tutto il modello GPT?", "answers": ["Sì", "No"], "correctIndex": 1, "correctFeedback": "Esatto: è un blocco del modello.", "incorrectFeedback": "Dopo l'attention restano altri blocchi e il livello di output."}
+    },
+    {
+      "eyebrow": "Dopo la figura",
+      "title": "Passare ai calcoli interni",
+      "explanation": "<p>Ora puoi aprire il blocco verde e studiare query, score, softmax e somma pesata.</p>",
+      "goal": "<b>Prossima tappa:</b> calcolare un vettore di contesto passo dopo passo.",
+      "observe": "<b>Segnale di comprensione:</b> sai dire cosa entra e cosa esce dalla self-attention.",
+      "equation": "query → score → pesi → contesto",
+      "activeNodes": ["attention", "rest"],
+      "animatedFlows": ["f3"],
+      "quiz": {"question": "Quale concetto viene dopo?", "answers": ["Prodotto scalare e pesi", "Stampa del PDF"], "correctIndex": 0, "correctFeedback": "Corretto.", "incorrectFeedback": "La tappa successiva apre il procedimento matematico."}
+    }
+  ],
+  "concepts": [
+    {"id": "token", "label": "Token", "definition": "Unità in cui il testo viene suddiviso prima dell'elaborazione.", "usedFor": "costruire la sequenza di input"},
+    {"id": "embedding", "label": "Embedding", "definition": "Vettore numerico associato a un token.", "usedFor": "alimentare il modello"},
+    {"id": "dot-product", "label": "Prodotto scalare", "definition": "Operazione che combina due vettori in un singolo valore sommando i prodotti delle componenti corrispondenti.", "usedFor": "calcolare gli score dell'esempio semplificato"},
+    {"id": "self-attention", "label": "Self-attention", "definition": "Meccanismo che combina informazioni tra token della stessa sequenza.", "usedFor": "costruire rappresentazioni contestuali"},
+    {"id": "context", "label": "Vettore di contesto", "definition": "Rappresentazione di un token arricchita dal contributo degli altri token.", "usedFor": "i blocchi successivi del transformer"}
+  ],
+  "next": {
+    "summary": "La prossima unità trasforma questa mappa generale in un procedimento matematico eseguibile.",
+    "items": ["Scegliere la query", "Calcolare gli score", "Applicare la softmax", "Costruire il vettore di contesto"]
+  }
+}

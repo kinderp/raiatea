@@ -19,7 +19,9 @@ class ModuleValidationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.example_path = ROOT / "examples" / "self-attention.json"
+        cls.qkv_path = ROOT / "examples" / "query-key-value.json"
         cls.example = json.loads(cls.example_path.read_text(encoding="utf-8"))
+        cls.qkv = json.loads(cls.qkv_path.read_text(encoding="utf-8"))
         cls.template = (ROOT / "src" / "template.html").read_text(encoding="utf-8")
         cls.css = (ROOT / "src" / "module.css").read_text(encoding="utf-8")
         cls.js = (ROOT / "src" / "module.js").read_text(encoding="utf-8")
@@ -27,12 +29,29 @@ class ModuleValidationTests(unittest.TestCase):
     def clone_example(self) -> dict:
         return json.loads(json.dumps(self.example))
 
+    def clone_qkv(self) -> dict:
+        return json.loads(json.dumps(self.qkv))
+
     def messages(self, issues) -> str:
         return "\n".join(str(issue) for issue in issues)
 
     def test_example_module_is_valid(self) -> None:
         issues = validator.validate_module(self.clone_example())
         self.assertEqual([], issues, self.messages(issues))
+
+    def test_query_key_value_module_is_valid(self) -> None:
+        issues = validator.validate_module(self.clone_qkv())
+        self.assertEqual([], issues, self.messages(issues))
+        self.assertEqual({"query", "key", "value"}, {item["id"] for item in self.qkv["visual"]["items"] if item["id"] in {"query", "key", "value"}})
+
+    def test_query_key_value_module_renders_without_template_changes(self) -> None:
+        output = builder.render_module(self.clone_qkv(), self.template, self.css, self.js)
+        issues = validator.validate_rendered_html(output)
+        self.assertEqual([], issues, self.messages(issues))
+        self.assertIn("Query, Key e Value", output)
+        self.assertIn('id="score" data-node', output)
+        self.assertIn("Che cosa sto cercando?", output)
+        self.assertIn("stepwise-decomposition", output)
 
     def test_example_uses_semantic_primitives(self) -> None:
         data = self.clone_example()
@@ -154,13 +173,13 @@ class ModuleValidationTests(unittest.TestCase):
         issues = validator.validate_rendered_html(output)
         self.assertEqual([], issues, self.messages(issues))
         self.assertIn('class="primitive-node primitive-attention"', output)
-        self.assertIn('data-remediation-activity', output)
+        self.assertIn("data-remediation-activity", output)
         self.assertIn('id="evidenceGrid"', output)
-        self.assertIn('raiatea-progress:', output)
-        self.assertIn('activityCompleted', output)
+        self.assertIn("raiatea-progress:", output)
+        self.assertIn("activityCompleted", output)
         self.assertIn('id="stepProvenance"', output)
-        self.assertIn('renderStepProvenance', output)
-        self.assertIn('interactive-reconstruction', output)
+        self.assertIn("renderStepProvenance", output)
+        self.assertIn("interactive-reconstruction", output)
 
     def test_load_and_validate_reports_invalid_json(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

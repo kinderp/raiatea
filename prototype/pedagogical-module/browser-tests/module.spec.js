@@ -25,7 +25,8 @@ test('navigates steps through controls, direct selection, and keyboard shortcuts
   await expect(page.locator('#embedding')).not.toHaveClass(/dim/);
   await expect(page.locator('#attention')).toHaveClass(/dim/);
 
-  await page.locator('body').press('ArrowRight');
+  await page.evaluate(() => document.activeElement?.blur());
+  await page.keyboard.press('ArrowRight');
   await expect(phaseTitle).toHaveText('Arricchire ogni token con il contesto');
 
   await page.locator('#stepsNav button[data-step="3"]').click();
@@ -38,11 +39,11 @@ test('navigates steps through controls, direct selection, and keyboard shortcuts
 
 test('persists Focus UI settings without stealing arrow keys from focused controls', async ({ page }) => {
   const phaseTitle = page.locator('#phaseTitle');
-  const size = page.getByLabel('Testo');
-  const density = page.getByLabel('Spaziatura');
-  const width = page.getByLabel('Larghezza');
-  const align = page.getByLabel('Allineamento');
-  const motion = page.getByLabel('Animazioni');
+  const size = page.locator('#fontSizeSelect');
+  const density = page.locator('#densitySelect');
+  const width = page.locator('#widthSelect');
+  const align = page.locator('#alignSelect');
+  const motion = page.locator('#motionSelect');
 
   await page.locator('#themeBtn').click();
   await size.selectOption('20');
@@ -90,7 +91,7 @@ test('supports targeted remediation, concept focus, retry, and persisted evidenc
   const remediation = page.getByRole('region', { name: 'Recupero mirato' });
   await expect(remediation).toBeVisible();
 
-  await page.getByLabel('Animazioni').selectOption('reduced');
+  await page.locator('#motionSelect').selectOption('reduced');
   await page.getByRole('link', { name: 'Ripassa self-attention' }).click();
   const concept = page.locator('#concept-self-attention');
   await expect(concept).toBeFocused();

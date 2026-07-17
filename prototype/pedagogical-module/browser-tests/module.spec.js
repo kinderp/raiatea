@@ -40,7 +40,10 @@ function evidenceDocument(overrides = {}) {
 }
 
 async function selectEvidenceFile(page, content, name = 'learner-evidence.json') {
-  await page.locator('#importEvidenceInput').setInputFiles({
+  const fileChooserPromise = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Importa evidenze JSON' }).click();
+  const fileChooser = await fileChooserPromise;
+  await fileChooser.setFiles({
     name,
     mimeType: 'application/json',
     buffer: Buffer.from(typeof content === 'string' ? content : JSON.stringify(content))

@@ -101,5 +101,22 @@ jobs:
           echo "Chromium browser and system dependencies installed."
 
       - name: Run browser interaction tests
+        id: browser-tests
+        continue-on-error: true
         working-directory: prototype/pedagogical-module
-        run: npm run test:browser
+        run: npm run test:browser > browser-test.log 2>&1
+
+      - name: Upload browser test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-diagnostics
+          path: |
+            prototype/pedagogical-module/browser-test.log
+            prototype/pedagogical-module/test-results/
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Enforce browser test result
+        if: steps.browser-tests.outcome == 'failure'
+        run: exit 1

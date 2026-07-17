@@ -38,6 +38,22 @@ The v1 progress fields are limited to:
 
 The exported document also contains allowlisted module and source context needed to interpret and validate those observations. That context is not copied into browser progress during restore.
 
+### 2.1 Authored metadata is not semantically privacy-validated
+
+The v1 schema and compatibility checker validate document structure, required fields, indexes, module identity, step count, and ordered authored titles. They do not inspect the semantic content of arbitrary strings for names, email addresses, roster IDs, account or device identifiers, confidential notes, private URLs, secrets, diagnoses, accommodations, or other personal/sensitive information.
+
+Module IDs, module titles, language labels, ordered step titles, and allowlisted source context are therefore safe to export only when authors keep them **course-level and non-personal**. A structurally valid document is not automatically proof that its authored metadata is privacy-safe.
+
+Module authors and adopting institutions must:
+
+- avoid learner-specific customization in exported IDs, titles, labels, and source fields;
+- review generated, templated, imported, or copied metadata before publication;
+- keep names, emails, roster IDs, case notes, accommodations, diagnoses, private links, credentials, and secrets out of authored metadata;
+- minimize source context and omit optional source fields from a future external transfer when the destination does not need them;
+- treat semantic metadata review as a separate gate from schema and compatibility validation.
+
+A future adapter may transmit less than the complete allowlisted context. It must not add personal identifiers to v1 to solve destination identity mapping, and it must not claim that validator success detects or removes personal data embedded in authored strings.
+
 ## 3. Retention model
 
 ### 3.1 Browser-local progress
@@ -104,7 +120,7 @@ The core evidence contract records observable interactions needed to resume and 
 - timestamps, session replay, clickstream, or background telemetry;
 - teacher comments, grades, disciplinary information, or institutional identifiers.
 
-A future use case that needs additional data requires a separate contract and cannot silently widen v1.
+This prohibition applies both to dedicated fields and to personal data hidden inside otherwise allowlisted authored metadata. A future use case that needs additional data requires a separate contract and cannot silently widen v1.
 
 ### 5.2 Purpose limitation
 
@@ -140,6 +156,7 @@ Silence, page load, a quiz answer, or enabling an adapter must not be treated as
 ┌──────────────────────────────────────────────────────────────┐
 │ Optional adapter boundary                                    │
 │ - version and compatibility validation                       │
+│ - semantic metadata review and minimization                  │
 │ - destination-specific mapping                               │
 │ - consent/purpose/retention display                          │
 │ - authentication and transport, if required                  │
@@ -161,10 +178,11 @@ A future adapter may consume the v1 document only after the core export has been
 
 1. `inspectCapabilities()` — describe supported evidence versions and destination features without accessing learner evidence.
 2. `validate(document, moduleContext)` — perform structural and compatibility checks without mutation or transmission.
-3. `previewMapping(document)` — show exactly which fields would be mapped, omitted, or transformed.
-4. `send(document, destination, authorization)` — transmit only after an explicit learner or authorized educator action.
-5. `reportReceipt()` — return a destination receipt without changing the local evidence contract.
-6. `requestDeletion(reference)` — optional adapter operation whose effect and limitations are destination-specific and must never be represented as core browser deletion.
+3. `reviewMetadata(document)` — verify that authored IDs, titles, labels, and source context are course-level and non-personal, then minimize optional context.
+4. `previewMapping(document)` — show exactly which fields would be mapped, omitted, or transformed.
+5. `send(document, destination, authorization)` — transmit only after an explicit learner or authorized educator action.
+6. `reportReceipt()` — return a destination receipt without changing the local evidence contract.
+7. `requestDeletion(reference)` — optional adapter operation whose effect and limitations are destination-specific and must never be represented as core browser deletion.
 
 These names are conceptual, not a committed API.
 
@@ -174,9 +192,11 @@ Before an LMS integration can be considered, its issue and PR must define and te
 
 - supported Raiatea evidence versions;
 - structural validation and module compatibility behavior;
+- a separate semantic review proving authored IDs, module/step titles, language labels, and source context are course-level and non-personal;
+- minimization or omission of optional source context when the destination does not need it;
 - the exact field mapping and every dropped or derived field;
 - the legal/organizational purpose and authorized actor outside this technical document;
-- destination identity and account-linking behavior;
+- destination identity and account-linking behavior kept outside the v1 evidence payload;
 - retention duration or retention decision owner at the destination;
 - deletion request path and what copies may remain in backups or institutional records;
 - authentication, authorization, transport security, and credential storage;
@@ -184,7 +204,7 @@ Before an LMS integration can be considered, its issue and PR must define and te
 - retry, duplicate-send, idempotency, and partial-failure behavior;
 - offline queue behavior, including how queued evidence is displayed and deleted;
 - audit events that avoid storing the evidence payload unnecessarily;
-- tests proving that reading settings, unrelated storage, unknown fields, and inferred learner traits are not transmitted.
+- tests proving that reading settings, unrelated storage, unknown fields, personal data embedded in authored metadata, and inferred learner traits are not transmitted.
 
 The adapter must not change the meaning of browser **Azzera avanzamento**. Local deletion and external deletion remain separate actions with separate feedback.
 
@@ -205,7 +225,8 @@ Future changes follow these rules:
 - additive or breaking changes require an explicit version decision;
 - migration is a separate, testable operation and must preserve the original document until the learner confirms replacement;
 - stable module/step identifiers should be evaluated before supporting module-title or step-title changes across revisions;
-- external adapters must declare supported versions rather than accepting arbitrary objects.
+- external adapters must declare supported versions rather than accepting arbitrary objects;
+- version/schema acceptance must not be represented as semantic privacy validation of authored strings.
 
 ## 10. Forbidden defaults
 
@@ -217,6 +238,8 @@ The following remain forbidden unless a future issue explicitly changes the arch
 - transmitting the complete `localStorage` namespace;
 - using reading preferences as learner evidence;
 - adding inferred mastery or personal profiles to v1;
+- placing identity, confidential notes, accommodations, credentials, or learner-specific data inside authored metadata;
+- treating schema or compatibility success as proof that authored metadata contains no personal data;
 - silently merging histories;
 - silently overwriting incompatible progress;
 - embedding provider credentials in generated modules;
@@ -235,9 +258,13 @@ Every future evidence PR should answer:
 - Can an obsolete asynchronous action win over a newer explicit action?
 - Can a preview become stale before confirmation?
 - Are unknown versions and fields rejected?
-- Are identity and inferred traits still excluded by default?
+- Which authored IDs, titles, labels, and source fields leave the browser?
+- How are authored strings reviewed to ensure they are course-level and non-personal?
+- Which optional source-context fields are omitted because the destination does not need them?
+- Is schema validity clearly separated from semantic privacy review?
+- Are identity and inferred traits still excluded by default, including when hidden inside authored metadata?
 - Does the generated module remain fully usable offline?
 
 ## 12. Decision summary
 
-Raiatea learner evidence is local-first, observable, minimal, versioned, and portable only through explicit actions. Browser progress, reading preferences, pending imports, exported files, and future external copies are separate data stores with separate lifecycles. The core module owns only its browser-local record. Any LMS or cloud integration must live behind an explicit adapter boundary and define its own purpose, identity, retention, deletion, security, and failure semantics before implementation.
+Raiatea learner evidence is local-first, observable, minimal, versioned, and portable only through explicit actions. Browser progress, reading preferences, pending imports, exported files, and future external copies are separate data stores with separate lifecycles. The core module owns only its browser-local record. Structural validation proves document shape and compatibility, not the absence of personal data in authored strings. Any LMS or cloud integration must live behind an explicit adapter boundary and define its own purpose, identity, authored-metadata review, minimization, retention, deletion, security, and failure semantics before implementation.

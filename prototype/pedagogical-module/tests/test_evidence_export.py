@@ -60,6 +60,23 @@ class LearnerEvidenceExportTests(unittest.TestCase):
         self.assertIn("$.learnerEmail: field is not supported", issues)
         self.assertIn("$.module.readingSettings: field is not supported", issues)
 
+    def test_version_must_be_integer_one(self) -> None:
+        data = self.clone_example()
+        data["version"] = True
+        self.assertIn(
+            "$.version: must be the integer 1",
+            validator.validate_evidence_export(data),
+        )
+
+    def test_module_id_must_match_schema_pattern(self) -> None:
+        data = self.clone_example()
+        data["module"]["id"] = "Self Attention/Student"
+        issues = "\n".join(validator.validate_evidence_export(data))
+        self.assertIn(
+            "module.id: must contain only lowercase letters, digits, and hyphens",
+            issues,
+        )
+
     def test_progress_must_match_module_step_count(self) -> None:
         data = self.clone_example()
         data["module"]["stepCount"] = 3

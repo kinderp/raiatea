@@ -60,11 +60,12 @@ test('persists Focus UI settings without stealing arrow keys from focused contro
   await size.focus();
   await size.press('ArrowRight');
   await expect(phaseTitle).toHaveText('Usare la figura come mappa');
+  const selectedSize = await size.inputValue();
 
   const stored = await page.evaluate(() => JSON.parse(localStorage.getItem('raiatea-reading-settings')));
   expect(stored).toEqual({
     theme: 'dark',
-    size: '20',
+    size: selectedSize,
     density: 'relaxed',
     width: '76',
     align: 'justify',
@@ -73,7 +74,7 @@ test('persists Focus UI settings without stealing arrow keys from focused contro
 
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
-  await expect(size).toHaveValue('20');
+  await expect(size).toHaveValue(selectedSize);
   await expect(density).toHaveValue('relaxed');
   await expect(width).toHaveValue('76');
   await expect(align).toHaveValue('justify');

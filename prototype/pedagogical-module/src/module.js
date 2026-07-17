@@ -2,6 +2,8 @@
   const data = window.RAIATEA_MODULE;
   const $ = (s) => document.querySelector(s);
   const storageKey = `raiatea-progress:${data.id}`;
+  const EVIDENCE_EXPORT_FORMAT = 'raiatea-learner-evidence';
+  const EVIDENCE_EXPORT_VERSION = 1;
   let step = 0;
   let timer = null;
 
@@ -27,6 +29,73 @@
     progressState.currentStep = step;
     localStorage.setItem(storageKey, JSON.stringify(progressState));
     renderEvidence();
+  }
+
+  function exportSourceContext() {
+    const source = data.source;
+    if (!source || typeof source !== 'object') return undefined;
+    const context = {};
+    ['title', 'chapter', 'section', 'figure'].forEach((field) => {
+      if (typeof source[field] === 'string' && source[field].trim()) context[field] = source[field];
+    });
+    if (Array.isArray(source.pages)) {
+      const pages = source.pages.filter((page) => Number.isInteger(page) && page > 0);
+      if (pages.length) context.pages = pages;
+    }
+    return Object.keys(context).length ? context : undefined;
+  }
+
+  function buildEvidenceExport() {
+    const moduleContext = {
+      id: data.id,
+      title: data.title,
+      language: data.language,
+      stepCount: data.steps.length
+    };
+    const source = exportSourceContext();
+    if (source) moduleContext.source = source;
+    return {
+      format: EVIDENCE_EXPORT_FORMAT,
+      version: EVIDENCE_EXPORT_VERSION,
+      module: moduleContext,
+      progress: {
+        currentStep: step,
+        steps: data.steps.map((item, index) => {
+          const evidence = progressState.steps[index] || {};
+          return {
+            index,
+            title: item.title,
+            attempts: Number.isInteger(evidence.attempts) && evidence.attempts >= 0 ? evidence.attempts : 0,
+            correct: evidence.correct === true,
+            usedRemediation: evidence.usedRemediation === true,
+            activityCompleted: evidence.activityCompleted === true
+          };
+        })
+      }
+    };
+  }
+
+  function evidenceFilename() {
+    const safeModuleId = String(data.id || 'raiatea-module')
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'raiatea-module';
+    return `${safeModuleId}-evidence-v${EVIDENCE_EXPORT_VERSION}.json`;
+  }
+
+  function exportEvidence() {
+    const payload = `${JSON.stringify(buildEvidenceExport(), null, 2)}\n`;
+    const blob = new Blob([payload], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = evidenceFilename();
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+    const status = $('#evidenceExportStatus');
+    if (status) status.textContent = 'Evidenze esportate in un file JSON locale.';
   }
 
   function escapeHtml(value) {
@@ -166,6 +235,7 @@
   $('#prevBtn').addEventListener('click', () => { stop(); if (step > 0) { step -= 1; renderStep(); } });
   $('#resetBtn').addEventListener('click', () => { stop(); step = 0; renderStep(); });
   $('#resetProgressBtn').addEventListener('click', () => { localStorage.removeItem(storageKey); progressState = emptyState(); step = 0; renderStep(); });
+  $('#exportEvidenceBtn')?.addEventListener('click', exportEvidence);
   $('#playBtn').addEventListener('click', () => { if (timer) { stop(); return; } $('#playBtn').textContent = '⏸ Pausa'; timer = setInterval(next, 5500); });
   document.querySelectorAll('#stepsNav button').forEach((button) => button.addEventListener('click', () => { stop(); step = Number(button.dataset.step); renderStep(); }));
   document.addEventListener('keydown', (event) => {

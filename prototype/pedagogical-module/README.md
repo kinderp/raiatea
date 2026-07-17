@@ -174,7 +174,7 @@ Only **Ripristina questo avanzamento** applies the file. Restore is an explicit 
 
 Module titles, step titles, indexes, source metadata, unknown properties, and any other file content are validation context only and are never copied into browser progress. Reading preferences and unrelated `localStorage` entries remain untouched.
 
-Malformed, oversized, unsupported, cross-module, or revision-incompatible files keep the current progress unchanged and never enable confirmation. **Annulla importazione** also leaves progress unchanged. The entire flow remains offline and imposes a 1 MB file-size limit before parsing.
+Malformed, oversized, unsupported, cross-module, or revision-incompatible files keep the current progress unchanged and never enable confirmation. **Annulla importazione** also leaves progress unchanged. Active playback stops when import starts, obsolete asynchronous file reads cannot replace a newer selection, and a pending preview is invalidated if local progress changes before confirmation. The entire flow remains offline and imposes a 1 MB file-size limit before parsing.
 
 The current conflict policy is intentionally narrow:
 
@@ -182,6 +182,20 @@ The current conflict policy is intentionally narrow:
 - histories are not merged;
 - versions are not migrated or coerced;
 - there is no background upload, analytics, telemetry, cloud synchronization, or LMS transfer.
+
+### Retention, deletion, and external integration boundaries
+
+The architecture and privacy decision is documented in [`docs/learner-evidence-boundaries.md`](docs/learner-evidence-boundaries.md). It defines:
+
+- the separate lifecycles of browser progress, reading preferences, pending imports, and downloaded files;
+- exactly what **Azzera avanzamento**, reading-settings reset, browser site-data deletion, and operating-system file deletion affect;
+- why resetting browser progress cannot delete exported or external copies;
+- data-minimization, purpose-limitation, and learner-control rules;
+- the trust boundary between the self-contained module, an optional adapter, and an external LMS or archive;
+- provider-neutral future integration operations and mandatory LMS safeguards;
+- versioning rules, forbidden defaults, and a review checklist for future evidence work.
+
+The current generated module contains no provider credentials, network queue, external destination, or remote deletion mechanism. A future adapter must define its own purpose, identity, retention, deletion, security, and failure semantics without changing the meaning of local reset controls.
 
 ## Step-level provenance
 
@@ -251,6 +265,7 @@ The Playwright configuration builds `examples/self-attention.json` through the c
 - explicit replacement and reload persistence;
 - preservation of reading preferences and unrelated storage;
 - cancel, malformed JSON, and incompatible-module no-op behavior;
+- playback shutdown, latest-selection ordering, visible file chooser, and stale-preview invalidation;
 - basic semantic hooks such as document language, accessible SVG role, and live regions.
 
 CI installs Chromium with its Linux system dependencies before running the same command. Cross-browser and screenshot-regression coverage remain explicitly out of scope for this increment.
@@ -266,6 +281,7 @@ prototype/pedagogical-module/
 ├── examples/query-key-value.json
 ├── examples/query-key-value.layout.json
 ├── evidence-examples/learner-evidence-export-v1.json
+├── docs/learner-evidence-boundaries.md
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js
@@ -281,6 +297,8 @@ prototype/pedagogical-module/
 ├── tests/test_evidence_export.py
 ├── tests/test_evidence_compatibility.py
 ├── browser-tests/module.spec.js
+├── browser-tests/evidence-import-race.spec.js
+├── browser-tests/evidence-import-conflict.spec.js
 ├── playwright.config.js
 ├── package.json
 ├── package-lock.json
@@ -303,7 +321,7 @@ prototype/pedagogical-module/
 
 ## Next improvements
 
-1. Document retention, deletion, and future LMS integration boundaries.
-2. Decide whether evidence needs stable step identifiers before supporting authored-title changes.
+1. Decide whether evidence needs stable step identifiers before supporting authored-title changes.
+2. Define a provider-neutral adapter interface only when a concrete integration use case exists.
 3. Link multiple modules into a prerequisite route.
 4. Replace the temporary layered module validator with one consolidated implementation.

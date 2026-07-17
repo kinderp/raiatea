@@ -25,6 +25,11 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
       - name: Run unit tests
         run: |
           python -m unittest discover \
@@ -73,3 +78,13 @@ jobs:
             test -s "$visual"
             grep -q '"type": "primitives"' "$visual"
           done
+
+      - name: Install browser test dependencies
+        working-directory: prototype/pedagogical-module
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+
+      - name: Run browser interaction tests
+        working-directory: prototype/pedagogical-module
+        run: npm run test:browser

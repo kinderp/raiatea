@@ -21,7 +21,8 @@ class ModuleValidationTests(unittest.TestCase):
         cls.example_path = ROOT / "examples" / "self-attention.json"
         cls.qkv_path = ROOT / "examples" / "query-key-value.json"
         cls.example = json.loads(cls.example_path.read_text(encoding="utf-8"))
-        cls.qkv = json.loads(cls.qkv_path.read_text(encoding="utf-8"))
+        cls.qkv_source = json.loads(cls.qkv_path.read_text(encoding="utf-8"))
+        cls.qkv = validator.load_and_validate(cls.qkv_path)
         cls.template = (ROOT / "src" / "template.html").read_text(encoding="utf-8")
         cls.css = (ROOT / "src" / "module.css").read_text(encoding="utf-8")
         cls.js = (ROOT / "src" / "module.js").read_text(encoding="utf-8")
@@ -39,18 +40,35 @@ class ModuleValidationTests(unittest.TestCase):
         issues = validator.validate_module(self.clone_example())
         self.assertEqual([], issues, self.messages(issues))
 
-    def test_query_key_value_module_is_valid(self) -> None:
-        issues = validator.validate_module(self.clone_qkv())
+    def test_query_key_value_source_uses_layout_reference(self) -> None:
+        self.assertEqual(
+            {"type": "layout", "source": "query-key-value.layout.json"},
+            self.qkv_source["visual"],
+        )
+
+    def test_query_key_value_module_is_valid_after_layout_resolution(self) -> None:
+        data = self.clone_qkv()
+        issues = validator.validate_module(data)
         self.assertEqual([], issues, self.messages(issues))
-        self.assertEqual({"query", "key", "value"}, {item["id"] for item in self.qkv["visual"]["items"] if item["id"] in {"query", "key", "value"}})
+        self.assertEqual("primitives", data["visual"]["type"])
+        self.assertEqual("query-key-value.layout.json", data["build"]["layoutSource"])
+        self.assertEqual(
+            {"query", "key", "value"},
+            {
+                item["id"]
+                for item in data["visual"]["items"]
+                if item["id"] in {"query", "key", "value"}
+            },
+        )
 
     def test_query_key_value_module_renders_without_template_changes(self) -> None:
         output = builder.render_module(self.clone_qkv(), self.template, self.css, self.js)
         issues = validator.validate_rendered_html(output)
         self.assertEqual([], issues, self.messages(issues))
         self.assertIn("Query, Key e Value", output)
-        self.assertIn('id="score" data-node', output)
-        self.assertIn("Che cosa sto cercando?", output)
+        self.assertIn('id="attention-result" data-node', output)
+        self.assertIn("selezione + contenuto", output)
+        self.assertIn('"layoutSource": "query-key-value.layout.json"', output)
         self.assertIn("stepwise-decomposition", output)
 
     def test_example_uses_semantic_primitives(self) -> None:

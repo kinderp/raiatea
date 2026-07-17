@@ -124,7 +124,7 @@ The export intentionally excludes:
 - inferred mastery, diagnosis, disability, or personal profiles;
 - timestamps, analytics identifiers, cloud destinations, and background telemetry.
 
-The predictable filename is `<module-id>-evidence-v1.json`. Export does not delete or modify the browser-local progress record. Import, conflict handling, signing, encryption, and multi-module bundles remain outside this increment.
+The predictable filename is `<module-id>-evidence-v1.json`. Export does not delete or modify the browser-local progress record. Signing, encryption, multi-module bundles, and cloud transfer remain outside this prototype.
 
 Validate a saved or example export with:
 
@@ -132,6 +132,28 @@ Validate a saved or example export with:
 python prototype/pedagogical-module/build/validate_evidence_export.py \
   prototype/pedagogical-module/evidence-examples/learner-evidence-export-v1.json
 ```
+
+### Import compatibility policy
+
+A structurally valid export is not automatically safe to restore into every module revision. Before a future import may modify local progress, the side-effect-free compatibility checker requires:
+
+- exact supported format and version through the structural validator;
+- exact module ID;
+- the same current module step count;
+- the same exported step-sequence length;
+- the same ordered, module-authored step titles.
+
+Step indexes are already required to match their array positions by the v1 structural validator. Source title, chapter, pages, figure, and other allowlisted source metadata remain explanatory context and do not determine compatibility.
+
+Check the merged sample against the current module with:
+
+```bash
+python prototype/pedagogical-module/build/check_evidence_compatibility.py \
+  prototype/pedagogical-module/examples/self-attention.json \
+  prototype/pedagogical-module/evidence-examples/learner-evidence-export-v1.json
+```
+
+The checker reads and validates both files, reports every incompatibility, and exits non-zero on failure. It does not access browser storage, apply progress, merge evidence, or choose a conflict policy. Those state-changing decisions belong to a separate explicit restore increment.
 
 ## Step-level provenance
 
@@ -171,7 +193,7 @@ python -m unittest discover \
   -v
 ```
 
-The suite covers all example modules, adaptive remediation, micro-activities, learner evidence, evidence-export validation, step provenance, semantic visual references, generated output, and common invalid cases.
+The suite covers all example modules, adaptive remediation, micro-activities, learner evidence, export validation, import compatibility, step provenance, semantic visual references, generated output, and common invalid cases.
 
 ## Browser interaction tests
 
@@ -221,9 +243,11 @@ prototype/pedagogical-module/
 ├── build/validate_module.py
 ├── build/validate_module_v2.py
 ├── build/validate_evidence_export.py
+├── build/check_evidence_compatibility.py
 ├── tests/test_layout_visual.py
 ├── tests/test_validation.py
 ├── tests/test_evidence_export.py
+├── tests/test_evidence_compatibility.py
 ├── browser-tests/module.spec.js
 ├── playwright.config.js
 ├── package.json
@@ -237,7 +261,7 @@ prototype/pedagogical-module/
 - the Python module validator is layered;
 - mathematical rendering uses plain text unless represented by visual primitives;
 - learner evidence remains browser-local unless the learner explicitly exports one module;
-- exported evidence cannot yet be imported or merged;
+- exported evidence can be checked for compatibility but cannot yet be applied or merged;
 - recommendation rules are deterministic and intentionally simple;
 - declarative layouts currently cover linear and branch/merge structures only;
 - complex primitive visuals still require authored coordinates;
@@ -246,7 +270,7 @@ prototype/pedagogical-module/
 
 ## Next improvements
 
-1. Define strict validation and compatibility rules for importing learner evidence.
-2. Add explicit import/restore with conflict handling and no silent overwrite.
+1. Add explicit import/restore with conflict handling and no silent overwrite.
+2. Document retention and future LMS integration boundaries after the restore contract exists.
 3. Link multiple modules into a prerequisite route.
 4. Replace the temporary layered module validator with one consolidated implementation.

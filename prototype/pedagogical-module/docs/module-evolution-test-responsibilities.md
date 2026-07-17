@@ -4,14 +4,16 @@ Status: normative test appendix to [`module-evolution-and-evidence-compatibility
 
 This appendix assigns every required module-evolution scenario to the future fixture, validator, compatibility classifier, migration preview, and state-transition test that must own it. It does **not** claim that the current repository already implements stable IDs, revisions, manifests, evidence v2, or migrations.
 
+Revision identifiers are opaque authored values. Test names and assertions may verify presence, exact equality, exact difference, uniqueness, and immutable historical binding, but must not assume numeric, lexical, temporal, or semantic ordering unless a later versioned contract defines it explicitly.
+
 ## Responsibility matrix
 
 | Scenario | Future fixture | Validator responsibility | Compatibility / preview responsibility | State-changing responsibility | Current implementation status |
 | --- | --- | --- | --- | --- | --- |
-| Title rename, same concept | `rename-same-step-id` old/new module pair | Accept same valid stable step ID in both revisions; validate explicit revision increase | Classify as lossless only when authored identity is preserved; show title change | Preserve evidence only after explicit future migration confirmation | Contract only; no current fixture or migration runtime |
-| Reorder existing steps | `reorder-stable-step-ids` pair | Validate unique IDs and canonical order within each revision | Map by stable ID, show old/new positions, classify lossless when semantics are unchanged | Move `currentStep` using authored policy after preview | Contract only |
+| Title rename, same concept | `rename-same-step-id` old/new module pair | Accept same valid stable step ID in both revisions; validate explicit source/target revision difference | Classify as lossless only when authored identity is preserved; show title change | Preserve evidence only after explicit future migration confirmation | Contract only; no current fixture or migration runtime |
+| Reorder existing steps | `reorder-stable-step-ids` pair | Validate unique IDs and canonical order within each revision | Map by stable ID, show source/target positions, classify lossless when semantics are unchanged | Move `currentStep` using authored policy after preview | Contract only |
 | Insert new step | `insert-new-step` pair | Require a new unique ID and reject reuse of retired IDs | Preserve existing mapped evidence; show new step initialized empty | Write empty evidence for the introduced step only after confirmation | Contract only |
-| Content correction without changed diagnostic meaning | `content-correction-same-meaning` pair | Validate revision change and stable identity | Require an authored declaration that evidence meaning is unchanged; preview the correction | Preserve mapped evidence after confirmation | Contract only |
+| Content correction without changed diagnostic meaning | `content-correction-same-meaning` pair | Validate an explicit different revision and stable identity | Require an authored declaration that evidence meaning is unchanged; preview the correction | Preserve mapped evidence after confirmation | Contract only |
 | Changed diagnostic meaning | `diagnostic-meaning-changed` pair | Validate revision and IDs but do not infer evidence validity | Classify as partial or incompatible according to authored reset/archive policy | Reset or archive affected evidence; never preserve correctness by default | Contract only |
 | One-to-many split | `split-one-to-many` old/new pair plus manifest | Validate source ID, all destination IDs, uniqueness, direction, and explicit split policy | Classify partial; show which destination inherits, resets, or archives evidence | Apply only the authored mapping after confirmation; no automatic fan-out of `correct` | Contract only |
 | Many-to-one merge | `merge-many-to-one` pair plus manifest | Validate all sources, one destination, and explicit aggregation policy | Classify partial; preview attempts/correctness aggregation and information loss | Apply only explicit aggregation after confirmation; no universal default | Contract only |
@@ -19,6 +21,7 @@ This appendix assigns every required module-evolution scenario to the future fix
 | Incompatible replacement | `replace-unrelated-step` pair | Validate new unique ID and retirement of old ID | Classify incompatible unless an explicit reviewed migration policy exists | Block restore/migration by default | Contract only |
 | Duplicate step IDs | `duplicate-step-id-invalid` module | Reject duplicate IDs deterministically | No preview because structural validation fails first | No state change | Contract only |
 | Recycled retired ID | `recycled-retired-step-id-invalid` revision chain | Reject reuse against the route's revision history or registry | No compatible classification | No state change | Contract only |
+| Reused published revision with divergent content | `reused-revision-divergent-content-invalid` route history | Reject republishing or overwriting an existing `(moduleId, revision)` binding with different authored content, including after retirement | Report immutable revision collision; do not classify or offer migration | No state change and no replacement of the historical binding | Contract only |
 | Unknown source revision | `unknown-source-revision` evidence/manifest | Reject or mark unsupported before mapping | Report unsupported source revision and no migration path | No state change | Contract only |
 | Unknown target revision | `unknown-target-revision` manifest/module | Reject target mismatch | Report unsupported target revision | No state change | Contract only |
 | Manifest for another module | `cross-module-manifest-invalid` | Reject exact module-ID mismatch | No mapping preview beyond explicit mismatch | No state change | Contract only |
@@ -39,7 +42,7 @@ This appendix assigns every required module-evolution scenario to the future fix
 A future implementation issue must select the relevant rows above and add tests at every applicable layer:
 
 1. **Schema/structural fixtures** — valid and invalid module, evidence, and migration-manifest JSON documents.
-2. **Validator unit tests** — exact paths and deterministic reasons for invalid IDs, revisions, versions, and mappings.
+2. **Validator and history-registry unit tests** — exact paths and deterministic reasons for invalid IDs, revision collisions, divergent republishing, versions, and mappings.
 3. **Compatibility-classifier tests** — exact, lossless, partial, incompatible, and unsupported outcomes.
 4. **Migration-output tests** — deterministic transformed evidence with explicit attempts, correctness, remediation, and current-step semantics.
 5. **Preview tests** — human-readable disclosure of preserved, reset, introduced, retired, split, merged, and dropped data.
@@ -52,7 +55,7 @@ No stable-ID or migration implementation PR is complete merely because the archi
 
 - name the matrix rows in scope;
 - add the corresponding repository fixtures;
-- show which validator or preview test owns each row;
+- show which validator, history registry, or preview test owns each row;
 - link the exact test files and passing CI run;
 - record out-of-scope rows explicitly;
 - avoid claiming coverage for rows that remain contract-only.

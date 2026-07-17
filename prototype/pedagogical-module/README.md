@@ -21,11 +21,19 @@ python prototype/pedagogical-module/build/build_module.py \
   --output /tmp/self-attention.html
 ```
 
+Build the query/key/value module with the same template:
+
+```bash
+python prototype/pedagogical-module/build/build_module.py \
+  prototype/pedagogical-module/examples/query-key-value.json \
+  --output /tmp/query-key-value.html
+```
+
 The build validates both the source JSON and the generated HTML. It exits with status 1 and prints all detected problems when validation fails.
 
 ## Adaptive remediation
 
-A quiz can optionally define a recovery path with a deterministic micro-activity:
+A quiz can optionally define a deterministic recovery micro-activity:
 
 ```json
 {
@@ -33,7 +41,6 @@ A quiz can optionally define a recovery path with a deterministic micro-activity
     "title": "Torna alla rappresentazione numerica",
     "explanation": "Il token è simbolico; l'embedding è il vettore numerico usato dalla rete.",
     "conceptRef": "embedding",
-    "actionLabel": "Rivedi embedding",
     "retryLabel": "Torna alla domanda originale",
     "activity": {
       "type": "choice",
@@ -59,11 +66,7 @@ incorrect answer
 
 ## Learner evidence
 
-Each module stores a separate progress record in `localStorage` using the key:
-
-```text
-raiatea-progress:<module-id>
-```
+Each module stores a separate progress record in `localStorage` using `raiatea-progress:<module-id>`.
 
 The record contains only observable evidence:
 
@@ -73,20 +76,29 @@ The record contains only observable evidence:
 - whether remediation was used;
 - whether the recovery activity was completed.
 
-The summary panel distinguishes:
+The summary panel distinguishes correct without remediation, correct after remediation, attempted but not consolidated, and not yet verified. This is deliberately not called a mastery score.
 
-- correct without remediation;
-- correct after remediation;
-- attempted but not yet consolidated;
-- not yet verified.
+## Step-level provenance
 
-This is deliberately not called a mastery or competency score. It is a local record of interactions observed in the module. Learners can reset it independently from the Focus UI reading preferences.
+A step can declare whether it is original, translated, adapted, derived, or inferred. It can also record source pages, the source figure, transformations, derived values, and an author note. The generated module exposes this in a collapsible provenance card for each step.
+
+## Generality test: query, key, value
+
+`examples/query-key-value.json` is the first module that is not merely another view of the orientation figure. It tests whether the same engine can represent:
+
+- one input branching into three learned projections;
+- separate query, key, and value roles;
+- convergence of query and key into a compatibility score;
+- a distinct value path carrying content;
+- adaptive remediation and provenance without template changes.
+
+The module uses only the existing semantic primitive vocabulary. No special-purpose QKV renderer or template branch was introduced.
 
 ## Validate without building
 
 ```bash
 python prototype/pedagogical-module/build/validate_module_v2.py \
-  prototype/pedagogical-module/examples/self-attention.json
+  prototype/pedagogical-module/examples/query-key-value.json
 ```
 
 ## Visual primitives
@@ -104,7 +116,7 @@ python -m unittest discover \
   -v
 ```
 
-The suite includes generation, adaptive remediation validation, micro-activity validation, learner-evidence output, broken quizzes, invalid references, duplicate identifiers, unresolved placeholders, external resources, and broken links.
+The suite covers all example modules, adaptive remediation, micro-activities, learner evidence, step provenance, semantic visual references, generated output, and common invalid cases.
 
 ## Files
 
@@ -113,6 +125,7 @@ prototype/pedagogical-module/
 ├── schema/module.schema.json
 ├── examples/self-attention.json
 ├── examples/self-attention-procedure.json
+├── examples/query-key-value.json
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js
@@ -127,16 +140,17 @@ prototype/pedagogical-module/
 ## Current constraints
 
 - template replacement is intentionally dependency-free and simple;
-- the Python validator is layered: the base validator checks modules and visuals, while `validate_module_v2.py` adds adaptive remediation rules;
+- the Python validator is layered;
 - mathematical rendering uses plain text unless represented by visual primitives;
 - learner evidence is browser-local and is not synchronized across devices;
 - recommendation rules are deterministic and intentionally simple;
+- most visual coordinates are still authored manually;
 - Docker execution labs are deferred.
 
 ## Next improvements
 
-1. Add step-level provenance cards.
+1. Add declarative layout primitives that reduce manual coordinates.
 2. Add browser-level accessibility and interaction tests.
-3. Build a second conceptually different module to test generality.
-4. Add declarative layout primitives that reduce manual coordinates.
-5. Export learner evidence without exposing personal data by default.
+3. Export learner evidence without exposing personal data by default.
+4. Link multiple modules into a prerequisite route.
+5. Replace the temporary layered validator with one consolidated implementation.

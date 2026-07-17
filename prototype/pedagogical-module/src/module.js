@@ -8,6 +8,7 @@
   let step = 0;
   let timer = null;
   let pendingEvidenceImport = null;
+  let evidenceImportSelection = 0;
 
   const emptyState = () => ({
     currentStep: 0,
@@ -241,6 +242,7 @@
   }
 
   function clearPendingEvidenceImport(message = '') {
+    evidenceImportSelection += 1;
     pendingEvidenceImport = null;
     const input = $('#importEvidenceInput');
     const panel = $('#evidenceImportPanel');
@@ -256,6 +258,7 @@
 
   async function handleEvidenceImportSelection() {
     stop();
+    const selection = ++evidenceImportSelection;
     const input = $('#importEvidenceInput');
     const file = input?.files?.[0];
     pendingEvidenceImport = null;
@@ -270,8 +273,11 @@
 
     let candidate;
     try {
-      candidate = JSON.parse(await file.text());
+      const serialized = await file.text();
+      if (selection !== evidenceImportSelection) return;
+      candidate = JSON.parse(serialized);
     } catch (_) {
+      if (selection !== evidenceImportSelection) return;
       clearPendingEvidenceImport('File non importabile: JSON non valido. Nessuna modifica applicata.');
       return;
     }

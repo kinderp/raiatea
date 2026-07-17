@@ -245,7 +245,10 @@ test('previews compatible evidence before explicit restore and preserves unrelat
   }, { key: progressKey, progress: currentProgress });
   await page.reload();
 
+  await page.locator('#playBtn').click();
+  await expect(page.locator('#playBtn')).toHaveText('⏸ Pausa');
   await selectEvidenceFile(page, evidenceDocument());
+  await expect(page.locator('#playBtn')).toHaveText('▶ Riproduci');
   await expect(page.locator('#evidenceImportPanel')).toBeVisible();
   await expect(page.locator('#evidenceImportStatus')).toContainText('File compatibile');
   await expect(page.locator('#evidenceImportPreview')).toContainText('Avanzamento attuale: 0/4 verifiche, 1 tentativi');

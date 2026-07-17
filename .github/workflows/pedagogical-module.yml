@@ -32,9 +32,21 @@ jobs:
             -p 'test_*.py' \
             -v
 
+      - name: Compile declarative visual layouts
+        run: |
+          mkdir -p /tmp/raiatea-layouts
+          for layout in prototype/pedagogical-module/examples/*.layout.json; do
+            [ -e "$layout" ] || continue
+            name="$(basename "$layout" .layout.json)"
+            python prototype/pedagogical-module/build/layout_visual.py \
+              "$layout" \
+              --output "/tmp/raiatea-layouts/$name.visual.json"
+          done
+
       - name: Validate all example modules
         run: |
           for module in prototype/pedagogical-module/examples/*.json; do
+            case "$module" in *.layout.json) continue ;; esac
             python prototype/pedagogical-module/build/validate_module_v2.py "$module"
           done
 
@@ -42,6 +54,7 @@ jobs:
         run: |
           mkdir -p /tmp/raiatea-modules
           for module in prototype/pedagogical-module/examples/*.json; do
+            case "$module" in *.layout.json) continue ;; esac
             name="$(basename "$module" .json)"
             python prototype/pedagogical-module/build/build_module.py \
               "$module" \
@@ -54,4 +67,9 @@ jobs:
             test -s "$artifact"
             grep -qi '<!doctype html>' "$artifact"
             grep -q 'window.RAIATEA_MODULE' "$artifact"
+          done
+          for visual in /tmp/raiatea-layouts/*.visual.json; do
+            [ -e "$visual" ] || continue
+            test -s "$visual"
+            grep -q '"type": "primitives"' "$visual"
           done

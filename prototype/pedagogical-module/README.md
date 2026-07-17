@@ -95,6 +95,44 @@ The record contains only observable evidence:
 
 The summary panel distinguishes correct without remediation, correct after remediation, attempted but not consolidated, and not yet verified. This is deliberately not called a mastery score.
 
+### Privacy-safe JSON export
+
+The learner can explicitly download the current module evidence with **Esporta evidenze JSON**. The operation is local and user-initiated: the browser creates a file and does not send evidence to a server.
+
+The v1 document is identified by:
+
+```json
+{
+  "format": "raiatea-learner-evidence",
+  "version": 1
+}
+```
+
+The complete contract lives in `schema/learner-evidence-export-v1.schema.json`; a representative document is stored in `examples/learner-evidence-export-v1.json`. The export contains only:
+
+- module ID, title, language, step count, and allowlisted source context;
+- current step;
+- step index and module-authored title;
+- attempts and the three observable boolean outcomes already stored locally.
+
+The export intentionally excludes:
+
+- learner names, email addresses, accounts, and device identifiers;
+- theme, text size, density, width, alignment, and motion preferences;
+- unrelated `localStorage` entries;
+- free-form learner content;
+- inferred mastery, diagnosis, disability, or personal profiles;
+- timestamps, analytics identifiers, cloud destinations, and background telemetry.
+
+The predictable filename is `<module-id>-evidence-v1.json`. Export does not delete or modify the browser-local progress record. Import, conflict handling, signing, encryption, and multi-module bundles remain outside this increment.
+
+Validate a saved or example export with:
+
+```bash
+python prototype/pedagogical-module/build/validate_evidence_export.py \
+  prototype/pedagogical-module/examples/learner-evidence-export-v1.json
+```
+
 ## Step-level provenance
 
 A step can declare whether it is original, translated, adapted, derived, or inferred. It can also record source pages, the source figure, transformations, derived values, and an author note. The generated module exposes this in a collapsible provenance card for each step.
@@ -133,7 +171,7 @@ python -m unittest discover \
   -v
 ```
 
-The suite covers all example modules, adaptive remediation, micro-activities, learner evidence, step provenance, semantic visual references, generated output, and common invalid cases.
+The suite covers all example modules, adaptive remediation, micro-activities, learner evidence, evidence-export validation, step provenance, semantic visual references, generated output, and common invalid cases.
 
 ## Browser interaction tests
 
@@ -158,6 +196,7 @@ The Playwright configuration builds `examples/self-attention.json` through the c
 - preservation of arrow-key behavior while a reading control has focus;
 - reduced-motion concept navigation, centered target focus, and non-flashing highlight state;
 - targeted remediation, retry behavior, local evidence, and reload persistence;
+- versioned evidence download, predictable filename, exported values, and privacy exclusions;
 - basic semantic hooks such as document language, accessible SVG role, and live regions.
 
 CI installs Chromium with its Linux system dependencies before running the same command. Cross-browser and screenshot-regression coverage remain explicitly out of scope for this increment.
@@ -167,10 +206,12 @@ CI installs Chromium with its Linux system dependencies before running the same 
 ```text
 prototype/pedagogical-module/
 ├── schema/module.schema.json
+├── schema/learner-evidence-export-v1.schema.json
 ├── examples/self-attention.json
 ├── examples/self-attention-procedure.json
 ├── examples/query-key-value.json
 ├── examples/query-key-value.layout.json
+├── examples/learner-evidence-export-v1.json
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js
@@ -179,8 +220,10 @@ prototype/pedagogical-module/
 ├── build/render_visual.py
 ├── build/validate_module.py
 ├── build/validate_module_v2.py
+├── build/validate_evidence_export.py
 ├── tests/test_layout_visual.py
 ├── tests/test_validation.py
+├── tests/test_evidence_export.py
 ├── browser-tests/module.spec.js
 ├── playwright.config.js
 ├── package.json
@@ -191,9 +234,10 @@ prototype/pedagogical-module/
 ## Current constraints
 
 - template replacement is intentionally dependency-free and simple;
-- the Python validator is layered;
+- the Python module validator is layered;
 - mathematical rendering uses plain text unless represented by visual primitives;
-- learner evidence is browser-local and is not synchronized across devices;
+- learner evidence remains browser-local unless the learner explicitly exports one module;
+- exported evidence cannot yet be imported or merged;
 - recommendation rules are deterministic and intentionally simple;
 - declarative layouts currently cover linear and branch/merge structures only;
 - complex primitive visuals still require authored coordinates;
@@ -202,7 +246,7 @@ prototype/pedagogical-module/
 
 ## Next improvements
 
-1. Expand declarative layout coverage only when a concrete module requires another topology.
-2. Export learner evidence without exposing personal data by default.
+1. Define strict validation and compatibility rules for importing learner evidence.
+2. Add explicit import/restore with conflict handling and no silent overwrite.
 3. Link multiple modules into a prerequisite route.
-4. Replace the temporary layered validator with one consolidated implementation.
+4. Replace the temporary layered module validator with one consolidated implementation.

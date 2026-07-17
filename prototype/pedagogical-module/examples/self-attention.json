@@ -57,7 +57,15 @@
           "explanation": "Una mappa indica dove si trova un componente nel sistema; il procedimento mostra le operazioni eseguite al suo interno.",
           "conceptRef": "self-attention",
           "actionLabel": "Ripassa self-attention",
-          "retryLabel": "Riprova la domanda"
+          "retryLabel": "Torna alla domanda originale",
+          "activity": {
+            "type": "choice",
+            "prompt": "Quale descrizione rappresenta un procedimento?",
+            "answers": ["La self-attention si trova tra embedding e blocchi successivi", "Si calcolano score, pesi e una somma pesata"],
+            "correctIndex": 1,
+            "correctFeedback": "Corretto: questa descrizione elenca operazioni interne.",
+            "incorrectFeedback": "Questa è una collocazione nel sistema, quindi una mappa."
+          }
         }
       }
     },
@@ -80,7 +88,16 @@
           "title": "Torna alla rappresentazione numerica",
           "explanation": "Il token è un'unità simbolica; l'embedding è il vettore numerico che entra nei calcoli della rete.",
           "conceptRef": "embedding",
-          "actionLabel": "Rivedi embedding"
+          "actionLabel": "Rivedi embedding",
+          "retryLabel": "Torna alla domanda originale",
+          "activity": {
+            "type": "choice",
+            "prompt": "Quale elemento può essere elaborato direttamente dalla rete?",
+            "answers": ["journey", "[0.55, 0.87, 0.66]"],
+            "correctIndex": 1,
+            "correctFeedback": "Esatto: un embedding è una rappresentazione numerica.",
+            "incorrectFeedback": "La parola deve prima essere convertita in numeri."
+          }
         }
       }
     },
@@ -103,7 +120,16 @@
           "title": "Ricolloca il blocco nel flusso",
           "explanation": "La self-attention produce rappresentazioni contestuali che vengono elaborate dai blocchi successivi del transformer.",
           "conceptRef": "context",
-          "actionLabel": "Ripassa il vettore di contesto"
+          "actionLabel": "Ripassa il vettore di contesto",
+          "retryLabel": "Torna alla domanda originale",
+          "activity": {
+            "type": "choice",
+            "prompt": "Che cosa accade subito dopo la self-attention in questa mappa?",
+            "answers": ["Il modello termina", "Le rappresentazioni passano agli altri blocchi GPT"],
+            "correctIndex": 1,
+            "correctFeedback": "Corretto: l'attention è una parte del percorso.",
+            "incorrectFeedback": "Osserva il blocco giallo collegato dopo la self-attention."
+          }
         }
       }
     },

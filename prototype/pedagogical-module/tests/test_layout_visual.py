@@ -62,6 +62,21 @@ class DeclarativeLayoutTests(unittest.TestCase):
         self.assertIn('id="attention-result" data-node', output)
         self.assertIn('"layoutSource": "query-key-value.layout.json"', output)
 
+    def test_module_schema_documents_layout_reference(self) -> None:
+        schema = json.loads((ROOT / "schema" / "module.schema.json").read_text(encoding="utf-8"))
+        variants = schema["properties"]["visual"]["oneOf"]
+        layout_variants = [
+            variant
+            for variant in variants
+            if variant.get("properties", {}).get("type", {}).get("const") == "layout"
+        ]
+        self.assertEqual(1, len(layout_variants))
+        layout_variant = layout_variants[0]
+        self.assertEqual(["type", "source"], layout_variant["required"])
+        pattern = layout_variant["properties"]["source"]["pattern"]
+        self.assertRegex("nested/example.layout.json", pattern)
+        self.assertNotRegex("../outside.layout.json", pattern)
+
     def test_missing_layout_reference_fails_clearly(self) -> None:
         source = json.loads((ROOT / "examples" / "query-key-value.json").read_text(encoding="utf-8"))
         source["visual"]["source"] = "missing.layout.json"
@@ -72,6 +87,16 @@ class DeclarativeLayoutTests(unittest.TestCase):
                 validator.load_and_validate(module_path)
         self.assertIn("layout file does not exist", str(context.exception))
 
+    def test_layout_reference_requires_layout_json_suffix(self) -> None:
+        source = json.loads((ROOT / "examples" / "query-key-value.json").read_text(encoding="utf-8"))
+        source["visual"]["source"] = "visual.json"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            module_path = Path(temporary_directory) / "module.json"
+            module_path.write_text(json.dumps(source), encoding="utf-8")
+            with self.assertRaises(validator.ModuleValidationError) as context:
+                validator.load_and_validate(module_path)
+        self.assertIn("relative *.layout.json path", str(context.exception))
+
     def test_layout_reference_cannot_escape_module_directory(self) -> None:
         source = json.loads((ROOT / "examples" / "query-key-value.json").read_text(encoding="utf-8"))
         source["visual"]["source"] = "../outside.layout.json"
@@ -81,7 +106,30 @@ class DeclarativeLayoutTests(unittest.TestCase):
             module_path.write_text(json.dumps(source), encoding="utf-8")
             with self.assertRaises(validator.ModuleValidationError) as context:
                 validator.load_and_validate(module_path)
-        self.assertIn("must stay inside the module directory", str(context.exception))
+        self.assertIn("relative *.layout.json path", str(context.exception))
+
+    def test_invalid_layout_values_fail_as_validation_error(self) -> None:
+        source = json.loads((ROOT / "examples" / "query-key-value.json").read_text(encoding="utf-8"))
+        source["visual"]["source"] = "broken.layout.json"
+        invalid_layout = {
+            "type": "pipeline",
+            "x": "left",
+            "nodes": [
+                {"id": "a", "title": "A"},
+                {"id": "b", "title": "B"},
+            ],
+        }
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            module_path = directory / "module.json"
+            module_path.write_text(json.dumps(source), encoding="utf-8")
+            (directory / "broken.layout.json").write_text(
+                json.dumps(invalid_layout),
+                encoding="utf-8",
+            )
+            with self.assertRaises(validator.ModuleValidationError) as context:
+                validator.load_and_validate(module_path)
+        self.assertIn("invalid declarative layout", str(context.exception))
 
     def test_invalid_layout_is_rejected(self) -> None:
         with self.assertRaises(layout_visual.LayoutError):

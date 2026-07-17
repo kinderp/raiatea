@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
 FORMAT = "raiatea-learner-evidence"
 VERSION = 1
+ID_PATTERN = re.compile(r"^[a-z0-9-]+$")
 TOP_LEVEL_FIELDS = {"format", "version", "module", "progress"}
 MODULE_FIELDS = {"id", "title", "language", "stepCount", "source"}
 SOURCE_FIELDS = {"title", "chapter", "section", "figure", "pages"}
@@ -37,9 +39,11 @@ def _exact_fields(
         issues.append(f"{path}.{field}: field is not supported")
 
 
-def _non_empty_string(value: Any, path: str, issues: list[str]) -> None:
+def _non_empty_string(value: Any, path: str, issues: list[str]) -> bool:
     if not isinstance(value, str) or not value.strip():
         issues.append(f"{path}: must be a non-empty string")
+        return False
+    return True
 
 
 def _non_negative_integer(value: Any, path: str, issues: list[str]) -> bool:
@@ -57,8 +61,9 @@ def validate_evidence_export(data: Any) -> list[str]:
     _exact_fields(data, TOP_LEVEL_FIELDS, TOP_LEVEL_FIELDS, "$", issues)
     if data.get("format") != FORMAT:
         issues.append(f"$.format: must be {FORMAT}")
-    if data.get("version") != VERSION:
-        issues.append(f"$.version: must be {VERSION}")
+    version = data.get("version")
+    if not isinstance(version, int) or isinstance(version, bool) or version != VERSION:
+        issues.append(f"$.version: must be the integer {VERSION}")
 
     module = data.get("module")
     step_count: int | None = None
@@ -72,7 +77,13 @@ def validate_evidence_export(data: Any) -> list[str]:
             "$.module",
             issues,
         )
-        for field in ("id", "title", "language"):
+        module_id = module.get("id")
+        if _non_empty_string(module_id, "$.module.id", issues):
+            if not ID_PATTERN.fullmatch(module_id):
+                issues.append(
+                    "$.module.id: must contain only lowercase letters, digits, and hyphens"
+                )
+        for field in ("title", "language"):
             _non_empty_string(module.get(field), f"$.module.{field}", issues)
         if _non_negative_integer(module.get("stepCount"), "$.module.stepCount", issues):
             if module["stepCount"] < 1:

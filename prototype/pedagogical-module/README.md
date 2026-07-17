@@ -143,10 +143,12 @@ From the prototype directory:
 
 ```bash
 cd prototype/pedagogical-module
-npm install
+npm ci
 npx playwright install chromium
 npm run test:browser
 ```
+
+`npm ci` installs exactly the dependency graph recorded in `package-lock.json`; update the lockfile intentionally whenever the test dependency changes.
 
 The Playwright configuration builds `examples/self-attention.json` through the canonical Python builder, serves the generated artifact from a temporary local directory, and verifies:
 
@@ -182,6 +184,7 @@ prototype/pedagogical-module/
 ├── browser-tests/module.spec.js
 ├── playwright.config.js
 ├── package.json
+├── package-lock.json
 └── README.md
 ```
 

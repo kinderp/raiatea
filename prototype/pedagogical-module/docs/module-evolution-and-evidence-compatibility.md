@@ -15,7 +15,7 @@ Raiatea needs a durable model for module evolution before adding stable step ide
 This decision defines:
 
 - durable module identity;
-- explicit module revision semantics;
+- mandatory explicit module revision semantics for the future revision-aware contract;
 - immutable step identity within a pedagogical route;
 - rules for rename, reorder, insertion, correction, split, merge, retirement, and replacement;
 - compatibility classes;
@@ -25,7 +25,7 @@ This decision defines:
 This decision does not:
 
 - modify existing module JSON files or schemas;
-- add step IDs to the current canonical module model;
+- add revisions or step IDs to the current canonical module model;
 - create learner-evidence v2;
 - migrate or restore any document;
 - infer identity through titles, indexes, semantic similarity, embeddings, or an LLM;
@@ -43,11 +43,11 @@ The durable identifier of the pedagogical route. It does not identify one file, 
 
 ### Module revision
 
-An explicit, author-assigned identifier for one published state of a module route. A revision changes only through a deliberate author decision; it is never derived automatically from timestamps, hashes, titles, step count, or file names.
+An explicit, author-assigned identifier for one published state of a module route. A revision changes only through a deliberate author decision; it is never derived automatically from timestamps, hashes, titles, step count, file names, or build output.
 
 ### Step ID
 
-A future immutable identifier for one pedagogical step concept within a module route. It is independent of title, position, display language, and visual representation.
+A future immutable identifier for one pedagogical responsibility within a module route. It is independent of title, position, display language, and visual representation.
 
 ### Evidence document
 
@@ -71,9 +71,9 @@ The following normally preserve the same module ID:
 - reordering existing steps;
 - inserting a new step into the route;
 - retiring or replacing a step through an explicit revision decision;
-- translating the route while preserving the same conceptual responsibilities, when the project chooses a shared multilingual route.
+- translating the route while preserving the same conceptual responsibilities, when the project explicitly chooses a shared multilingual route.
 
-The following require a new module ID unless an explicit architecture decision says otherwise:
+The following require a new module ID unless a separate architecture decision says otherwise:
 
 - changing the primary learning outcome into a materially different route;
 - repurposing the module for a different conceptual subject;
@@ -84,19 +84,20 @@ A module ID must never be recycled after retirement.
 
 ### 4.2 Module revisions
 
-Each published state of a route may carry an explicit revision identifier in a future schema. The author increments or replaces that identifier whenever a change can affect interpretation, compatibility, migration, or reproducibility.
+Once the revision-aware module contract is introduced, **every published module state must carry an explicit revision identifier**. Current modules that predate that field are legacy unrevisioned modules: tooling must not invent a revision for them, and they cannot participate in revision-aware exact matching or migration until an author publishes an explicit revision through a separate reviewed change.
 
-A new revision is required for:
+A new authored revision is required whenever a published change can affect interpretation, compatibility, migration, provenance, presentation reproducibility, or evidence meaning, including:
 
 - any authored step rename or reorder;
 - insertion, removal, retirement, split, merge, or replacement;
-- a content correction that changes the meaning of a diagnostic answer, explanation, activity, or recorded evidence;
+- a presentation or visual change to a published artifact;
+- a content correction that changes a diagnostic answer, explanation, activity, or recorded evidence;
 - a contract change that affects rendering, validation, provenance, or evidence interpretation;
 - a source or transformation correction that changes the pedagogical claim represented by the route.
 
 A rebuild that produces equivalent output from unchanged authored content does not create a new module revision.
 
-Revision identifiers are opaque authored values. Raiatea may validate syntax and uniqueness, but it must not infer semantic ordering from the string unless a future contract explicitly defines such ordering.
+Revision identifiers are opaque authored values. The pair `(moduleId, revision)` identifies one published module state and must be unique. A revision string needs to be unique only within its module route. Raiatea may validate syntax and uniqueness, but it must not infer ordering or compatibility from the string unless a future contract explicitly defines such behavior.
 
 ### 4.3 Step identity
 
@@ -122,12 +123,14 @@ The pair `(moduleId, stepId)` is the stable conceptual identity. A module revisi
 | Step reorder | Preserve step IDs | Yes | Never inferred from indexes |
 | Insert new step | Create a new step ID | Yes | Existing steps may remain identifiable; missing evidence stays missing |
 | Correct explanation without changing expected evidence | Preserve step ID | Yes | Requires authored compatibility decision |
-| Change accepted answer or evidence meaning | Preserve or replace step ID only through explicit author decision | Yes | Default incompatible without an explicit mapping and rationale |
-| Split one step into multiple steps | Retire or transform the old step; create new step IDs | Yes | No automatic distribution of historical evidence |
-| Merge multiple steps into one | Retire source steps; create or designate one target step ID explicitly | Yes | No automatic aggregation of historical evidence |
+| Change accepted answer or evidence meaning | Preserve or replace the step ID only through explicit authored rationale | Yes | Default incompatible without an explicit mapping and rationale |
+| Split one step into multiple steps | Retire the source ID and create new IDs by default; preserve the source ID for at most one target only when that target retains the same responsibility | Yes | Never copy one source observation to multiple active targets automatically |
+| Merge multiple steps into one | Retire source IDs and create a new target ID by default; preserve one source ID only when the merged target still has that same responsibility | Yes | Never aggregate attempts or completion automatically |
 | Retire a step | Preserve historical step ID as retired | Yes | Historical evidence remains historical; it is not reassigned |
 | Replace a step with a different responsibility | Retire old ID and create a new ID | Yes | Incompatible by default |
 | Replace the route with a different learning outcome | New module ID | Yes | Incompatible |
+
+For split and merge operations, one old ID must never become multiple active identities, and a newly combined responsibility must never reuse an old ID merely because it occupies the same position or has a similar title.
 
 ## 6. Required examples
 
@@ -137,11 +140,11 @@ Revision `r1` contains step `attention-score` titled “Calcola lo score”. Rev
 
 ### 6.2 Reorder
 
-Revision `r1` orders `embedding`, `query-key`, `weighted-sum`. Revision `r2` introduces a different presentation order while keeping the same step IDs. A future evidence format can identify observations by step ID, but ordering-dependent progress such as `currentStep` still needs an authored migration decision. Indexes must never be used as durable identity.
+Revision `r1` orders `embedding`, `query-key`, `weighted-sum`. Revision `r2` presents the same step IDs in a different order. A future evidence format can attribute per-step observations by step ID, but progression state such as `currentStep` still needs an authored mapping to the corresponding target step and route position. Indexes must never be used as durable identity.
 
 ### 6.3 Insertion
 
-Revision `r2` inserts `softmax-normalization` between existing steps. The new step receives a new ID. Historical observations for existing step IDs may remain attributable, but the new step has no historical completion evidence. A migration preview must state that absence rather than marking the new step complete.
+Revision `r2` inserts `softmax-normalization` between existing steps. The new step receives a new ID. Historical observations for existing step IDs may remain attributable, but the inserted step has no historical completion evidence. A migration preview must state that absence rather than marking the new step complete.
 
 ### 6.4 Content correction
 
@@ -149,11 +152,11 @@ A spelling fix preserves the step ID. A correction that changes which answer is 
 
 ### 6.5 Split
 
-Revision `r1` has `self-attention` as one step. Revision `r2` replaces it with `score-computation` and `value-aggregation`. Historical completion of `self-attention` cannot be copied automatically to both new steps. The manifest may preserve the old observation as historical context, but current completion for the new steps remains unset unless a separate, explicitly justified policy exists.
+Revision `r1` has `self-attention` as one step. Revision `r2` replaces it with `score-computation` and `value-aggregation`. The source `self-attention` ID is retired and the two new responsibilities receive new IDs unless one target demonstrably retains the original responsibility and the author records that rationale. Historical completion cannot be copied automatically to both targets. At most it remains historical context; current completion for new targets remains unset.
 
 ### 6.6 Merge
 
-Revision `r1` has `query-key-score` and `softmax`. Revision `r2` combines them into `attention-weights`. Attempts and completion from two source steps cannot be summed, averaged, or collapsed automatically. The manifest must declare the merge and the preview must show that current evidence cannot be reconstructed without loss.
+Revision `r1` has `query-key-score` and `softmax`. Revision `r2` combines them into `attention-weights`. The merged responsibility receives a new ID by default. One source ID may be preserved only if the target still represents that same responsibility and the author records why the other source is merely retired rather than absorbed semantically. Attempts and completion from two source steps cannot be summed, averaged, or collapsed automatically.
 
 ### 6.7 Retirement
 
@@ -173,13 +176,15 @@ The evidence format, module ID, module revision, and required step identities ma
 
 ### Class B: declared lossless migration
 
-An authored manifest maps the source revision to the target revision without changing the meaning of retained observations. Examples may include a pure rename or reorder where step identities and evidence semantics are preserved.
+An authored manifest maps the source revision to the target revision without changing the meaning of **any allowlisted evidence field**. The manifest must provide a deterministic target for every retained per-step observation and for progression state such as the current step or route position.
 
-“Lossless” applies only to the allowlisted evidence fields covered by the manifest. It does not imply pedagogical equivalence beyond those fields.
+A rename or reorder is lossless only when all evidence fields can be mapped without omission, reset, aggregation, duplication, or semantic reinterpretation. If current position or another allowlisted field cannot be mapped deterministically, the migration is partial or incompatible rather than lossless.
+
+“Lossless” applies only to the allowlisted evidence fields covered by the manifest. It does not imply broader pedagogical equivalence.
 
 ### Class C: declared partial migration
 
-Some observations remain attributable, while other fields or steps must be omitted, retired, or reset. Insertion, retirement, and some corrections may fall here. The preview must identify every preserved, omitted, reset, or historical-only value.
+Some observations remain attributable, while other fields or steps must be omitted, retired, reset, or retained only as historical context. Insertion, retirement, split, merge, and some corrections may fall here. The preview must identify every preserved, omitted, reset, retired, or historical-only value.
 
 ### Class D: incompatible
 
@@ -246,7 +251,7 @@ The following is a design sketch, not a committed schema or executable contract:
 }
 ```
 
-A committed manifest contract must later define closed enums, identifier syntax, uniqueness, operation-specific cardinality, required rationale, optional provenance, and exact evidence-field behavior.
+A committed manifest contract must later define closed enums, identifier syntax, uniqueness, operation-specific cardinality, required rationale, optional provenance, exact progression mapping, and exact evidence-field behavior.
 
 ## 10. Manifest rules
 
@@ -259,7 +264,8 @@ A future migration manifest must be:
 - side-effect free during validation and preview;
 - reviewable in source control;
 - explicit about preserved, reset, omitted, retired, and historical-only evidence;
-- rejected if it contains unknown operations, duplicate targets, ambiguous mappings, cycles, or mismatched module IDs;
+- explicit about current-position mapping whenever route order changes;
+- rejected if it contains unknown operations, duplicate targets, ambiguous mappings, cycles, mismatched module IDs, or reused retired IDs;
 - chained only through an explicit validated path, never by selecting an arbitrary “closest” revision;
 - applied only after an explicit preview and confirmation.
 
@@ -270,7 +276,7 @@ The source evidence document must remain unchanged. Migration creates a new cand
 | Component or actor | Responsibility |
 | --- | --- |
 | Module author | Assign module revisions and future step IDs; decide identity continuity; author migration rationale |
-| Module schema and validator | Enforce syntax, uniqueness, required fields, and internal references without inferring semantics |
+| Module schema and validator | Require revision-aware fields when that contract is introduced; enforce syntax, uniqueness, and references without inferring semantics |
 | Evidence validator | Validate one evidence version without silently upgrading it |
 | Compatibility checker | Classify exact, declared migration, incompatible, or unsupported cases without mutation |
 | Migration validator | Validate a manifest and its source/target module contexts |
@@ -303,7 +309,9 @@ A future migration operation must fail closed when:
 - source or target module ID/revision does not match the manifest;
 - required step IDs are missing, duplicated, retired unexpectedly, or reused;
 - an operation has invalid cardinality;
+- one source ID maps to multiple active target identities without an explicitly permitted historical-only operation;
 - more than one operation claims the same active target without an explicit allowed rule;
+- a lossless classification omits, resets, duplicates, aggregates, or ambiguously maps an allowlisted evidence field;
 - a required manifest in a revision chain is missing;
 - the evidence version is unsupported;
 - the migration would require an unspecified merge, split, aggregation, or inference policy;
@@ -316,8 +324,8 @@ Failure leaves current browser progress, reading preferences, source files, and 
 
 The safe sequence after this decision is:
 
-1. add explicit module revisions and immutable step IDs to the canonical module model and examples, without changing evidence v1;
-2. validate uniqueness, immutability expectations, and references in fixtures and documentation;
+1. add mandatory explicit module revisions and immutable step IDs to the canonical module model and examples, without changing evidence v1;
+2. validate revision presence, `(moduleId, revision)` uniqueness expectations, step-ID uniqueness, and references in fixtures and documentation;
 3. design a new evidence version carrying module revision and step IDs;
 4. define and publish a closed migration-manifest schema;
 5. implement side-effect-free manifest and compatibility validation;
@@ -328,6 +336,6 @@ Each item is a separate reviewable increment. No step authorizes silent migratio
 
 ## 15. Decision summary
 
-Raiatea treats a module ID as the durable identity of a pedagogical route, an explicit module revision as one published state of that route, and a future step ID as the immutable identity of one pedagogical responsibility. Titles and indexes remain presentation and ordering data, not durable identity.
+Raiatea treats a module ID as the durable identity of a pedagogical route, an explicit mandatory module revision as one published state of that route, and a future step ID as the immutable identity of one pedagogical responsibility. Titles and indexes remain presentation and ordering data, not durable identity.
 
-Module changes always produce an explicit revision decision. Rename and reorder may preserve step identity; insertion creates new identity; split, merge, retirement, and replacement require authored mappings and cannot be inferred. Learner-evidence v1 remains frozen under its current conservative title/index rules. Future migrations must be versioned, authored, directional, side-effect free until confirmation, privacy-preserving, and fail closed whenever meaning is ambiguous.
+Once the revision-aware contract is introduced, every published state must carry an authored revision; legacy unrevisioned modules are not assigned one automatically. Rename and reorder may preserve step identity; insertion creates new identity; split, merge, retirement, and replacement retire or preserve IDs only under explicit immutable-responsibility rules. Learner-evidence v1 remains frozen under its current conservative title/index contract. Future migrations must be versioned, authored, directional, side-effect free until confirmation, privacy-preserving, complete about every allowlisted evidence field, and fail closed whenever meaning is ambiguous.

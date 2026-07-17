@@ -46,6 +46,15 @@
       "equation": "testo → embedding → self-attention → modello",
       "activeNodes": ["input", "embedding", "attention", "rest"],
       "animatedFlows": ["f1", "f2", "f3"],
+      "provenance": {
+        "kind": "adaptation",
+        "sourceSection": "3.3",
+        "sourcePages": [55],
+        "sourceFigure": "3.6",
+        "transformations": ["selection", "translation", "interactive-reconstruction"],
+        "derivedValues": false,
+        "note": "La figura originale è stata trasformata in una mappa interattiva senza alterarne il ruolo concettuale."
+      },
       "quiz": {
         "question": "Questa figura mostra già tutti i calcoli dell'attention?",
         "answers": ["Sì", "No"],
@@ -78,6 +87,15 @@
       "equation": "token → x⁽ⁱ⁾",
       "activeNodes": ["input", "embedding"],
       "animatedFlows": ["f1"],
+      "provenance": {
+        "kind": "adaptation",
+        "sourceSection": "3.3",
+        "sourcePages": [55],
+        "sourceFigure": "3.6",
+        "transformations": ["stepwise-decomposition", "simplification", "diagnostic-question"],
+        "derivedValues": false,
+        "note": "Il passaggio esplicita la conversione numerica implicita nella figura sorgente."
+      },
       "quiz": {
         "question": "Che cosa riceve la self-attention?",
         "answers": ["Stringhe grezze", "Vettori numerici"],
@@ -110,6 +128,15 @@
       "equation": "X → Z",
       "activeNodes": ["embedding", "attention"],
       "animatedFlows": ["f2"],
+      "provenance": {
+        "kind": "adaptation",
+        "sourceSection": "3.3",
+        "sourcePages": [55],
+        "sourceFigure": "3.6",
+        "transformations": ["translation", "simplification", "diagnostic-question"],
+        "derivedValues": false,
+        "note": "La spiegazione aggiunge il termine rappresentazione contestualizzata per rendere esplicito l'output del blocco."
+      },
       "quiz": {
         "question": "La self-attention sostituisce tutto il modello GPT?",
         "answers": ["Sì", "No"],
@@ -142,6 +169,15 @@
       "equation": "query → score → pesi → contesto",
       "activeNodes": ["attention", "rest"],
       "animatedFlows": ["f3"],
+      "provenance": {
+        "kind": "inference",
+        "sourceSection": "3.3",
+        "sourcePages": [55],
+        "sourceFigure": "3.6",
+        "transformations": ["selection", "stepwise-decomposition", "diagnostic-question"],
+        "derivedValues": false,
+        "note": "La sequenza dei prossimi concetti è una scelta didattica ricavata dalla struttura del capitolo."
+      },
       "quiz": {"question": "Quale concetto viene dopo?", "answers": ["Prodotto scalare e pesi", "Stampa del PDF"], "correctIndex": 0, "correctFeedback": "Corretto.", "incorrectFeedback": "La tappa successiva apre il procedimento matematico."}
     }
   ],

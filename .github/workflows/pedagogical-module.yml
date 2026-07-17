@@ -89,24 +89,18 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "22"
+          cache: npm
+          cache-dependency-path: prototype/pedagogical-module/package-lock.json
 
       - name: Install browser test dependencies
         working-directory: prototype/pedagogical-module
         run: |
-          npm install --silent
+          npm ci --silent
           if ! npx playwright install --with-deps chromium >/tmp/playwright-install.log 2>&1; then
             cat /tmp/playwright-install.log
             exit 1
           fi
           echo "Chromium browser and system dependencies installed."
-
-      - name: Upload resolved dependency lockfile
-        uses: actions/upload-artifact@v4
-        with:
-          name: browser-package-lock
-          path: prototype/pedagogical-module/package-lock.json
-          if-no-files-found: error
-          retention-days: 1
 
       - name: Run browser interaction tests
         working-directory: prototype/pedagogical-module

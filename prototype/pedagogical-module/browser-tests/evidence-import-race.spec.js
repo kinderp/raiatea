@@ -34,7 +34,10 @@ function evidenceDocument({ currentStep, attempts, correct }) {
 }
 
 async function selectEvidenceFile(page, document, name) {
-  await page.locator('#importEvidenceInput').setInputFiles({
+  const chooserPromise = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Importa evidenze JSON' }).click();
+  const chooser = await chooserPromise;
+  await chooser.setFiles({
     name,
     mimeType: 'application/json',
     buffer: Buffer.from(JSON.stringify(document))

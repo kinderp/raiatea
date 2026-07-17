@@ -54,6 +54,8 @@ Module authors and adopting institutions must:
 
 A future adapter may transmit less than the complete allowlisted context. It must not add personal identifiers to v1 to solve destination identity mapping, and it must not claim that validator success detects or removes personal data embedded in authored strings.
 
+Semantic metadata review is a documented, best-effort risk-reduction process. It cannot prove automatically or absolutely that every authored string is free of personal data, secrets, or sensitive context; reviewers and institutions remain responsible for the content they author and transfer.
+
 ## 3. Retention model
 
 ### 3.1 Browser-local progress
@@ -178,7 +180,7 @@ A future adapter may consume the v1 document only after the core export has been
 
 1. `inspectCapabilities()` — describe supported evidence versions and destination features without accessing learner evidence.
 2. `validate(document, moduleContext)` — perform structural and compatibility checks without mutation or transmission.
-3. `reviewMetadata(document)` — verify that authored IDs, titles, labels, and source context are course-level and non-personal, then minimize optional context.
+3. `reviewMetadata(document)` — perform and document a best-effort review that authored IDs, titles, labels, and source context are course-level and non-personal, then minimize optional context.
 4. `previewMapping(document)` — show exactly which fields would be mapped, omitted, or transformed.
 5. `send(document, destination, authorization)` — transmit only after an explicit learner or authorized educator action.
 6. `reportReceipt()` — return a destination receipt without changing the local evidence contract.
@@ -192,7 +194,7 @@ Before an LMS integration can be considered, its issue and PR must define and te
 
 - supported Raiatea evidence versions;
 - structural validation and module compatibility behavior;
-- a separate semantic review proving authored IDs, module/step titles, language labels, and source context are course-level and non-personal;
+- a documented, best-effort semantic review intended to confirm that authored IDs, module/step titles, language labels, and source context are course-level and non-personal, without representing the review as an automatic or absolute proof;
 - minimization or omission of optional source context when the destination does not need it;
 - the exact field mapping and every dropped or derived field;
 - the legal/organizational purpose and authorized actor outside this technical document;
@@ -262,9 +264,10 @@ Every future evidence PR should answer:
 - How are authored strings reviewed to ensure they are course-level and non-personal?
 - Which optional source-context fields are omitted because the destination does not need them?
 - Is schema validity clearly separated from semantic privacy review?
+- Does the review language avoid claiming automatic or absolute proof of semantic content safety?
 - Are identity and inferred traits still excluded by default, including when hidden inside authored metadata?
 - Does the generated module remain fully usable offline?
 
 ## 12. Decision summary
 
-Raiatea learner evidence is local-first, observable, minimal, versioned, and portable only through explicit actions. Browser progress, reading preferences, pending imports, exported files, and future external copies are separate data stores with separate lifecycles. The core module owns only its browser-local record. Structural validation proves document shape and compatibility, not the absence of personal data in authored strings. Any LMS or cloud integration must live behind an explicit adapter boundary and define its own purpose, identity, authored-metadata review, minimization, retention, deletion, security, and failure semantics before implementation.
+Raiatea learner evidence is local-first, observable, minimal, versioned, and portable only through explicit actions. Browser progress, reading preferences, pending imports, exported files, and future external copies are separate data stores with separate lifecycles. The core module owns only its browser-local record. Structural validation proves document shape and compatibility, not the absence of personal data in authored strings. Semantic review is a best-effort governance control, not an automatic or absolute guarantee. Any LMS or cloud integration must live behind an explicit adapter boundary and define its own purpose, identity, authored-metadata review, minimization, retention, deletion, security, and failure semantics before implementation.

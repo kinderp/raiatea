@@ -36,7 +36,7 @@ The browser module may read and write only its documented local keys. A download
 ## Terms
 
 - **Observable evidence**: direct outcomes already recorded by the module, such as attempts, eventual correctness, remediation use, recovery-activity completion, and current step.
-- **Authored metadata**: module ID, title, language, ordered step titles, and allowlisted source context used to interpret or validate evidence.
+- **Authored metadata**: module ID, title, language, ordered step titles, and allowlisted source context used to interpret or validate evidence. These strings are safe only when authors keep them course-level and non-personal; the schema does not inspect their semantic content.
 - **Reading preferences**: theme, font size, density, reading width, alignment, and motion settings.
 - **Identity data**: names, email addresses, account IDs, institutional IDs, device IDs, or identifiers that can be linked to a person.
 - **Free-form learner content**: learner-authored prose, code, notes, messages, uploads, or other unconstrained input.
@@ -48,8 +48,8 @@ The browser module may read and write only its documented local keys. A download
 | Data class | Current location | In learner-evidence v1 export | Default future LMS transfer | Reason |
 | --- | --- | --- | --- | --- |
 | Observable evidence | `raiatea-progress:<module-id>` | Allowed | Allowed only after explicit authorization | It is the purpose of the interchange contract. |
-| Module ID and authored titles | Built module and export context | Allowed | Allowed as interpretation/compatibility context | They identify the authored module revision, not the learner. |
-| Allowlisted source context | Built module and export context | Allowed | Optional and minimized | It explains provenance but is not needed for every destination. |
+| Module ID and authored titles | Built module and export context | Allowed only when reviewed as course-level and non-personal | Minimized compatibility context | They identify an authored module revision only when authors do not embed learner identifiers or other personal data. |
+| Allowlisted source context | Built module and export context | Allowed only after metadata review | Optional and omitted when not needed | It explains provenance, but arbitrary authored strings can still contain personal or sensitive information. |
 | Reading preferences | `raiatea-reading-settings` | Prohibited | Prohibited by default | They are presentation preferences, not learning evidence. |
 | Unrelated browser storage | Other keys | Prohibited | Prohibited | The module has no purpose or authority to transfer it. |
 | Identity data | Not collected by this prototype | Prohibited | Must remain outside the evidence document | Authentication and roster mapping belong to the destination boundary. |
@@ -58,6 +58,20 @@ The browser module may read and write only its documented local keys. A download
 | Timestamps and analytics IDs | Not recorded in v1 | Prohibited | Prohibited by default | They enable tracking and retention expansion without supporting current restore semantics. |
 
 A future adapter must not solve identity mapping by inserting personal identifiers into the v1 evidence document. Authentication, authorization, roster association, and destination-specific identifiers must be carried in a separate adapter context with separate retention and access rules.
+
+### Authored metadata hygiene
+
+The v1 structural validator proves that required strings exist and that the document shape is valid. It does not detect names, email addresses, account identifiers, confidential notes, or other personal/sensitive content embedded in module IDs, module titles, step titles, language labels, or source metadata.
+
+Module authors and adopting institutions must therefore ensure that exported metadata:
+
+- describes the course, module, step, or public source rather than an individual learner;
+- contains no names, email addresses, roster IDs, case notes, accommodations, diagnoses, or device/account identifiers;
+- avoids secrets, access tokens, private URLs, and internal-only references;
+- includes source context only when it is needed for interpretation or provenance;
+- is re-reviewed whenever authored content is generated, imported, templated, or customized per learner.
+
+A future adapter must treat metadata review and minimization as a separate gate from schema validation. It may omit optional source context even when the v1 export contains it. It must not claim that a document is privacy-safe merely because the schema validator accepted it.
 
 ## Current lifecycle
 
@@ -207,14 +221,14 @@ Every LMS-specific adapter must:
 
 1. **Disclose the destination**: name the organization, course/context, provider, and record type before confirmation.
 2. **Separate identity context**: keep authentication and roster mapping outside the evidence payload.
-3. **Minimize data**: send only fields required for the declared destination purpose.
-4. **Validate versions**: reject unsupported versions rather than guessing or coercing.
+3. **Minimize data**: send only fields required for the declared destination purpose and omit optional source context when it is unnecessary.
+4. **Validate versions and review metadata**: reject unsupported versions, then separately verify that authored metadata is course-level and non-personal rather than assuming schema validity proves content safety.
 5. **Preserve semantics**: do not reinterpret remediation use, attempts, or correctness as a grade unless a separate, reviewed mapping is explicitly configured and shown.
 6. **Require authorization**: verify that the current user or institutional workflow is permitted to transfer the evidence.
 7. **Return a receipt**: report destination, accepted evidence version, operation result, and an external reference that does not expose credentials.
 8. **Handle retries safely**: use idempotency or explicit duplicate warnings so repeated confirmation does not create ambiguous records.
 9. **Expose deletion ownership**: identify whether deletion must occur in Raiatea, the LMS, an institutional archive, or all of them.
-10. **Fail closed**: leave the source record unchanged and report a useful error when authorization, validation, compatibility, or destination checks fail.
+10. **Fail closed**: leave the source record unchanged and report a useful error when authorization, validation, compatibility, metadata review, or destination checks fail.
 
 ### Provider-neutral conceptual interface
 
@@ -240,7 +254,8 @@ Before an outbound transfer, the UI must show at least:
 - destination organization/provider and course or context;
 - module ID/title and evidence version;
 - fields and number of step records to be sent;
-- whether source context is included;
+- the authored titles and source-context fields included after metadata review;
+- whether source context is included or omitted by minimization;
 - whether the operation creates, replaces, or appends a destination record;
 - destination retention/deletion policy or a link supplied by the adopting institution;
 - any identity used by the destination, shown separately from the evidence payload;
@@ -255,6 +270,7 @@ A vague button such as “Sync” is insufficient because it hides direction, de
 | Silent background synchronization | Learner evidence becomes telemetry without a deliberate action | No scheduled/background transfer; explicit preview and confirmation for each policy-defined operation. |
 | Wrong destination or course | Evidence is disclosed to an unintended context | Destination disclosure, authorization check, and payload-bound preview token. |
 | Cross-learner mix-up | Evidence is associated with another person | Separate authenticated identity context, visible destination identity, and adapter-side authorization checks. |
+| Personal data embedded in authored metadata | Names, emails, roster IDs, confidential notes, or private references pass structural validation and enter an export | Require course-level non-personal authored metadata, separate semantic review, optional source-context omission, and author/institution checklist enforcement. |
 | Payload expansion | Provider-specific adapter sends preferences, identity, or unrelated storage | Core allowlist plus adapter minimization tests; reject unknown fields. |
 | Stale preview | The local record or destination changes after review | Invalidate preview tokens when source, destination, or authorization context changes. |
 | Duplicate submission | Retry creates multiple ambiguous LMS records | Idempotency key or explicit duplicate-detection workflow. |
@@ -277,7 +293,7 @@ Allowed by default:
 - adapter name and version;
 - operation result category;
 - evidence schema version;
-- module ID when institutional policy permits it;
+- module ID when institutional policy permits it and metadata review confirms it is non-personal;
 - non-sensitive correlation or idempotency reference;
 - error code that does not embed payload content or credentials.
 
@@ -325,6 +341,8 @@ Before enabling any external adapter, confirm that:
 
 - [ ] the destination and purpose are documented;
 - [ ] the evidence allowlist is unchanged or a new reviewed schema exists;
+- [ ] all authored IDs, titles, language labels, and source context are reviewed as course-level and non-personal;
+- [ ] optional source context is omitted when the destination does not need it;
 - [ ] identity/authentication context is separate from the evidence document;
 - [ ] outbound and inbound previews are explicit;
 - [ ] overwrite/append/create semantics are visible;
@@ -332,7 +350,7 @@ Before enabling any external adapter, confirm that:
 - [ ] unsupported versions and incompatible modules fail closed;
 - [ ] duplicate and partial-transfer behavior is defined;
 - [ ] retention, backups, deletion ownership, and learner notices are defined;
-- [ ] logs exclude payloads, credentials, and inferred data;
+- [ ] logs exclude payloads, credentials, personal authored metadata, and inferred data;
 - [ ] offline export and restore continue to work without the adapter;
 - [ ] provider removal does not make existing JSON files unreadable;
 - [ ] threat-model and privacy review findings are tracked to commits and tests.
@@ -361,7 +379,7 @@ Each may be considered later as a separate parent/child issue chain with its own
 | Privacy-safe one-module export | #9 | #10 | Versioned allowlisted JSON export and validator. |
 | Import structure and compatibility | #11 | #12 | Side-effect-free exact compatibility checks. |
 | Explicit restore and conflict preview | #13 | #14 | Offline confirmation, replacement, and stale/race protections. |
-| Retention and future LMS boundary | #16 | pending | This policy and architecture boundary. |
+| Retention and future LMS boundary | #16 | #18 | This policy and architecture boundary. |
 
 ## Open design questions
 

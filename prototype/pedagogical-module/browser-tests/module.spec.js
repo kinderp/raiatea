@@ -1,4 +1,5 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('fs/promises');
 
 const modulePath = '/self-attention.html';
 
@@ -120,4 +121,65 @@ test('supports targeted remediation, concept focus, retry, and persisted evidenc
   await page.reload();
   await expect(page.locator('#evidenceSummary')).toContainText('1/4 verifiche completate');
   await expect(page.locator('#phaseTitle')).toHaveText('Usare la figura come mappa');
+});
+
+test('exports only versioned observable learner evidence', async ({ page }) => {
+  const progress = {
+    currentStep: 1,
+    steps: [
+      { attempts: 2, correct: true, usedRemediation: true, activityCompleted: true },
+      { attempts: 1, correct: false, usedRemediation: false, activityCompleted: false },
+      { attempts: 0, correct: false, usedRemediation: false, activityCompleted: false },
+      { attempts: 0, correct: false, usedRemediation: false, activityCompleted: false }
+    ]
+  };
+  await page.evaluate((storedProgress) => {
+    localStorage.setItem('raiatea-progress:self-attention-orientation', JSON.stringify(storedProgress));
+    localStorage.setItem('raiatea-reading-settings', JSON.stringify({ theme: 'dark', size: '22' }));
+    localStorage.setItem('unrelated-secret', 'do-not-export');
+  }, progress);
+  await page.reload();
+
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Esporta evidenze JSON' }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toBe('self-attention-orientation-evidence-v1.json');
+
+  const downloadedPath = await download.path();
+  const exported = JSON.parse(await fs.readFile(downloadedPath, 'utf8'));
+  expect(exported.format).toBe('raiatea-learner-evidence');
+  expect(exported.version).toBe(1);
+  expect(exported.module).toEqual({
+    id: 'self-attention-orientation',
+    title: 'Il ruolo della self-attention nel modello GPT',
+    language: 'it',
+    stepCount: 4,
+    source: {
+      title: 'Build a Large Language Model (From Scratch)',
+      chapter: '3',
+      section: '3.3',
+      figure: '3.6',
+      pages: [55]
+    }
+  });
+  expect(exported.progress.currentStep).toBe(1);
+  expect(exported.progress.steps[0]).toEqual({
+    index: 0,
+    title: 'Usare la figura come mappa',
+    attempts: 2,
+    correct: true,
+    usedRemediation: true,
+    activityCompleted: true
+  });
+  expect(exported.progress.steps[1].attempts).toBe(1);
+  expect(exported.progress.steps).toHaveLength(4);
+
+  const serialized = JSON.stringify(exported);
+  expect(serialized).not.toContain('raiatea-reading-settings');
+  expect(serialized).not.toContain('dark');
+  expect(serialized).not.toContain('unrelated-secret');
+  expect(serialized).not.toContain('do-not-export');
+  expect(serialized).not.toContain('mastery');
+  expect(serialized).not.toContain('email');
+  await expect(page.locator('#evidenceExportStatus')).toHaveText('Evidenze esportate in un file JSON locale.');
 });

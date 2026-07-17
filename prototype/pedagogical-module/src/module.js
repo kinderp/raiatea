@@ -33,6 +33,29 @@
     return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
   }
 
+  function renderStepProvenance(item) {
+    const box = $('#stepProvenance');
+    const body = $('#stepProvenanceBody');
+    const provenance = item.provenance;
+    if (!provenance) {
+      box.hidden = true;
+      body.innerHTML = '';
+      return;
+    }
+    const sourcePages = (provenance.sourcePages || []).join(', ');
+    const transformations = (provenance.transformations || []).map((value) => `<span class="chip">${escapeHtml(value)}</span>`).join('');
+    body.innerHTML = [
+      provenance.sourceSection ? `<p><b>Sezione:</b> ${escapeHtml(provenance.sourceSection)}</p>` : '',
+      sourcePages ? `<p><b>Pagine:</b> ${escapeHtml(sourcePages)}</p>` : '',
+      provenance.sourceFigure ? `<p><b>Figura:</b> ${escapeHtml(provenance.sourceFigure)}</p>` : '',
+      transformations ? `<div class="step-transformations">${transformations}</div>` : '',
+      `<p><b>Natura:</b> ${escapeHtml(provenance.kind)}</p>`,
+      provenance.derivedValues ? '<p><b>Valori derivati:</b> sì, ottenuti durante la rielaborazione.</p>' : '',
+      provenance.note ? `<p>${escapeHtml(provenance.note)}</p>` : ''
+    ].join('');
+    box.hidden = false;
+  }
+
   function remediationMarkup(remediation) {
     if (!remediation) return '';
     const conceptLink = remediation.conceptRef
@@ -98,6 +121,7 @@
     $('#goalBox').innerHTML = item.goal;
     $('#observeBox').innerHTML = item.observe;
     $('#equationBox').textContent = item.equation || '';
+    renderStepProvenance(item);
     $('#stepLabel').innerHTML = `<b>Passo ${step + 1} di ${data.steps.length}</b>`;
     $('#progressBar').style.width = `${((step + 1) / data.steps.length) * 100}%`;
     $('#prevBtn').disabled = step === 0;

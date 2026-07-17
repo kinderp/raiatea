@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import validate_module as base
-from layout_visual import LayoutError, compile_layout
+from layout_visual import compile_layout
 
 ValidationIssue = base.ValidationIssue
 ModuleValidationError = base.ModuleValidationError
@@ -146,7 +146,28 @@ def resolve_module_layout(data: Any, module_path: Path) -> Any:
             ValidationIssue("$.visual.source", "must be a non-empty string")
         ])
 
-    layout_path = (module_path.parent / source).resolve()
+    source_path = Path(source)
+    has_windows_drive = (
+        len(source) >= 3
+        and source[0].isalpha()
+        and source[1] == ":"
+        and source[2] in {"/", "\\"}
+    )
+    if (
+        source_path.is_absolute()
+        or has_windows_drive
+        or "\\" in source
+        or ".." in source_path.parts
+        or not source.endswith(".layout.json")
+    ):
+        raise ModuleValidationError([
+            ValidationIssue(
+                "$.visual.source",
+                "must be a relative *.layout.json path without parent traversal",
+            )
+        ])
+
+    layout_path = (module_path.parent / source_path).resolve()
     try:
         layout_path.relative_to(module_path.parent.resolve())
     except ValueError as exc:
@@ -171,14 +192,18 @@ def resolve_module_layout(data: Any, module_path: Path) -> Any:
 
     try:
         compiled = compile_layout(layout)
-    except LayoutError as exc:
+    except (TypeError, ValueError) as exc:
         raise ModuleValidationError([
             ValidationIssue("$.visual.source", f"invalid declarative layout: {exc}")
         ]) from exc
 
     resolved = json.loads(json.dumps(data))
     resolved["visual"] = compiled
-    resolved.setdefault("build", {})["layoutSource"] = source
+    build_metadata = resolved.get("build")
+    if not isinstance(build_metadata, dict):
+        build_metadata = {}
+        resolved["build"] = build_metadata
+    build_metadata["layoutSource"] = source
     return resolved
 
 

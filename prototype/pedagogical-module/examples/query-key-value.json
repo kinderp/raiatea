@@ -1,0 +1,73 @@
+{
+  "id": "query-key-value",
+  "title": "Query, Key e Value nella self-attention",
+  "subtitle": "Tre trasformazioni lineari separano ciò che un token cerca, ciò con cui viene confrontato e l'informazione che può contribuire al contesto.",
+  "language": "it",
+  "source": {"title": "Build a Large Language Model (From Scratch)", "chapter": "3", "section": "3.4", "pages": [60, 61]},
+  "route": {"summary": "Hai già collocato la self-attention nel modello. Ora distingui i tre ruoli operativi di query, key e value.", "previous": ["Embedding", "Self-attention", "Prodotto scalare"]},
+  "difficulty": {"conceptual": 3, "mathematics": 2, "code": 1, "minutes": 14},
+  "prerequisites": [
+    {"concept": "embedding", "level": "required", "summary": "Riconoscere un embedding come vettore numerico.", "conceptRef": "embedding"},
+    {"concept": "linear-transformation", "level": "useful", "summary": "Sapere che una matrice può trasformare un vettore.", "conceptRef": "linear-transformation"}
+  ],
+  "visual": {
+    "type": "primitives", "width": 980, "height": 560,
+    "title": "Tre rami da uno stesso embedding",
+    "description": "Un embedding viene trasformato in query, key e value; query e key producono uno score che pesa il value.",
+    "items": [
+      {"kind": "vector", "id": "embedding", "x": 55, "y": 235, "label": "Embedding x", "values": [0.43, 0.15, 0.89], "cellWidth": 58},
+      {"kind": "edge", "id": "to-q", "path": "M225 252 C300 252 285 115 365 115"},
+      {"kind": "edge", "id": "to-k", "path": "M225 252 H365"},
+      {"kind": "edge", "id": "to-v", "path": "M225 252 C300 252 285 390 365 390"},
+      {"kind": "box", "id": "query", "x": 365, "y": 75, "width": 190, "height": 82, "title": "Query q = xWq", "subtitle": "Che cosa sto cercando?", "tone": "attention"},
+      {"kind": "box", "id": "key", "x": 365, "y": 210, "width": 190, "height": 82, "title": "Key k = xWk", "subtitle": "Che cosa rappresento?", "tone": "process"},
+      {"kind": "box", "id": "value", "x": 365, "y": 350, "width": 190, "height": 82, "title": "Value v = xWv", "subtitle": "Quale informazione porto?", "tone": "input"},
+      {"kind": "edge", "id": "q-score", "path": "M555 116 C650 116 640 220 720 220"},
+      {"kind": "edge", "id": "k-score", "path": "M555 251 H720"},
+      {"kind": "box", "id": "score", "x": 720, "y": 185, "width": 205, "height": 92, "title": "Score q · k", "subtitle": "Quanto sono compatibili?", "tone": "warning"},
+      {"kind": "edge", "id": "score-value", "path": "M820 277 C820 350 690 391 555 391"},
+      {"kind": "text", "id": "note", "x": 675, "y": 455, "text": "Lo score decide quanto il value contribuisce al contesto."}
+    ]
+  },
+  "steps": [
+    {
+      "eyebrow": "Passo 1", "title": "Un solo embedding, tre proiezioni",
+      "explanation": "<p>Query, key e value non sono tre copie identiche: derivano dallo stesso embedding tramite tre matrici apprese diverse.</p>",
+      "goal": "<b>Obiettivo:</b> distinguere origine comune e ruoli separati.",
+      "observe": "<b>Errore tipico:</b> pensare che q, k e v siano etichette decorative.",
+      "equation": "q=xWq, k=xWk, v=xWv",
+      "activeNodes": ["embedding", "query", "key", "value"], "animatedFlows": ["to-q", "to-k", "to-v"],
+      "provenance": {"kind": "adaptation", "sourcePages": [60], "transformations": ["translation", "stepwise-decomposition"], "derivedValues": false, "note": "La figura esplicita tre rami concettuali a partire dalle equazioni della fonte."},
+      "quiz": {"question": "Da dove derivano query, key e value?", "answers": ["Da tre testi diversi", "Dallo stesso embedding con matrici diverse"], "correctIndex": 1, "correctFeedback": "Corretto.", "incorrectFeedback": "La sorgente è lo stesso embedding.", "remediation": {"title": "Riconosci la trasformazione", "explanation": "Una stessa rappresentazione può essere proiettata in spazi diversi con matrici diverse.", "conceptRef": "linear-transformation", "actionLabel": "Ripassa trasformazione lineare", "retryLabel": "Torna alla domanda originale", "activity": {"type": "choice", "prompt": "Quale espressione descrive una proiezione lineare?", "answers": ["q=xWq", "q=x+x+x"], "correctIndex": 0, "correctFeedback": "Esatto.", "incorrectFeedback": "Serve una matrice di trasformazione."}}}
+    },
+    {
+      "eyebrow": "Passo 2", "title": "Query e key producono compatibilità",
+      "explanation": "<p>La query del token corrente viene confrontata con le key dei token disponibili. Il prodotto scalare produce uno score.</p>",
+      "goal": "<b>Idea:</b> query = richiesta; key = descrizione confrontabile.",
+      "observe": "<b>Non confondere:</b> lo score non contiene ancora il contenuto da aggregare.",
+      "equation": "score(i,j)=qi·kj",
+      "activeNodes": ["query", "key", "score"], "animatedFlows": ["q-score", "k-score"],
+      "provenance": {"kind": "adaptation", "sourcePages": [60, 61], "transformations": ["translation", "interactive-reconstruction"], "derivedValues": false},
+      "quiz": {"question": "Quali elementi determinano direttamente lo score?", "answers": ["Query e key", "Key e value"], "correctIndex": 0, "correctFeedback": "Corretto.", "incorrectFeedback": "Il confronto diretto avviene tra query e key."}
+    },
+    {
+      "eyebrow": "Passo 3", "title": "Il value trasporta il contenuto",
+      "explanation": "<p>Lo score, dopo normalizzazione, stabilisce quanto del value entra nella rappresentazione contestuale.</p>",
+      "goal": "<b>Risultato:</b> separare il criterio di selezione dall'informazione selezionata.",
+      "observe": "<b>Errore tipico:</b> attribuire al value il compito di calcolare la compatibilità.",
+      "equation": "contesto = Σ peso(i,j) vj",
+      "activeNodes": ["score", "value", "note"], "animatedFlows": ["score-value"],
+      "provenance": {"kind": "inference", "sourcePages": [61], "transformations": ["stepwise-decomposition"], "derivedValues": false, "note": "La distinzione selezione/contenuto è una formulazione didattica derivata dalle equazioni."},
+      "quiz": {"question": "Che ruolo ha il value?", "answers": ["Trasporta l'informazione da aggregare", "Calcola da solo lo score"], "correctIndex": 0, "correctFeedback": "Esatto.", "incorrectFeedback": "Lo score nasce dal confronto query-key."}
+    }
+  ],
+  "concepts": [
+    {"id": "embedding", "label": "Embedding", "definition": "Vettore numerico associato a un token."},
+    {"id": "linear-transformation", "label": "Trasformazione lineare", "definition": "Operazione che proietta un vettore tramite una matrice appresa."},
+    {"id": "query", "label": "Query", "definition": "Rappresentazione di ciò che il token cerca negli altri token."},
+    {"id": "key", "label": "Key", "definition": "Rappresentazione usata per essere confrontata con una query."},
+    {"id": "value", "label": "Value", "definition": "Informazione che viene pesata e aggregata nel contesto."},
+    {"id": "attention-score", "label": "Attention score", "definition": "Misura di compatibilità ottenuta dal confronto tra query e key."}
+  ],
+  "next": {"summary": "Il passo successivo applica softmax agli score e costruisce il vettore di contesto.", "items": ["Confrontare una query con più key", "Normalizzare gli score", "Pesare i value", "Sommare i contributi"]}
+}

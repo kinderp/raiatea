@@ -45,6 +45,12 @@ class ModuleValidationTests(unittest.TestCase):
         self.assertEqual("choice", remediation["activity"]["type"])
         self.assertEqual(2, len(remediation["activity"]["answers"]))
 
+    def test_example_contains_step_provenance(self) -> None:
+        provenance = self.example["steps"][0]["provenance"]
+        self.assertEqual("adaptation", provenance["kind"])
+        self.assertIn("interactive-reconstruction", provenance["transformations"])
+        self.assertEqual([55], provenance["sourcePages"])
+
     def test_primitive_renderer_generates_accessible_svg(self) -> None:
         markup = render_visual.render_visual(self.clone_example()["visual"])
         self.assertIn('<svg viewBox="0 0 900 420"', markup)
@@ -81,6 +87,21 @@ class ModuleValidationTests(unittest.TestCase):
         data = self.clone_example()
         data["steps"][0]["quiz"]["remediation"]["activity"]["type"] = "free-text"
         self.assertIn("must be choice", self.messages(validator.validate_module(data)))
+
+    def test_provenance_kind_is_controlled(self) -> None:
+        data = self.clone_example()
+        data["steps"][0]["provenance"]["kind"] = "unknown"
+        self.assertIn("provenance.kind", self.messages(validator.validate_module(data)))
+
+    def test_provenance_pages_are_positive(self) -> None:
+        data = self.clone_example()
+        data["steps"][0]["provenance"]["sourcePages"] = [0]
+        self.assertIn("positive integer", self.messages(validator.validate_module(data)))
+
+    def test_provenance_transformations_are_controlled(self) -> None:
+        data = self.clone_example()
+        data["steps"][0]["provenance"]["transformations"] = ["invented-transform"]
+        self.assertIn("transformations[0]", self.messages(validator.validate_module(data)))
 
     def test_duplicate_concept_ids_are_rejected(self) -> None:
         data = self.clone_example()
@@ -137,7 +158,9 @@ class ModuleValidationTests(unittest.TestCase):
         self.assertIn('id="evidenceGrid"', output)
         self.assertIn('raiatea-progress:', output)
         self.assertIn('activityCompleted', output)
-        self.assertIn('Prossimo passo consigliato', output)
+        self.assertIn('id="stepProvenance"', output)
+        self.assertIn('renderStepProvenance', output)
+        self.assertIn('interactive-reconstruction', output)
 
     def test_load_and_validate_reports_invalid_json(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

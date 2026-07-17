@@ -183,6 +183,12 @@ The current conflict policy is intentionally narrow:
 - versions are not migrated or coerced;
 - there is no background upload, analytics, telemetry, cloud synchronization, or LMS transfer.
 
+### Retention, deletion, and future LMS boundary
+
+The detailed engineering policy is in [`docs/learner-evidence-retention-and-lms-boundaries.md`](docs/learner-evidence-retention-and-lms-boundaries.md). It separates browser-local retention from downloaded-file copies, documents the scope of each deletion action, classifies data that may or may not enter the evidence contract, and defines the explicit provider-neutral boundary a future LMS adapter must preserve.
+
+The document is intentionally not a legal-compliance claim and does not select an LMS vendor or protocol. It requires future integrations to keep identity and credentials outside learner-evidence v1, disclose destination and overwrite semantics, minimize payloads, validate versions, return receipts, fail closed, and avoid background synchronization or inferred scoring.
+
 ## Step-level provenance
 
 A step can declare whether it is original, translated, adapted, derived, or inferred. It can also record source pages, the source figure, transformations, derived values, and an author note. The generated module exposes this in a collapsible provenance card for each step.
@@ -250,7 +256,11 @@ The Playwright configuration builds `examples/self-attention.json` through the c
 - compatible evidence preview without immediate mutation;
 - explicit replacement and reload persistence;
 - preservation of reading preferences and unrelated storage;
-- cancel, malformed JSON, and incompatible-module no-op behavior;
+- cancel, malformed JSON, oversized input, and incompatible-module no-op behavior;
+- playback interruption during restore;
+- latest-selection behavior when file reads finish out of order;
+- invalidation of a pending preview after local progress changes;
+- use of the visible import control through the browser file chooser;
 - basic semantic hooks such as document language, accessible SVG role, and live regions.
 
 CI installs Chromium with its Linux system dependencies before running the same command. Cross-browser and screenshot-regression coverage remain explicitly out of scope for this increment.
@@ -259,6 +269,7 @@ CI installs Chromium with its Linux system dependencies before running the same 
 
 ```text
 prototype/pedagogical-module/
+├── docs/learner-evidence-retention-and-lms-boundaries.md
 ├── schema/module.schema.json
 ├── schema/learner-evidence-export-v1.schema.json
 ├── examples/self-attention.json
@@ -281,6 +292,8 @@ prototype/pedagogical-module/
 ├── tests/test_evidence_export.py
 ├── tests/test_evidence_compatibility.py
 ├── browser-tests/module.spec.js
+├── browser-tests/evidence-import-race.spec.js
+├── browser-tests/evidence-import-conflict.spec.js
 ├── playwright.config.js
 ├── package.json
 ├── package-lock.json
@@ -303,7 +316,6 @@ prototype/pedagogical-module/
 
 ## Next improvements
 
-1. Document retention, deletion, and future LMS integration boundaries.
-2. Decide whether evidence needs stable step identifiers before supporting authored-title changes.
-3. Link multiple modules into a prerequisite route.
-4. Replace the temporary layered module validator with one consolidated implementation.
+1. Decide whether evidence needs stable step identifiers before supporting authored-title changes.
+2. Link multiple modules into a prerequisite route.
+3. Replace the temporary layered module validator with one consolidated implementation.

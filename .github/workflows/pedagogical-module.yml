@@ -100,6 +100,14 @@ jobs:
           fi
           echo "Chromium browser and system dependencies installed."
 
+      - name: Upload resolved dependency lockfile
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-package-lock
+          path: prototype/pedagogical-module/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Run browser interaction tests
         working-directory: prototype/pedagogical-module
         run: |

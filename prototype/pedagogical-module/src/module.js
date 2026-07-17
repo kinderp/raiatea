@@ -31,6 +31,9 @@
   function saveProgress() {
     progressState.currentStep = step;
     localStorage.setItem(storageKey, JSON.stringify(progressState));
+    if (pendingEvidenceImport) {
+      clearPendingEvidenceImport('Avanzamento locale cambiato. Importazione annullata: seleziona di nuovo il file prima di ripristinare.');
+    }
     renderEvidence();
   }
 

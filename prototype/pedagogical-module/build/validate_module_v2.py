@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import validate_module as base
+from layout_visual import LayoutError, compile_layout
 
 ValidationIssue = base.ValidationIssue
 ModuleValidationError = base.ModuleValidationError
@@ -118,6 +119,69 @@ def _validate_activity(activity: Any, path: str, issues: list[ValidationIssue]) 
         )
 
 
+def resolve_module_layout(data: Any, module_path: Path) -> Any:
+    """Resolve a module-local declarative layout into canonical primitives.
+
+    The source contract stays compact (`visual.type = layout`), while every
+    downstream validator and renderer continues to consume the existing
+    `primitives` contract.
+    """
+    if not isinstance(data, dict):
+        return data
+    visual = data.get("visual")
+    if not isinstance(visual, dict) or visual.get("type") != "layout":
+        return data
+
+    allowed = {"type", "source"}
+    unknown = sorted(set(visual) - allowed)
+    if unknown:
+        raise ModuleValidationError([
+            ValidationIssue(f"$.visual.{field}", "field is not supported")
+            for field in unknown
+        ])
+
+    source = visual.get("source")
+    if not isinstance(source, str) or not source.strip():
+        raise ModuleValidationError([
+            ValidationIssue("$.visual.source", "must be a non-empty string")
+        ])
+
+    layout_path = (module_path.parent / source).resolve()
+    try:
+        layout_path.relative_to(module_path.parent.resolve())
+    except ValueError as exc:
+        raise ModuleValidationError([
+            ValidationIssue("$.visual.source", "must stay inside the module directory")
+        ]) from exc
+
+    if not layout_path.is_file():
+        raise ModuleValidationError([
+            ValidationIssue("$.visual.source", f"layout file does not exist: {source}")
+        ])
+
+    try:
+        layout = json.loads(layout_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ModuleValidationError([
+            ValidationIssue(
+                "$.visual.source",
+                f"invalid layout JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}",
+            )
+        ]) from exc
+
+    try:
+        compiled = compile_layout(layout)
+    except LayoutError as exc:
+        raise ModuleValidationError([
+            ValidationIssue("$.visual.source", f"invalid declarative layout: {exc}")
+        ]) from exc
+
+    resolved = json.loads(json.dumps(data))
+    resolved["visual"] = compiled
+    resolved.setdefault("build", {})["layoutSource"] = source
+    return resolved
+
+
 def validate_module(data: Any) -> list[ValidationIssue]:
     issues = list(base.validate_module(data))
     if not isinstance(data, dict):
@@ -205,6 +269,7 @@ def load_and_validate(path: Path) -> dict[str, Any]:
         raise ModuleValidationError(
             [ValidationIssue(str(path), f"invalid JSON at line {exc.lineno}, column {exc.colno}: {exc.msg}")]
         ) from exc
+    data = resolve_module_layout(data, path)
     raise_for_issues(validate_module(data))
     return data
 

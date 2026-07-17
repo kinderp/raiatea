@@ -41,10 +41,11 @@ class ModuleValidationTests(unittest.TestCase):
         kinds = {item["kind"] for item in data["visual"]["items"]}
         self.assertEqual({"box", "edge"}, kinds)
 
-    def test_example_contains_adaptive_remediation(self) -> None:
+    def test_example_contains_adaptive_micro_activity(self) -> None:
         remediation = self.example["steps"][0]["quiz"]["remediation"]
         self.assertEqual("self-attention", remediation["conceptRef"])
-        self.assertIn("Riprova", remediation["retryLabel"])
+        self.assertEqual("choice", remediation["activity"]["type"])
+        self.assertEqual(2, len(remediation["activity"]["answers"]))
 
     def test_primitive_renderer_generates_accessible_svg(self) -> None:
         visual = self.clone_example()["visual"]
@@ -71,6 +72,24 @@ class ModuleValidationTests(unittest.TestCase):
         data["steps"][0]["quiz"]["remediation"]["conceptRef"] = "missing-concept"
         issues = validator.validate_module(data)
         self.assertIn("unknown concept reference", self.messages(issues))
+
+    def test_micro_activity_requires_two_answers(self) -> None:
+        data = self.clone_example()
+        data["steps"][0]["quiz"]["remediation"]["activity"]["answers"] = ["solo"]
+        issues = validator.validate_module(data)
+        self.assertIn("at least two answers", self.messages(issues))
+
+    def test_micro_activity_correct_index_must_exist(self) -> None:
+        data = self.clone_example()
+        data["steps"][0]["quiz"]["remediation"]["activity"]["correctIndex"] = 9
+        issues = validator.validate_module(data)
+        self.assertIn("must refer to an answer", self.messages(issues))
+
+    def test_micro_activity_type_is_choice(self) -> None:
+        data = self.clone_example()
+        data["steps"][0]["quiz"]["remediation"]["activity"]["type"] = "free-text"
+        issues = validator.validate_module(data)
+        self.assertIn("must be choice", self.messages(issues))
 
     def test_duplicate_concept_ids_are_rejected(self) -> None:
         data = self.clone_example()
@@ -139,8 +158,10 @@ class ModuleValidationTests(unittest.TestCase):
         issues = validator.validate_rendered_html(output)
         self.assertEqual([], issues, self.messages(issues))
         self.assertIn('class="primitive-node primitive-attention"', output)
-        self.assertIn('"remediation"', output)
-        self.assertIn('remediationMarkup', output)
+        self.assertIn('"activity"', output)
+        self.assertIn('data-remediation-activity', output)
+        self.assertIn('data-activity-answer', output)
+        self.assertIn('Torna alla domanda originale', output)
 
     def test_load_and_validate_reports_invalid_json(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

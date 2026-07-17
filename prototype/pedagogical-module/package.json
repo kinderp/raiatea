@@ -1,0 +1,13 @@
+{
+  "name": "raiatea-pedagogical-module-tests",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Browser interaction tests for the self-contained Raiatea pedagogical module prototype.",
+  "scripts": {
+    "test:browser": "playwright test --config=playwright.config.js",
+    "install:browser": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1"
+  }
+}

@@ -73,3 +73,48 @@ jobs:
             test -s "$visual"
             grep -q '"type": "primitives"' "$visual"
           done
+
+  browser-interactions:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: prototype/pedagogical-module/package-lock.json
+
+      - name: Install browser test dependencies
+        working-directory: prototype/pedagogical-module
+        run: |
+          npm ci --silent
+          if ! npx playwright install --with-deps chromium >/tmp/playwright-install.log 2>&1; then
+            cat /tmp/playwright-install.log
+            exit 1
+          fi
+          echo "Chromium browser and system dependencies installed."
+
+      - name: Run browser interaction tests
+        working-directory: prototype/pedagogical-module
+        run: |
+          set -o pipefail
+          npm run test:browser 2>&1 | tee browser-test.log
+
+      - name: Upload browser test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-diagnostics
+          path: |
+            prototype/pedagogical-module/browser-test.log
+            prototype/pedagogical-module/test-results/
+          if-no-files-found: error
+          retention-days: 7

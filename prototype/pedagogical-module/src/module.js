@@ -168,7 +168,13 @@
   $('#resetProgressBtn').addEventListener('click', () => { localStorage.removeItem(storageKey); progressState = emptyState(); step = 0; renderStep(); });
   $('#playBtn').addEventListener('click', () => { if (timer) { stop(); return; } $('#playBtn').textContent = '⏸ Pausa'; timer = setInterval(next, 5500); });
   document.querySelectorAll('#stepsNav button').forEach((button) => button.addEventListener('click', () => { stop(); step = Number(button.dataset.step); renderStep(); }));
-  document.addEventListener('keydown', (event) => { if (event.key === 'ArrowRight') { stop(); next(); } if (event.key === 'ArrowLeft' && step > 0) { stop(); step -= 1; renderStep(); } });
+  document.addEventListener('keydown', (event) => {
+    const target = event.target;
+    const focusedControl = target instanceof Element && target.closest('a, button, input, select, textarea, [contenteditable="true"]');
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || focusedControl) return;
+    if (event.key === 'ArrowRight') { stop(); next(); }
+    if (event.key === 'ArrowLeft' && step > 0) { stop(); step -= 1; renderStep(); }
+  });
 
   const root = document.documentElement;
   const controls = {theme: $('#themeBtn'), size: $('#fontSizeSelect'), density: $('#densitySelect'), width: $('#widthSelect'), align: $('#alignSelect'), motion: $('#motionSelect')};

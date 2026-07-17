@@ -135,6 +135,33 @@ python -m unittest discover \
 
 The suite covers all example modules, adaptive remediation, micro-activities, learner evidence, step provenance, semantic visual references, generated output, and common invalid cases.
 
+## Browser interaction tests
+
+The browser suite uses an exact, test-only Playwright version and Chromium. The generated HTML remains self-contained and has no Playwright or Node.js runtime dependency.
+
+From the prototype directory:
+
+```bash
+cd prototype/pedagogical-module
+npm ci
+npx playwright install chromium
+npm run test:browser
+```
+
+`npm ci` installs exactly the dependency graph recorded in `package-lock.json`; update the lockfile intentionally whenever the test dependency changes.
+
+The Playwright configuration builds `examples/self-attention.json` through the canonical Python builder, serves the generated artifact from a temporary local directory, and verifies:
+
+- step buttons, direct navigation, reset, and document-level arrow shortcuts;
+- active visual nodes and disabled boundary controls;
+- theme, text size, spacing, column width, alignment, motion, and persistence;
+- preservation of arrow-key behavior while a reading control has focus;
+- reduced-motion concept navigation, centered target focus, and non-flashing highlight state;
+- targeted remediation, retry behavior, local evidence, and reload persistence;
+- basic semantic hooks such as document language, accessible SVG role, and live regions.
+
+CI installs Chromium with its Linux system dependencies before running the same command. Cross-browser and screenshot-regression coverage remain explicitly out of scope for this increment.
+
 ## Files
 
 ```text
@@ -154,6 +181,10 @@ prototype/pedagogical-module/
 ├── build/validate_module_v2.py
 ├── tests/test_layout_visual.py
 ├── tests/test_validation.py
+├── browser-tests/module.spec.js
+├── playwright.config.js
+├── package.json
+├── package-lock.json
 └── README.md
 ```
 
@@ -166,12 +197,12 @@ prototype/pedagogical-module/
 - recommendation rules are deterministic and intentionally simple;
 - declarative layouts currently cover linear and branch/merge structures only;
 - complex primitive visuals still require authored coordinates;
+- browser coverage currently targets Chromium only;
 - Docker execution labs are deferred.
 
 ## Next improvements
 
-1. Add browser-level accessibility and interaction tests.
-2. Expand declarative layout coverage only when a concrete module requires another topology.
-3. Export learner evidence without exposing personal data by default.
-4. Link multiple modules into a prerequisite route.
-5. Replace the temporary layered validator with one consolidated implementation.
+1. Expand declarative layout coverage only when a concrete module requires another topology.
+2. Export learner evidence without exposing personal data by default.
+3. Link multiple modules into a prerequisite route.
+4. Replace the temporary layered validator with one consolidated implementation.

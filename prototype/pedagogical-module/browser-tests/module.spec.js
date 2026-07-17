@@ -2,6 +2,50 @@ const { test, expect } = require('@playwright/test');
 const fs = require('fs/promises');
 
 const modulePath = '/self-attention.html';
+const progressKey = 'raiatea-progress:self-attention-orientation';
+
+function evidenceDocument(overrides = {}) {
+  const document = {
+    format: 'raiatea-learner-evidence',
+    version: 1,
+    module: {
+      id: 'self-attention-orientation',
+      title: 'Il ruolo della self-attention nel modello GPT',
+      language: 'it',
+      stepCount: 4,
+      source: {
+        title: 'Build a Large Language Model (From Scratch)',
+        chapter: '3',
+        section: '3.3',
+        figure: '3.6',
+        pages: [55]
+      }
+    },
+    progress: {
+      currentStep: 2,
+      steps: [
+        { index: 0, title: 'Usare la figura come mappa', attempts: 2, correct: true, usedRemediation: true, activityCompleted: true },
+        { index: 1, title: 'Dal testo agli embedding', attempts: 1, correct: true, usedRemediation: false, activityCompleted: false },
+        { index: 2, title: 'Arricchire ogni token con il contesto', attempts: 1, correct: false, usedRemediation: false, activityCompleted: false },
+        { index: 3, title: 'Passare ai calcoli interni', attempts: 0, correct: false, usedRemediation: false, activityCompleted: false }
+      ]
+    }
+  };
+  return {
+    ...document,
+    ...overrides,
+    module: { ...document.module, ...(overrides.module || {}) },
+    progress: { ...document.progress, ...(overrides.progress || {}) }
+  };
+}
+
+async function selectEvidenceFile(page, content, name = 'learner-evidence.json') {
+  await page.locator('#importEvidenceInput').setInputFiles({
+    name,
+    mimeType: 'application/json',
+    buffer: Buffer.from(typeof content === 'string' ? content : JSON.stringify(content))
+  });
+}
 
 async function resetBrowserState(page) {
   await page.goto(modulePath);
@@ -182,4 +226,83 @@ test('exports only versioned observable learner evidence', async ({ page }) => {
   expect(serialized).not.toContain('mastery');
   expect(serialized).not.toContain('email');
   await expect(page.locator('#evidenceExportStatus')).toHaveText('Evidenze esportate in un file JSON locale.');
+});
+
+test('previews compatible evidence before explicit restore and preserves unrelated storage', async ({ page }) => {
+  const currentProgress = {
+    currentStep: 0,
+    steps: [
+      { attempts: 1, correct: false, usedRemediation: false, activityCompleted: false },
+      { attempts: 0, correct: false, usedRemediation: false, activityCompleted: false },
+      { attempts: 0, correct: false, usedRemediation: false, activityCompleted: false },
+      { attempts: 0, correct: false, usedRemediation: false, activityCompleted: false }
+    ]
+  };
+  await page.evaluate(({ key, progress }) => {
+    localStorage.setItem(key, JSON.stringify(progress));
+    localStorage.setItem('raiatea-reading-settings', JSON.stringify({ theme: 'dark', size: '22' }));
+    localStorage.setItem('unrelated-secret', 'keep-me');
+  }, { key: progressKey, progress: currentProgress });
+  await page.reload();
+
+  await selectEvidenceFile(page, evidenceDocument());
+  await expect(page.locator('#evidenceImportPanel')).toBeVisible();
+  await expect(page.locator('#evidenceImportStatus')).toContainText('File compatibile');
+  await expect(page.locator('#evidenceImportPreview')).toContainText('Avanzamento attuale: 0/4 verifiche, 1 tentativi');
+  await expect(page.locator('#evidenceImportPreview')).toContainText('File selezionato: 2/4 verifiche, 4 tentativi');
+
+  const beforeConfirm = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), progressKey);
+  expect(beforeConfirm).toEqual(currentProgress);
+
+  await page.getByRole('button', { name: 'Ripristina questo avanzamento' }).click();
+  const restored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), progressKey);
+  expect(restored).toEqual({
+    currentStep: 2,
+    steps: [
+      { attempts: 2, correct: true, usedRemediation: true, activityCompleted: true },
+      { attempts: 1, correct: true, usedRemediation: false, activityCompleted: false },
+      { attempts: 1, correct: false, usedRemediation: false, activityCompleted: false },
+      { attempts: 0, correct: false, usedRemediation: false, activityCompleted: false }
+    ]
+  });
+  expect(await page.evaluate(() => localStorage.getItem('unrelated-secret'))).toBe('keep-me');
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('raiatea-reading-settings')))).toEqual({ theme: 'dark', size: '22' });
+  await expect(page.locator('#phaseTitle')).toHaveText('Arricchire ogni token con il contesto');
+  await expect(page.locator('#evidenceSummary')).toContainText('2/4 verifiche completate');
+  await expect(page.locator('#evidenceImportStatus')).toHaveText('Avanzamento ripristinato dal file JSON locale.');
+
+  await page.reload();
+  await expect(page.locator('#phaseTitle')).toHaveText('Arricchire ogni token con il contesto');
+  await expect(page.locator('#evidenceSummary')).toContainText('2/4 verifiche completate');
+});
+
+test('cancels a compatible evidence import without changing progress', async ({ page }) => {
+  const current = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), progressKey);
+  await selectEvidenceFile(page, evidenceDocument());
+  await expect(page.locator('#evidenceImportPanel')).toBeVisible();
+  await page.getByRole('button', { name: 'Annulla importazione' }).click();
+  await expect(page.locator('#evidenceImportPanel')).toBeHidden();
+  await expect(page.locator('#evidenceImportStatus')).toHaveText('Importazione annullata. Nessuna modifica applicata.');
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), progressKey)).toEqual(current);
+});
+
+test('rejects malformed evidence without changing progress', async ({ page }) => {
+  const current = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), progressKey);
+  await selectEvidenceFile(page, '{not valid json');
+  await expect(page.locator('#evidenceImportPanel')).toBeHidden();
+  await expect(page.locator('#confirmEvidenceImportBtn')).toBeDisabled();
+  await expect(page.locator('#evidenceImportStatus')).toContainText('JSON non valido');
+  await expect(page.locator('#evidenceImportStatus')).toContainText('Nessuna modifica applicata');
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), progressKey)).toEqual(current);
+});
+
+test('rejects evidence for another module without changing progress', async ({ page }) => {
+  const current = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), progressKey);
+  await selectEvidenceFile(page, evidenceDocument({ module: { id: 'another-module' } }));
+  await expect(page.locator('#evidenceImportPanel')).toBeHidden();
+  await expect(page.locator('#confirmEvidenceImportBtn')).toBeDisabled();
+  await expect(page.locator('#evidenceImportStatus')).toContainText('another-module');
+  await expect(page.locator('#evidenceImportStatus')).toContainText('self-attention-orientation');
+  await expect(page.locator('#evidenceImportStatus')).toContainText('Nessuna modifica applicata');
+  expect(await page.evaluate((key) => JSON.parse(localStorage.getItem(key)), progressKey)).toEqual(current);
 });

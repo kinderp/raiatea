@@ -2,7 +2,7 @@
 
 Status: architecture decision for future module evolution. This document defines identity, revision, and migration responsibilities; it does not change the current module schema, learner-evidence v1, validators, or restore behavior.
 
-Related work: parent issue #19, decision issue #20, and the current privacy boundary in [`learner-evidence-boundaries.md`](learner-evidence-boundaries.md).
+Related work: parent issue #19, decision issue #20, the current privacy boundary in [`learner-evidence-boundaries.md`](learner-evidence-boundaries.md), and the future acceptance matrix in [`module-evolution-test-responsibilities.md`](module-evolution-test-responsibilities.md).
 
 ## 1. Decision context
 
@@ -99,6 +99,10 @@ A rebuild that produces equivalent output from unchanged authored content does n
 
 Revision identifiers are opaque authored values. The pair `(moduleId, revision)` identifies one published module state and must be unique. A revision string needs to be unique only within its module route. Raiatea may validate syntax and uniqueness, but it must not infer ordering or compatibility from the string unless a future contract explicitly defines such behavior.
 
+**Published revision identity is permanent.** After a pair `(moduleId, revision)` has been published, it must continue to identify the same authored state indefinitely. The pair cannot be overwritten, recycled, or republished with divergent authored content, even after the route or revision is retired. An unchanged deterministic rebuild may reproduce the same published state, but every authored correction or divergence requires a new revision.
+
+A future publication registry, release manifest, or equivalent history-aware validator must reject a second different authored state under an already published pair. A single-file schema validator cannot establish historical uniqueness by itself; publication tooling and repository fixtures own that cross-revision check and must fail closed on collisions or divergent republishing.
+
 ### 4.3 Step identity
 
 A future `step.id` identifies one stable pedagogical responsibility inside a module route.
@@ -165,6 +169,10 @@ A retired step retains its historical ID and evidence context. It disappears fro
 ### 6.8 Incompatible replacement
 
 Revision `r2` replaces a factual recall step with a programming exercise. Even if the title is similar and occupies the same position, the old step ID is retired and a new ID is created. Historical evidence is incompatible with the new responsibility.
+
+### 6.9 Divergent revision republishing
+
+Revision `r2` was published for one authored state. A later correction attempts to publish different content again as `r2`. Publication must fail because historical evidence and manifests already bind `r2` to the first state. The correction must be published under a new revision such as `r3`; retirement of `r2` does not make its identifier reusable.
 
 ## 7. Compatibility classes
 
@@ -265,7 +273,7 @@ A future migration manifest must be:
 - reviewable in source control;
 - explicit about preserved, reset, omitted, retired, and historical-only evidence;
 - explicit about current-position mapping whenever route order changes;
-- rejected if it contains unknown operations, duplicate targets, ambiguous mappings, cycles, mismatched module IDs, or reused retired IDs;
+- rejected if it contains unknown operations, duplicate targets, ambiguous mappings, cycles, mismatched module IDs, reused retired IDs, or a source/target revision whose published identity collides with different authored content;
 - chained only through an explicit validated path, never by selecting an arbitrary “closest” revision;
 - applied only after an explicit preview and confirmation.
 
@@ -275,8 +283,9 @@ The source evidence document must remain unchanged. Migration creates a new cand
 
 | Component or actor | Responsibility |
 | --- | --- |
-| Module author | Assign module revisions and future step IDs; decide identity continuity; author migration rationale |
-| Module schema and validator | Require revision-aware fields when that contract is introduced; enforce syntax, uniqueness, and references without inferring semantics |
+| Module author | Assign module revisions and future step IDs; decide identity continuity; author migration rationale; never republish divergent content under an existing revision |
+| Module schema and validator | Require revision-aware fields when that contract is introduced; enforce syntax, document-local uniqueness, and references without inferring semantics |
+| Publication registry or release validator | Preserve immutable `(moduleId, revision)` history and reject divergent republishing or identifier reuse |
 | Evidence validator | Validate one evidence version without silently upgrading it |
 | Compatibility checker | Classify exact, declared migration, incompatible, or unsupported cases without mutation |
 | Migration validator | Validate a manifest and its source/target module contexts |
@@ -304,9 +313,10 @@ Structural validation cannot determine whether an author placed personal informa
 
 ## 13. Failure behavior
 
-A future migration operation must fail closed when:
+A future migration or revision-publication operation must fail closed when:
 
 - source or target module ID/revision does not match the manifest;
+- a published `(moduleId, revision)` is reused for divergent authored content;
 - required step IDs are missing, duplicated, retired unexpectedly, or reused;
 - an operation has invalid cardinality;
 - one source ID maps to multiple active target identities without an explicitly permitted historical-only operation;
@@ -318,14 +328,18 @@ A future migration operation must fail closed when:
 - local progress changes after preview;
 - a newer explicit file or manifest selection supersedes an older asynchronous read.
 
-Failure leaves current browser progress, reading preferences, source files, and external systems unchanged.
+Failure leaves current browser progress, reading preferences, source files, published revision history, and external systems unchanged.
 
-## 14. Implementation sequence
+## 14. Future test responsibilities
+
+The scenario-to-fixture and test-layer ownership is recorded in [`module-evolution-test-responsibilities.md`](module-evolution-test-responsibilities.md). That appendix is subordinate to this decision: when wording conflicts, this architecture contract prevails. The appendix assigns future verification duties and does not claim current implementation support.
+
+## 15. Implementation sequence
 
 The safe sequence after this decision is:
 
 1. add mandatory explicit module revisions and immutable step IDs to the canonical module model and examples, without changing evidence v1;
-2. validate revision presence, `(moduleId, revision)` uniqueness expectations, step-ID uniqueness, and references in fixtures and documentation;
+2. validate revision presence, step-ID uniqueness, references, immutable `(moduleId, revision)` publication history, and divergent-republishing rejection in fixtures and documentation;
 3. design a new evidence version carrying module revision and step IDs;
 4. define and publish a closed migration-manifest schema;
 5. implement side-effect-free manifest and compatibility validation;
@@ -334,8 +348,8 @@ The safe sequence after this decision is:
 
 Each item is a separate reviewable increment. No step authorizes silent migration or background synchronization.
 
-## 15. Decision summary
+## 16. Decision summary
 
 Raiatea treats a module ID as the durable identity of a pedagogical route, an explicit mandatory module revision as one published state of that route, and a future step ID as the immutable identity of one pedagogical responsibility. Titles and indexes remain presentation and ordering data, not durable identity.
 
-Once the revision-aware contract is introduced, every published state must carry an authored revision; legacy unrevisioned modules are not assigned one automatically. Rename and reorder may preserve step identity; insertion creates new identity; split, merge, retirement, and replacement retire or preserve IDs only under explicit immutable-responsibility rules. Learner-evidence v1 remains frozen under its current conservative title/index contract. Future migrations must be versioned, authored, directional, side-effect free until confirmation, privacy-preserving, complete about every allowlisted evidence field, and fail closed whenever meaning is ambiguous.
+Once the revision-aware contract is introduced, every published state must carry an authored revision; legacy unrevisioned modules are not assigned one automatically. A published `(moduleId, revision)` is permanently bound to one authored state and cannot be reused for divergent content. Rename and reorder may preserve step identity; insertion creates new identity; split, merge, retirement, and replacement retire or preserve IDs only under explicit immutable-responsibility rules. Learner-evidence v1 remains frozen under its current conservative title/index contract. Future migrations must be versioned, authored, directional, side-effect free until confirmation, privacy-preserving, complete about every allowlisted evidence field, and fail closed whenever meaning is ambiguous.

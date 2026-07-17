@@ -108,7 +108,7 @@ The v1 document is identified by:
 }
 ```
 
-The complete contract lives in `schema/learner-evidence-export-v1.schema.json`; a representative document is stored in `examples/learner-evidence-export-v1.json`. The export contains only:
+The complete contract lives in `schema/learner-evidence-export-v1.schema.json`; a representative document is stored in `evidence-examples/learner-evidence-export-v1.json`. Evidence interchange samples are deliberately separate from `examples/`, which contains only buildable pedagogical modules. The export contains only:
 
 - module ID, title, language, step count, and allowlisted source context;
 - current step;
@@ -130,7 +130,7 @@ Validate a saved or example export with:
 
 ```bash
 python prototype/pedagogical-module/build/validate_evidence_export.py \
-  prototype/pedagogical-module/examples/learner-evidence-export-v1.json
+  prototype/pedagogical-module/evidence-examples/learner-evidence-export-v1.json
 ```
 
 ## Step-level provenance
@@ -211,7 +211,7 @@ prototype/pedagogical-module/
 ├── examples/self-attention-procedure.json
 ├── examples/query-key-value.json
 ├── examples/query-key-value.layout.json
-├── examples/learner-evidence-export-v1.json
+├── evidence-examples/learner-evidence-export-v1.json
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js

@@ -199,16 +199,17 @@ The current generated module contains no provider credentials, network queue, ex
 
 ### Module evolution and future evidence compatibility
 
-The architecture decision for durable module identity, explicit revisions, future immutable step IDs, and authored migration responsibilities is documented in [`docs/module-evolution-and-evidence-compatibility.md`](docs/module-evolution-and-evidence-compatibility.md). The documentation index is available in [`docs/README.md`](docs/README.md).
+The architecture decision for durable module identity, immutable published revisions, future immutable step IDs, and authored migration responsibilities is documented in [`docs/module-evolution-and-evidence-compatibility.md`](docs/module-evolution-and-evidence-compatibility.md). The future fixture and test-layer responsibilities are assigned in its subordinate appendix, [`docs/module-evolution-test-responsibilities.md`](docs/module-evolution-test-responsibilities.md). The documentation index is available in [`docs/README.md`](docs/README.md).
 
 The current implementation remains deliberately unchanged:
 
 - learner-evidence v1 still uses exact module ID, ordered indexes, and authored step titles;
 - the canonical module schema does not yet contain an explicit module revision or stable step IDs;
-- rename, reorder, split, merge, retirement, and replacement are not migrated automatically;
+- there is no publication-history registry that enforces immutable `(moduleId, revision)` bindings yet;
+- rename, reorder, split, merge, retirement, replacement, and divergent-revision detection are not migrated or inferred automatically;
 - future migrations must be versioned, authored, directional, side-effect free during validation and preview, and explicitly confirmed before any state change.
 
-Adding revisions or step IDs to the canonical model, defining evidence v2, publishing a migration-manifest schema, and implementing migration preview are separate reviewable increments.
+Adding revisions or step IDs to the canonical model, enforcing publication history, defining evidence v2, publishing a migration-manifest schema, and implementing migration preview are separate reviewable increments. The appendix is an acceptance checklist, not evidence that those features already exist.
 
 ## Step-level provenance
 
@@ -297,6 +298,7 @@ prototype/pedagogical-module/
 ├── docs/README.md
 ├── docs/learner-evidence-boundaries.md
 ├── docs/module-evolution-and-evidence-compatibility.md
+├── docs/module-evolution-test-responsibilities.md
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js
@@ -328,6 +330,7 @@ prototype/pedagogical-module/
 - learner evidence is portable only as a one-module v1 JSON document;
 - restore supports explicit replacement of one compatible module record, not history merging;
 - the canonical module model has no explicit revision or stable step IDs yet;
+- immutable published revision history is documented but not implemented;
 - no version migration, multi-module bundle, signing, encryption, cloud sync, or LMS transfer exists;
 - recommendation rules are deterministic and intentionally simple;
 - declarative layouts currently cover linear and branch/merge structures only;
@@ -338,8 +341,9 @@ prototype/pedagogical-module/
 ## Next improvements
 
 1. Add explicit module revisions and stable step IDs without changing learner-evidence v1.
-2. Design a separately versioned learner-evidence format that carries those identifiers.
-3. Define and validate authored migration manifests before implementing migration preview.
-4. Define a provider-neutral adapter interface only when a concrete integration use case exists.
-5. Link multiple modules into a prerequisite route.
-6. Replace the temporary layered module validator with one consolidated implementation.
+2. Define publication-history validation that rejects divergent reuse of `(moduleId, revision)`.
+3. Design a separately versioned learner-evidence format that carries stable identifiers.
+4. Define and validate authored migration manifests before implementing migration preview.
+5. Define a provider-neutral adapter interface only when a concrete integration use case exists.
+6. Link multiple modules into a prerequisite route.
+7. Replace the temporary layered module validator with one consolidated implementation.

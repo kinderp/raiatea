@@ -15,7 +15,9 @@ import validate_evidence_export as validator  # noqa: E402
 class LearnerEvidenceExportTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.example_path = ROOT / "examples" / "learner-evidence-export-v1.json"
+        cls.example_path = (
+            ROOT / "evidence-examples" / "learner-evidence-export-v1.json"
+        )
         cls.example = json.loads(cls.example_path.read_text(encoding="utf-8"))
         cls.schema = json.loads(
             (ROOT / "schema" / "learner-evidence-export-v1.schema.json").read_text(

@@ -1,0 +1,48 @@
+{
+  "type": "branch-merge",
+  "width": 1040,
+  "height": 500,
+  "title": "Query, Key e Value da un embedding",
+  "description": "Un embedding viene proiettato in tre rami e query e key convergono nello score.",
+  "x": 35,
+  "y": 55,
+  "nodeWidth": 175,
+  "nodeHeight": 72,
+  "columnGap": 125,
+  "rowGap": 42,
+  "source": {
+    "id": "embedding",
+    "title": "Embedding x",
+    "subtitle": "rappresentazione di partenza",
+    "tone": "input"
+  },
+  "branches": [
+    {
+      "id": "query",
+      "title": "Query q",
+      "subtitle": "xWq",
+      "tone": "attention",
+      "outLabel": "confronta"
+    },
+    {
+      "id": "key",
+      "title": "Key k",
+      "subtitle": "xWk",
+      "tone": "process",
+      "outLabel": "confronta"
+    },
+    {
+      "id": "value",
+      "title": "Value v",
+      "subtitle": "xWv",
+      "tone": "output",
+      "outLabel": "trasporta contenuto"
+    }
+  ],
+  "target": {
+    "id": "attention-result",
+    "title": "Score e contesto",
+    "subtitle": "selezione + contenuto",
+    "tone": "warning"
+  }
+}

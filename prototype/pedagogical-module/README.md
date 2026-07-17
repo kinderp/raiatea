@@ -29,7 +29,24 @@ python prototype/pedagogical-module/build/build_module.py \
   --output /tmp/query-key-value.html
 ```
 
-The build validates both the source JSON and the generated HTML. It exits with status 1 and prints all detected problems when validation fails.
+The build resolves declarative visual layouts before canonical validation, then validates both the resolved module and the generated HTML. It exits with status 1 and prints all detected problems when validation fails.
+
+## Declarative visual layouts
+
+A module can keep visual structure separate from pedagogical content by referencing a module-local layout file:
+
+```json
+{
+  "visual": {
+    "type": "layout",
+    "source": "query-key-value.layout.json"
+  }
+}
+```
+
+The canonical loader resolves the path relative to the module JSON, rejects references that escape that directory, compiles the layout into the existing semantic primitive vocabulary, and only then runs normal validation and rendering.
+
+The current layout compiler supports `pipeline`, `parallel`, and `branch-merge`. It intentionally does not attempt arbitrary graph layout or browser editing. Modules may still provide `svg`, `html`, or explicit `primitives` visuals directly.
 
 ## Adaptive remediation
 
@@ -92,7 +109,7 @@ A step can declare whether it is original, translated, adapted, derived, or infe
 - a distinct value path carrying content;
 - adaptive remediation and provenance without template changes.
 
-The module uses only the existing semantic primitive vocabulary. No special-purpose QKV renderer or template branch was introduced.
+`examples/query-key-value.json` references `examples/query-key-value.layout.json`. The canonical loader compiles that declarative branch-and-merge description into the existing semantic primitive vocabulary. No special-purpose QKV renderer or template branch was introduced.
 
 ## Validate without building
 
@@ -105,7 +122,7 @@ python prototype/pedagogical-module/build/validate_module_v2.py \
 
 The semantic visual vocabulary currently includes `box`, `vector`, `text`, `edge`, `token-row`, `matrix`, and `weighted-sum`.
 
-The builder converts these objects into accessible inline SVG while preserving node and flow identifiers used by the pedagogical steps.
+The builder converts both explicit primitives and compiled declarative layouts into accessible inline SVG while preserving node and flow identifiers used by the pedagogical steps.
 
 ## Tests
 
@@ -126,13 +143,16 @@ prototype/pedagogical-module/
 ├── examples/self-attention.json
 ├── examples/self-attention-procedure.json
 ├── examples/query-key-value.json
+├── examples/query-key-value.layout.json
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js
 ├── build/build_module.py
+├── build/layout_visual.py
 ├── build/render_visual.py
 ├── build/validate_module.py
 ├── build/validate_module_v2.py
+├── tests/test_layout_visual.py
 ├── tests/test_validation.py
 └── README.md
 ```
@@ -144,13 +164,14 @@ prototype/pedagogical-module/
 - mathematical rendering uses plain text unless represented by visual primitives;
 - learner evidence is browser-local and is not synchronized across devices;
 - recommendation rules are deterministic and intentionally simple;
-- most visual coordinates are still authored manually;
+- declarative layouts currently cover linear and branch/merge structures only;
+- complex primitive visuals still require authored coordinates;
 - Docker execution labs are deferred.
 
 ## Next improvements
 
-1. Add declarative layout primitives that reduce manual coordinates.
-2. Add browser-level accessibility and interaction tests.
+1. Add browser-level accessibility and interaction tests.
+2. Expand declarative layout coverage only when a concrete module requires another topology.
 3. Export learner evidence without exposing personal data by default.
 4. Link multiple modules into a prerequisite route.
 5. Replace the temporary layered validator with one consolidated implementation.

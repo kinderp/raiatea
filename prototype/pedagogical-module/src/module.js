@@ -14,20 +14,90 @@
       .replaceAll("'", '&#039;');
   }
 
-  function remediationMarkup(remediation) {
-    if (!remediation) return '';
-    const conceptLink = remediation.conceptRef
+  function conceptLinkMarkup(remediation) {
+    return remediation.conceptRef
       ? `<a class="remediation-action" href="#concept-${escapeHtml(remediation.conceptRef)}">${escapeHtml(remediation.actionLabel || 'Ripassa il concetto')}</a>`
       : '';
+  }
+
+  function activityMarkup(activity) {
+    if (!activity) return '';
+    const answers = activity.answers.map((answer, index) => (
+      `<button type="button" data-activity-answer="${index}">${escapeHtml(answer)}</button>`
+    )).join('');
+    return `
+      <div class="remediation-activity" data-remediation-activity>
+        <p class="remediation-activity-label">Micro-attività</p>
+        <p><b>${escapeHtml(activity.prompt)}</b></p>
+        <div class="answers remediation-activity-answers">${answers}</div>
+        <div class="remediation-activity-feedback" data-activity-feedback aria-live="polite"></div>
+      </div>`;
+  }
+
+  function remediationMarkup(remediation) {
+    if (!remediation) return '';
     return `
       <div class="remediation" role="region" aria-label="Recupero mirato">
         <h4>${escapeHtml(remediation.title)}</h4>
         <p>${escapeHtml(remediation.explanation)}</p>
+        ${activityMarkup(remediation.activity)}
         <div class="remediation-actions">
-          ${conceptLink}
-          <button type="button" data-retry>${escapeHtml(remediation.retryLabel || 'Riprova')}</button>
+          ${conceptLinkMarkup(remediation)}
+          ${remediation.activity ? '' : `<button type="button" data-retry>${escapeHtml(remediation.retryLabel || 'Riprova')}</button>`}
         </div>
       </div>`;
+  }
+
+  function enableOriginalQuiz() {
+    $('#quizFeedback').className = 'feedback';
+    $('#quizFeedback').innerHTML = '';
+    $('#quizAnswers').querySelectorAll('button').forEach((candidate) => {
+      candidate.disabled = false;
+    });
+    $('#quizAnswers button')?.focus();
+  }
+
+  function bindRemediation(remediation) {
+    if (!remediation) return;
+    $('#quizFeedback').querySelector('[data-retry]')?.addEventListener('click', enableOriginalQuiz);
+
+    const activity = remediation.activity;
+    if (!activity) return;
+    const activityRoot = $('#quizFeedback').querySelector('[data-remediation-activity]');
+    const feedback = activityRoot?.querySelector('[data-activity-feedback]');
+    activityRoot?.querySelectorAll('[data-activity-answer]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const selected = Number(button.dataset.activityAnswer);
+        const correct = selected === activity.correctIndex;
+        activityRoot.querySelectorAll('[data-activity-answer]').forEach((candidate) => {
+          candidate.disabled = true;
+        });
+        feedback.className = `remediation-activity-feedback ${correct ? 'ok' : 'no'}`;
+        feedback.textContent = correct ? activity.correctFeedback : activity.incorrectFeedback;
+        if (!correct) {
+          const retryActivity = document.createElement('button');
+          retryActivity.type = 'button';
+          retryActivity.textContent = 'Riprova la micro-attività';
+          retryActivity.addEventListener('click', () => {
+            feedback.className = 'remediation-activity-feedback';
+            feedback.textContent = '';
+            activityRoot.querySelectorAll('[data-activity-answer]').forEach((candidate) => {
+              candidate.disabled = false;
+            });
+            activityRoot.querySelector('[data-activity-answer]')?.focus();
+          });
+          feedback.appendChild(document.createElement('br'));
+          feedback.appendChild(retryActivity);
+          return;
+        }
+        const returnButton = document.createElement('button');
+        returnButton.type = 'button';
+        returnButton.textContent = remediation.retryLabel || 'Torna alla domanda originale';
+        returnButton.addEventListener('click', enableOriginalQuiz);
+        feedback.appendChild(document.createElement('br'));
+        feedback.appendChild(returnButton);
+      });
+    });
   }
 
   function renderStep() {
@@ -73,14 +143,7 @@
           <p>${escapeHtml(item.quiz.incorrectFeedback)}</p>
           ${remediationMarkup(item.quiz.remediation)}
           <small>Tentativo ${attempts[step]}</small>`;
-        $('#quizFeedback').querySelector('[data-retry]')?.addEventListener('click', () => {
-          $('#quizFeedback').className = 'feedback';
-          $('#quizFeedback').innerHTML = '';
-          $('#quizAnswers').querySelectorAll('button').forEach((candidate) => {
-            candidate.disabled = false;
-          });
-          $('#quizAnswers button')?.focus();
-        });
+        bindRemediation(item.quiz.remediation);
       });
       $('#quizAnswers').appendChild(button);
     });

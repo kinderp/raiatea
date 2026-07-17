@@ -197,6 +197,19 @@ The architecture and privacy decision is documented in [`docs/learner-evidence-b
 
 The current generated module contains no provider credentials, network queue, external destination, or remote deletion mechanism. A future adapter must define its own purpose, identity, retention, deletion, security, and failure semantics without changing the meaning of local reset controls.
 
+### Module evolution and future evidence compatibility
+
+The architecture decision for durable module identity, explicit revisions, future immutable step IDs, and authored migration responsibilities is documented in [`docs/module-evolution-and-evidence-compatibility.md`](docs/module-evolution-and-evidence-compatibility.md). The documentation index is available in [`docs/README.md`](docs/README.md).
+
+The current implementation remains deliberately unchanged:
+
+- learner-evidence v1 still uses exact module ID, ordered indexes, and authored step titles;
+- the canonical module schema does not yet contain an explicit module revision or stable step IDs;
+- rename, reorder, split, merge, retirement, and replacement are not migrated automatically;
+- future migrations must be versioned, authored, directional, side-effect free during validation and preview, and explicitly confirmed before any state change.
+
+Adding revisions or step IDs to the canonical model, defining evidence v2, publishing a migration-manifest schema, and implementing migration preview are separate reviewable increments.
+
 ## Step-level provenance
 
 A step can declare whether it is original, translated, adapted, derived, or inferred. It can also record source pages, the source figure, transformations, derived values, and an author note. The generated module exposes this in a collapsible provenance card for each step.
@@ -281,7 +294,9 @@ prototype/pedagogical-module/
 ├── examples/query-key-value.json
 ├── examples/query-key-value.layout.json
 ├── evidence-examples/learner-evidence-export-v1.json
+├── docs/README.md
 ├── docs/learner-evidence-boundaries.md
+├── docs/module-evolution-and-evidence-compatibility.md
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js
@@ -312,6 +327,7 @@ prototype/pedagogical-module/
 - mathematical rendering uses plain text unless represented by visual primitives;
 - learner evidence is portable only as a one-module v1 JSON document;
 - restore supports explicit replacement of one compatible module record, not history merging;
+- the canonical module model has no explicit revision or stable step IDs yet;
 - no version migration, multi-module bundle, signing, encryption, cloud sync, or LMS transfer exists;
 - recommendation rules are deterministic and intentionally simple;
 - declarative layouts currently cover linear and branch/merge structures only;
@@ -321,7 +337,9 @@ prototype/pedagogical-module/
 
 ## Next improvements
 
-1. Decide whether evidence needs stable step identifiers before supporting authored-title changes.
-2. Define a provider-neutral adapter interface only when a concrete integration use case exists.
-3. Link multiple modules into a prerequisite route.
-4. Replace the temporary layered module validator with one consolidated implementation.
+1. Add explicit module revisions and stable step IDs without changing learner-evidence v1.
+2. Design a separately versioned learner-evidence format that carries those identifiers.
+3. Define and validate authored migration manifests before implementing migration preview.
+4. Define a provider-neutral adapter interface only when a concrete integration use case exists.
+5. Link multiple modules into a prerequisite route.
+6. Replace the temporary layered module validator with one consolidated implementation.

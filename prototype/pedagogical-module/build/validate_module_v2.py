@@ -11,10 +11,64 @@ ValidationIssue = base.ValidationIssue
 ModuleValidationError = base.ModuleValidationError
 raise_for_issues = base.raise_for_issues
 
+PROVENANCE_KINDS = {"original", "translation", "adaptation", "derived", "inference"}
+TRANSFORMATION_KINDS = {
+    "translation",
+    "selection",
+    "simplification",
+    "stepwise-decomposition",
+    "interactive-reconstruction",
+    "worked-example",
+    "derived-calculation",
+    "diagnostic-question",
+}
+
 
 def _non_empty(value: Any, path: str, issues: list[ValidationIssue]) -> None:
     if not isinstance(value, str) or not value.strip():
         issues.append(ValidationIssue(path, "must be a non-empty string"))
+
+
+def _validate_step_provenance(provenance: Any, path: str, issues: list[ValidationIssue]) -> None:
+    if not isinstance(provenance, dict):
+        issues.append(ValidationIssue(path, "must be an object"))
+        return
+    allowed = {
+        "kind", "sourceSection", "sourcePages", "sourceFigure",
+        "transformations", "derivedValues", "note",
+    }
+    for field in sorted(set(provenance) - allowed):
+        issues.append(ValidationIssue(f"{path}.{field}", "field is not supported"))
+    if "kind" not in provenance:
+        issues.append(ValidationIssue(f"{path}.kind", "required field is missing"))
+    elif provenance.get("kind") not in PROVENANCE_KINDS:
+        issues.append(ValidationIssue(f"{path}.kind", f"must be one of {sorted(PROVENANCE_KINDS)}"))
+    for field in ("sourceSection", "sourceFigure", "note"):
+        if field in provenance:
+            _non_empty(provenance[field], f"{path}.{field}", issues)
+    pages = provenance.get("sourcePages")
+    if pages is not None:
+        if not isinstance(pages, list):
+            issues.append(ValidationIssue(f"{path}.sourcePages", "must be an array"))
+        else:
+            for index, page in enumerate(pages):
+                if not isinstance(page, int) or isinstance(page, bool) or page < 1:
+                    issues.append(ValidationIssue(f"{path}.sourcePages[{index}]", "must be a positive integer"))
+    transformations = provenance.get("transformations")
+    if transformations is not None:
+        if not isinstance(transformations, list) or not transformations:
+            issues.append(ValidationIssue(f"{path}.transformations", "must contain at least one transformation"))
+        else:
+            for index, transformation in enumerate(transformations):
+                if transformation not in TRANSFORMATION_KINDS:
+                    issues.append(
+                        ValidationIssue(
+                            f"{path}.transformations[{index}]",
+                            f"must be one of {sorted(TRANSFORMATION_KINDS)}",
+                        )
+                    )
+    if "derivedValues" in provenance and not isinstance(provenance["derivedValues"], bool):
+        issues.append(ValidationIssue(f"{path}.derivedValues", "must be a boolean"))
 
 
 def _validate_activity(activity: Any, path: str, issues: list[ValidationIssue]) -> None:
@@ -23,23 +77,15 @@ def _validate_activity(activity: Any, path: str, issues: list[ValidationIssue]) 
         return
 
     allowed = {
-        "type",
-        "prompt",
-        "answers",
-        "correctIndex",
-        "correctFeedback",
-        "incorrectFeedback",
+        "type", "prompt", "answers", "correctIndex",
+        "correctFeedback", "incorrectFeedback",
     }
     for field in sorted(set(activity) - allowed):
         issues.append(ValidationIssue(f"{path}.{field}", "field is not supported"))
 
     required = (
-        "type",
-        "prompt",
-        "answers",
-        "correctIndex",
-        "correctFeedback",
-        "incorrectFeedback",
+        "type", "prompt", "answers", "correctIndex",
+        "correctFeedback", "incorrectFeedback",
     )
     for field in required:
         if field not in activity:
@@ -86,6 +132,14 @@ def validate_module(data: Any) -> list[ValidationIssue]:
     for step_index, step in enumerate(data.get("steps", [])):
         if not isinstance(step, dict):
             continue
+
+        if "provenance" in step:
+            _validate_step_provenance(
+                step["provenance"],
+                f"$.steps[{step_index}].provenance",
+                issues,
+            )
+
         quiz = step.get("quiz")
         if not isinstance(quiz, dict):
             continue
@@ -99,12 +153,8 @@ def validate_module(data: Any) -> list[ValidationIssue]:
             continue
 
         allowed = {
-            "title",
-            "explanation",
-            "conceptRef",
-            "actionLabel",
-            "retryLabel",
-            "activity",
+            "title", "explanation", "conceptRef",
+            "actionLabel", "retryLabel", "activity",
         }
         for field in sorted(set(remediation) - allowed):
             issues.append(ValidationIssue(f"{path}.{field}", "field is not supported"))

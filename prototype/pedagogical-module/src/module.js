@@ -4,8 +4,11 @@
   const storageKey = `raiatea-progress:${data.id}`;
   const EVIDENCE_EXPORT_FORMAT = 'raiatea-learner-evidence';
   const EVIDENCE_EXPORT_VERSION = 1;
+  const MAX_EVIDENCE_IMPORT_BYTES = 1_000_000;
   let step = 0;
   let timer = null;
+  let pendingEvidenceImport = null;
+  let evidenceImportSelection = 0;
 
   const emptyState = () => ({
     currentStep: 0,
@@ -28,6 +31,9 @@
   function saveProgress() {
     progressState.currentStep = step;
     localStorage.setItem(storageKey, JSON.stringify(progressState));
+    if (pendingEvidenceImport) {
+      clearPendingEvidenceImport('Avanzamento locale cambiato. Importazione annullata: seleziona di nuovo il file prima di ripristinare.');
+    }
     renderEvidence();
   }
 
@@ -96,6 +102,219 @@
     setTimeout(() => URL.revokeObjectURL(url), 0);
     const status = $('#evidenceExportStatus');
     if (status) status.textContent = 'Evidenze esportate in un file JSON locale.';
+  }
+
+  function isPlainObject(value) {
+    return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+  }
+
+  function validateObjectFields(value, required, allowed, path, issues) {
+    if (!isPlainObject(value)) {
+      issues.push(`${path}: deve essere un oggetto`);
+      return false;
+    }
+    required.forEach((field) => {
+      if (!Object.hasOwn(value, field)) issues.push(`${path}.${field}: campo obbligatorio mancante`);
+    });
+    Object.keys(value).forEach((field) => {
+      if (!allowed.includes(field)) issues.push(`${path}.${field}: campo non supportato`);
+    });
+    return true;
+  }
+
+  function validateNonEmptyString(value, path, issues) {
+    if (typeof value !== 'string' || !value.trim()) {
+      issues.push(`${path}: deve essere una stringa non vuota`);
+      return false;
+    }
+    return true;
+  }
+
+  function validateNonNegativeInteger(value, path, issues) {
+    if (!Number.isInteger(value) || value < 0) {
+      issues.push(`${path}: deve essere un intero non negativo`);
+      return false;
+    }
+    return true;
+  }
+
+  function validateEvidenceImport(candidate) {
+    const issues = [];
+    const topFields = ['format', 'version', 'module', 'progress'];
+    if (!validateObjectFields(candidate, topFields, topFields, '$', issues)) return issues;
+
+    if (candidate.format !== EVIDENCE_EXPORT_FORMAT) issues.push('$.format: formato non supportato');
+    if (!Number.isInteger(candidate.version) || candidate.version !== EVIDENCE_EXPORT_VERSION) {
+      issues.push('$.version: versione non supportata');
+    }
+
+    const moduleFields = ['id', 'title', 'language', 'stepCount', 'source'];
+    const moduleRequired = ['id', 'title', 'language', 'stepCount'];
+    const moduleValid = validateObjectFields(candidate.module, moduleRequired, moduleFields, '$.module', issues);
+    let exportedStepCount = null;
+    if (moduleValid) {
+      if (validateNonEmptyString(candidate.module.id, '$.module.id', issues) && !/^[a-z0-9-]+$/.test(candidate.module.id)) {
+        issues.push('$.module.id: deve contenere solo lettere minuscole, cifre e trattini');
+      }
+      validateNonEmptyString(candidate.module.title, '$.module.title', issues);
+      validateNonEmptyString(candidate.module.language, '$.module.language', issues);
+      if (validateNonNegativeInteger(candidate.module.stepCount, '$.module.stepCount', issues)) {
+        if (candidate.module.stepCount < 1) issues.push('$.module.stepCount: deve essere almeno 1');
+        else exportedStepCount = candidate.module.stepCount;
+      }
+      if (Object.hasOwn(candidate.module, 'source')) {
+        const sourceFields = ['title', 'chapter', 'section', 'figure', 'pages'];
+        if (validateObjectFields(candidate.module.source, [], sourceFields, '$.module.source', issues)) {
+          ['title', 'chapter', 'section', 'figure'].forEach((field) => {
+            if (Object.hasOwn(candidate.module.source, field)) validateNonEmptyString(candidate.module.source[field], `$.module.source.${field}`, issues);
+          });
+          if (Object.hasOwn(candidate.module.source, 'pages')) {
+            const pages = candidate.module.source.pages;
+            if (!Array.isArray(pages) || !pages.length) issues.push('$.module.source.pages: deve contenere almeno una pagina');
+            else pages.forEach((page, index) => {
+              if (!Number.isInteger(page) || page < 1) issues.push(`$.module.source.pages[${index}]: deve essere un intero positivo`);
+            });
+          }
+        }
+      }
+    }
+
+    const progressFields = ['currentStep', 'steps'];
+    const progressValid = validateObjectFields(candidate.progress, progressFields, progressFields, '$.progress', issues);
+    let exportedSteps = null;
+    if (progressValid) {
+      if (validateNonNegativeInteger(candidate.progress.currentStep, '$.progress.currentStep', issues) && exportedStepCount !== null && candidate.progress.currentStep >= exportedStepCount) {
+        issues.push('$.progress.currentStep: deve riferirsi a un passo esistente');
+      }
+      if (!Array.isArray(candidate.progress.steps) || !candidate.progress.steps.length) {
+        issues.push('$.progress.steps: deve contenere almeno un passo');
+      } else {
+        exportedSteps = candidate.progress.steps;
+        if (exportedStepCount !== null && exportedSteps.length !== exportedStepCount) {
+          issues.push('$.progress.steps: la lunghezza deve corrispondere a $.module.stepCount');
+        }
+        const stepFields = ['index', 'title', 'attempts', 'correct', 'usedRemediation', 'activityCompleted'];
+        exportedSteps.forEach((item, index) => {
+          const path = `$.progress.steps[${index}]`;
+          if (!validateObjectFields(item, stepFields, stepFields, path, issues)) return;
+          if (validateNonNegativeInteger(item.index, `${path}.index`, issues) && item.index !== index) issues.push(`${path}.index: deve coincidere con la posizione nell'array`);
+          validateNonEmptyString(item.title, `${path}.title`, issues);
+          validateNonNegativeInteger(item.attempts, `${path}.attempts`, issues);
+          ['correct', 'usedRemediation', 'activityCompleted'].forEach((field) => {
+            if (typeof item[field] !== 'boolean') issues.push(`${path}.${field}: deve essere booleano`);
+          });
+        });
+      }
+    }
+
+    if (moduleValid && candidate.module.id !== data.id) {
+      issues.push(`$.module.id: il file appartiene al modulo “${candidate.module.id}”, non a “${data.id}”`);
+    }
+    if (exportedStepCount !== null && exportedStepCount !== data.steps.length) {
+      issues.push(`$.module.stepCount: ${exportedStepCount} passi esportati, ${data.steps.length} nel modulo corrente`);
+    }
+    if (exportedSteps) {
+      if (exportedSteps.length !== data.steps.length) issues.push('$.progress.steps: sequenza incompatibile con il modulo corrente');
+      exportedSteps.slice(0, data.steps.length).forEach((item, index) => {
+        if (isPlainObject(item) && typeof item.title === 'string' && item.title !== data.steps[index].title) {
+          issues.push(`$.progress.steps[${index}].title: titolo incompatibile con il modulo corrente`);
+        }
+      });
+    }
+
+    return issues;
+  }
+
+  function sanitizeImportedProgress(candidate) {
+    return {
+      currentStep: candidate.progress.currentStep,
+      steps: candidate.progress.steps.map((item) => ({
+        attempts: item.attempts,
+        correct: item.correct,
+        usedRemediation: item.usedRemediation,
+        activityCompleted: item.activityCompleted
+      }))
+    };
+  }
+
+  function evidenceStats(state) {
+    return {
+      completed: state.steps.filter((item) => item.correct).length,
+      attempts: state.steps.reduce((sum, item) => sum + item.attempts, 0)
+    };
+  }
+
+  function clearPendingEvidenceImport(message = '') {
+    evidenceImportSelection += 1;
+    pendingEvidenceImport = null;
+    const input = $('#importEvidenceInput');
+    const panel = $('#evidenceImportPanel');
+    const confirm = $('#confirmEvidenceImportBtn');
+    const preview = $('#evidenceImportPreview');
+    if (input) input.value = '';
+    if (panel) panel.hidden = true;
+    if (confirm) confirm.disabled = true;
+    if (preview) preview.textContent = '';
+    const status = $('#evidenceImportStatus');
+    if (status) status.textContent = message;
+  }
+
+  async function handleEvidenceImportSelection() {
+    stop();
+    const selection = ++evidenceImportSelection;
+    const input = $('#importEvidenceInput');
+    const file = input?.files?.[0];
+    pendingEvidenceImport = null;
+    $('#evidenceImportPanel').hidden = true;
+    $('#confirmEvidenceImportBtn').disabled = true;
+    $('#evidenceImportPreview').textContent = '';
+    if (!file) return;
+    if (file.size > MAX_EVIDENCE_IMPORT_BYTES) {
+      clearPendingEvidenceImport('File non importabile: supera il limite di 1 MB.');
+      return;
+    }
+
+    let candidate;
+    try {
+      const serialized = await file.text();
+      if (selection !== evidenceImportSelection) return;
+      candidate = JSON.parse(serialized);
+    } catch (_) {
+      if (selection !== evidenceImportSelection) return;
+      clearPendingEvidenceImport('File non importabile: JSON non valido. Nessuna modifica applicata.');
+      return;
+    }
+
+    const issues = validateEvidenceImport(candidate);
+    if (issues.length) {
+      clearPendingEvidenceImport(`File non importabile: ${issues.slice(0, 3).join(' · ')}. Nessuna modifica applicata.`);
+      return;
+    }
+
+    pendingEvidenceImport = sanitizeImportedProgress(candidate);
+    const current = evidenceStats(progressState);
+    const imported = evidenceStats(pendingEvidenceImport);
+    $('#evidenceImportPreview').textContent = `Avanzamento attuale: ${current.completed}/${data.steps.length} verifiche, ${current.attempts} tentativi. File selezionato: ${imported.completed}/${data.steps.length} verifiche, ${imported.attempts} tentativi. Il ripristino sostituirà solo l'avanzamento di questo modulo.`;
+    $('#evidenceImportPanel').hidden = false;
+    $('#confirmEvidenceImportBtn').disabled = false;
+    $('#evidenceImportStatus').textContent = 'File compatibile. Controlla l’anteprima e conferma esplicitamente il ripristino.';
+  }
+
+  function confirmEvidenceImport() {
+    if (!pendingEvidenceImport) return;
+    stop();
+    progressState = {
+      currentStep: pendingEvidenceImport.currentStep,
+      steps: pendingEvidenceImport.steps.map((item) => ({...item}))
+    };
+    step = progressState.currentStep;
+    pendingEvidenceImport = null;
+    $('#importEvidenceInput').value = '';
+    $('#evidenceImportPanel').hidden = true;
+    $('#confirmEvidenceImportBtn').disabled = true;
+    $('#evidenceImportPreview').textContent = '';
+    renderStep();
+    $('#evidenceImportStatus').textContent = 'Avanzamento ripristinato dal file JSON locale.';
   }
 
   function escapeHtml(value) {
@@ -234,8 +453,12 @@
   $('#nextBtn').addEventListener('click', () => { stop(); next(); });
   $('#prevBtn').addEventListener('click', () => { stop(); if (step > 0) { step -= 1; renderStep(); } });
   $('#resetBtn').addEventListener('click', () => { stop(); step = 0; renderStep(); });
-  $('#resetProgressBtn').addEventListener('click', () => { localStorage.removeItem(storageKey); progressState = emptyState(); step = 0; renderStep(); });
+  $('#resetProgressBtn').addEventListener('click', () => { localStorage.removeItem(storageKey); progressState = emptyState(); step = 0; clearPendingEvidenceImport(); renderStep(); });
   $('#exportEvidenceBtn')?.addEventListener('click', exportEvidence);
+  $('#selectEvidenceBtn')?.addEventListener('click', () => $('#importEvidenceInput')?.click());
+  $('#importEvidenceInput')?.addEventListener('change', handleEvidenceImportSelection);
+  $('#confirmEvidenceImportBtn')?.addEventListener('click', confirmEvidenceImport);
+  $('#cancelEvidenceImportBtn')?.addEventListener('click', () => clearPendingEvidenceImport('Importazione annullata. Nessuna modifica applicata.'));
   $('#playBtn').addEventListener('click', () => { if (timer) { stop(); return; } $('#playBtn').textContent = '⏸ Pausa'; timer = setInterval(next, 5500); });
   document.querySelectorAll('#stepsNav button').forEach((button) => button.addEventListener('click', () => { stop(); step = Number(button.dataset.step); renderStep(); }));
   document.addEventListener('keydown', (event) => {

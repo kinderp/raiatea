@@ -135,7 +135,7 @@ python prototype/pedagogical-module/build/validate_evidence_export.py \
 
 ### Import compatibility policy
 
-A structurally valid export is not automatically safe to restore into every module revision. Before a future import may modify local progress, the side-effect-free compatibility checker requires:
+A structurally valid export is not automatically safe to restore into every module revision. The side-effect-free compatibility checker requires:
 
 - exact supported format and version through the structural validator;
 - exact module ID;
@@ -153,7 +153,35 @@ python prototype/pedagogical-module/build/check_evidence_compatibility.py \
   prototype/pedagogical-module/evidence-examples/learner-evidence-export-v1.json
 ```
 
-The checker reads and validates both files, reports every incompatibility, and exits non-zero on failure. It does not access browser storage, apply progress, merge evidence, or choose a conflict policy. Those state-changing decisions belong to a separate explicit restore increment.
+The checker reads and validates both files, reports every incompatibility, and exits non-zero on failure. It does not access browser storage or apply progress.
+
+### Explicit restore with conflict preview
+
+The learner can select a JSON file with **Importa evidenze JSON**. Selection alone never changes progress. The browser performs the same conservative v1 structural and module-compatibility checks, then shows a preview comparing:
+
+- completed checks in the current browser state;
+- attempts in the current browser state;
+- completed checks in the selected file;
+- attempts in the selected file.
+
+Only **Ripristina questo avanzamento** applies the file. Restore is an explicit replacement, not a merge. It writes only the allowlisted progress fields to `raiatea-progress:<module-id>`:
+
+- `currentStep`;
+- `attempts`;
+- `correct`;
+- `usedRemediation`;
+- `activityCompleted`.
+
+Module titles, step titles, indexes, source metadata, unknown properties, and any other file content are validation context only and are never copied into browser progress. Reading preferences and unrelated `localStorage` entries remain untouched.
+
+Malformed, oversized, unsupported, cross-module, or revision-incompatible files keep the current progress unchanged and never enable confirmation. **Annulla importazione** also leaves progress unchanged. The entire flow remains offline and imposes a 1 MB file-size limit before parsing.
+
+The current conflict policy is intentionally narrow:
+
+- compatible evidence replaces the current module record only after confirmation;
+- histories are not merged;
+- versions are not migrated or coerced;
+- there is no background upload, analytics, telemetry, cloud synchronization, or LMS transfer.
 
 ## Step-level provenance
 
@@ -219,6 +247,10 @@ The Playwright configuration builds `examples/self-attention.json` through the c
 - reduced-motion concept navigation, centered target focus, and non-flashing highlight state;
 - targeted remediation, retry behavior, local evidence, and reload persistence;
 - versioned evidence download, predictable filename, exported values, and privacy exclusions;
+- compatible evidence preview without immediate mutation;
+- explicit replacement and reload persistence;
+- preservation of reading preferences and unrelated storage;
+- cancel, malformed JSON, and incompatible-module no-op behavior;
 - basic semantic hooks such as document language, accessible SVG role, and live regions.
 
 CI installs Chromium with its Linux system dependencies before running the same command. Cross-browser and screenshot-regression coverage remain explicitly out of scope for this increment.
@@ -260,8 +292,9 @@ prototype/pedagogical-module/
 - template replacement is intentionally dependency-free and simple;
 - the Python module validator is layered;
 - mathematical rendering uses plain text unless represented by visual primitives;
-- learner evidence remains browser-local unless the learner explicitly exports one module;
-- exported evidence can be checked for compatibility but cannot yet be applied or merged;
+- learner evidence is portable only as a one-module v1 JSON document;
+- restore supports explicit replacement of one compatible module record, not history merging;
+- no version migration, multi-module bundle, signing, encryption, cloud sync, or LMS transfer exists;
 - recommendation rules are deterministic and intentionally simple;
 - declarative layouts currently cover linear and branch/merge structures only;
 - complex primitive visuals still require authored coordinates;
@@ -270,7 +303,7 @@ prototype/pedagogical-module/
 
 ## Next improvements
 
-1. Add explicit import/restore with conflict handling and no silent overwrite.
-2. Document retention and future LMS integration boundaries after the restore contract exists.
+1. Document retention, deletion, and future LMS integration boundaries.
+2. Decide whether evidence needs stable step identifiers before supporting authored-title changes.
 3. Link multiple modules into a prerequisite route.
 4. Replace the temporary layered module validator with one consolidated implementation.

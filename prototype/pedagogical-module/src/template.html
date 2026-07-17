@@ -7,52 +7,14 @@
 <style>{{ css }}</style>
 </head>
 <body>
-<div class="focus-toolbar">
-  <div class="focus-toolbar-inner">
-    <div><div class="focus-title">Raiatea Focus UI</div><div class="focus-status" id="focusStatus">Modulo pedagogico</div></div>
-    <div class="reading-settings">
-      <button id="themeBtn">☾ Notte</button>
-      <label>Testo <select id="fontSizeSelect"><option>15</option><option>16</option><option selected>17</option><option>18</option><option>20</option><option>22</option></select></label>
-      <label>Spaziatura <select id="densitySelect"><option value="compact">Compatta</option><option value="normal" selected>Normale</option><option value="relaxed">Rilassata</option></select></label>
-      <label>Larghezza <select id="widthSelect"><option value="58">Stretta</option><option value="68" selected>Media</option><option value="76">Ampia</option></select></label>
-      <label>Allineamento <select id="alignSelect"><option value="left" selected>Sinistra</option><option value="justify">Giustificato</option></select></label>
-      <label>Animazioni <select id="motionSelect"><option value="normal" selected>Normali</option><option value="reduced">Ridotte</option></select></label>
-      <button id="resetReadingBtn">Ripristina</button>
-    </div>
-  </div>
-</div>
-<header>
-  <div class="kicker">Raiatea · modulo pedagogico visuale</div>
-  <h1>{{ title }}</h1>
-  <p class="lead">{{ subtitle }}</p>
-  <div class="intro-grid">
-    <article class="card"><section><h2>Da dove vieni</h2><p>{{ route_summary }}</p><div class="chips">{{ previous_chips }}</div></section></article>
-    <article class="card"><section><h2>Prerequisiti</h2><ul>{{ prerequisite_items }}</ul><div class="note">Tempo stimato: {{ estimated_minutes }} minuti.</div></section></article>
-  </div>
-</header>
+<div class="focus-toolbar"><div class="focus-toolbar-inner"><div><div class="focus-title">Raiatea Focus UI</div><div class="focus-status" id="focusStatus">Modulo pedagogico</div></div><div class="reading-settings"><button id="themeBtn">☾ Notte</button><label>Testo <select id="fontSizeSelect"><option>15</option><option>16</option><option selected>17</option><option>18</option><option>20</option><option>22</option></select></label><label>Spaziatura <select id="densitySelect"><option value="compact">Compatta</option><option value="normal" selected>Normale</option><option value="relaxed">Rilassata</option></select></label><label>Larghezza <select id="widthSelect"><option value="58">Stretta</option><option value="68" selected>Media</option><option value="76">Ampia</option></select></label><label>Allineamento <select id="alignSelect"><option value="left" selected>Sinistra</option><option value="justify">Giustificato</option></select></label><label>Animazioni <select id="motionSelect"><option value="normal" selected>Normali</option><option value="reduced">Ridotte</option></select></label><button id="resetReadingBtn">Ripristina</button></div></div></div>
+<header><div class="kicker">Raiatea · modulo pedagogico visuale</div><h1>{{ title }}</h1><p class="lead">{{ subtitle }}</p><div class="intro-grid"><article class="card"><section><h2>Da dove vieni</h2><p>{{ route_summary }}</p><div class="chips">{{ previous_chips }}</div></section></article><article class="card"><section><h2>Prerequisiti</h2><ul>{{ prerequisite_items }}</ul><div class="note">Tempo stimato: {{ estimated_minutes }} minuti.</div></section></article></div></header>
 <main>
-<section class="module">
-  <div class="module-bar">
-    <div class="progress-wrap"><span id="stepLabel"><b>Passo 1</b></span><div class="progress"><i id="progressBar"></i></div></div>
-    <div class="controls"><button id="prevBtn">← Indietro</button><button id="playBtn" class="primary">▶ Riproduci</button><button id="nextBtn">Avanti →</button><button id="resetBtn">↺ Ricomincia</button></div>
-  </div>
-  <div class="layout">
-    <div class="visual">{{ visual_markup }}<div class="steps-nav" id="stepsNav">{{ step_buttons }}</div></div>
-    <aside class="panel" aria-live="polite">
-      <div class="kicker" id="phaseEyebrow"></div><h2 id="phaseTitle"></h2><div id="phaseText"></div>
-      <div class="goal" id="goalBox"></div><div class="observe" id="observeBox"></div><div class="equation mono" id="equationBox"></div>
-      <div class="micro"><b id="quizQuestion"></b><div class="answers" id="quizAnswers"></div><div id="quizFeedback" class="feedback"></div></div>
-    </aside>
-  </div>
-</section>
-<div class="outro-grid">
-  <article class="card"><section><h2>Cosa viene dopo</h2><p>{{ next_summary }}</p><ol>{{ next_items }}</ol></section></article>
-  <article class="card"><section><h2>Fonte e provenienza</h2>{{ provenance }}</section></article>
-</div>
+<section class="module"><div class="module-bar"><div class="progress-wrap"><span id="stepLabel"><b>Passo 1</b></span><div class="progress"><i id="progressBar"></i></div></div><div class="controls"><button id="prevBtn">← Indietro</button><button id="playBtn" class="primary">▶ Riproduci</button><button id="nextBtn">Avanti →</button><button id="resetBtn">↺ Ricomincia</button></div></div><div class="layout"><div class="visual">{{ visual_markup }}<div class="steps-nav" id="stepsNav">{{ step_buttons }}</div></div><aside class="panel" aria-live="polite"><div class="kicker" id="phaseEyebrow"></div><h2 id="phaseTitle"></h2><div id="phaseText"></div><div class="goal" id="goalBox"></div><div class="observe" id="observeBox"></div><div class="equation mono" id="equationBox"></div><div class="micro"><b id="quizQuestion"></b><div class="answers" id="quizAnswers"></div><div id="quizFeedback" class="feedback"></div></div></aside></div></section>
+<article class="card evidence-card"><section><div class="evidence-heading"><div><div class="kicker">Evidenze osservate</div><h2>Riepilogo del percorso</h2></div><button id="resetProgressBtn">Azzera avanzamento</button></div><p id="evidenceSummary">Nessuna evidenza registrata.</p><div class="evidence-grid" id="evidenceGrid"></div><div class="note" id="evidenceRecommendation">Completa almeno una verifica per ricevere una raccomandazione.</div></section></article>
+<div class="outro-grid"><article class="card"><section><h2>Cosa viene dopo</h2><p>{{ next_summary }}</p><ol>{{ next_items }}</ol></section></article><article class="card"><section><h2>Fonte e provenienza</h2>{{ provenance }}</section></article></div>
 <article class="card glossary-card"><section><h2>Glossario del percorso</h2><div class="glossary">{{ concept_cards }}</div></section></article>
 </main>
 <div class="pause-toast" id="pauseToast"><strong>Pausa visiva consigliata</strong><p>Guarda per qualche secondo un punto lontano e rilassa la messa a fuoco.</p><button id="dismissPause">Continua</button></div>
-<script>window.RAIATEA_MODULE={{ module_json }};</script>
-<script>{{ js }}</script>
-</body>
-</html>
+<script>window.RAIATEA_MODULE={{ module_json }};</script><script>{{ js }}</script>
+</body></html>

@@ -139,9 +139,9 @@
     const topFields = ['format', 'version', 'module', 'progress'];
     if (!validateObjectFields(candidate, topFields, topFields, '$', issues)) return issues;
 
-    if (candidate.format !== EVIDENCE_EXPORT_FORMAT) issues.push(`$.format: formato non supportato`);
+    if (candidate.format !== EVIDENCE_EXPORT_FORMAT) issues.push('$.format: formato non supportato');
     if (!Number.isInteger(candidate.version) || candidate.version !== EVIDENCE_EXPORT_VERSION) {
-      issues.push(`$.version: versione non supportata`);
+      issues.push('$.version: versione non supportata');
     }
 
     const moduleFields = ['id', 'title', 'language', 'stepCount', 'source'];
@@ -210,7 +210,7 @@
       issues.push(`$.module.stepCount: ${exportedStepCount} passi esportati, ${data.steps.length} nel modulo corrente`);
     }
     if (exportedSteps) {
-      if (exportedSteps.length !== data.steps.length) issues.push(`$.progress.steps: sequenza incompatibile con il modulo corrente`);
+      if (exportedSteps.length !== data.steps.length) issues.push('$.progress.steps: sequenza incompatibile con il modulo corrente');
       exportedSteps.slice(0, data.steps.length).forEach((item, index) => {
         if (isPlainObject(item) && typeof item.title === 'string' && item.title !== data.steps[index].title) {
           issues.push(`$.progress.steps[${index}].title: titolo incompatibile con il modulo corrente`);
@@ -255,6 +255,7 @@
   }
 
   async function handleEvidenceImportSelection() {
+    stop();
     const input = $('#importEvidenceInput');
     const file = input?.files?.[0];
     pendingEvidenceImport = null;
@@ -292,6 +293,7 @@
 
   function confirmEvidenceImport() {
     if (!pendingEvidenceImport) return;
+    stop();
     progressState = {
       currentStep: pendingEvidenceImport.currentStep,
       steps: pendingEvidenceImport.steps.map((item) => ({...item}))

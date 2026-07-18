@@ -1,6 +1,6 @@
 # Learner-evidence v2 compatibility classification and preview contract
 
-Status: initial design contract for issue #46.
+Status: normative implementation contract for issue #46.
 
 This increment classifies one learner-evidence v2 document against one exact caller-supplied target canonical module revision and generates a deterministic read-only preview. A caller may also supply one direct migration manifest and its exact canonical source module revision. The increment never writes browser storage, edits an input, confirms a migration, or replaces the original evidence document.
 
@@ -16,22 +16,23 @@ The classifier receives:
 
 A caller must provide either neither optional input or both. The classifier does not search a registry, choose among manifests, infer a path, or chain transitions.
 
-Every supplied document is structurally validated by its existing validator before classification. A supplied manifest is also contextually validated against the supplied source and target modules before its operations are interpreted.
+Every supplied document is structurally validated by its existing validator before classification. Canonical module loaders resolve supported declarative layouts before validation. A supplied manifest is also contextually validated against the supplied source and target modules before its operations are interpreted.
 
 ## 2. Result model
 
-The API returns one closed result object with these conceptual fields:
+The API returns one closed result object with these fields:
 
 - `classification`: `exact`, `declared-lossless`, `declared-partial`, `incompatible`, or `unsupported`;
 - exact evidence source identity: module ID and opaque revision;
 - exact requested target identity: module ID and opaque revision;
-- `manifestStatus`: `not-needed`, `applicable`, `missing`, `invalid`, `mismatched`, or `unsupported`;
+- `manifestStatus`: `not-needed`, `applicable`, `missing`, `mismatched`, or `unsupported`;
 - ordered step preview entries;
 - current-position preview;
 - deterministic human-readable summary and issues;
-- `candidateAvailable`: whether a later layer could construct a complete non-persisted target evidence candidate without an additional policy decision.
+- `candidateAvailable`: whether the result contains a complete non-persisted target evidence candidate;
+- `candidate`: the complete candidate document or `null`.
 
-The result is data, not authorization. `declared-lossless`, `declared-partial`, and `candidateAvailable` never imply user confirmation or state mutation.
+The result is data, not authorization. `declared-lossless`, `declared-partial`, `candidateAvailable`, and the presence of `candidate` never imply user confirmation or state mutation.
 
 ## 3. Classification precedence
 
@@ -59,7 +60,7 @@ Return `exact` when the existing Class A checker proves that the evidence exactl
 - ordered stable-step identity sequence;
 - current step ID and index.
 
-A manifest is neither required nor consulted for an exact result. No migration preview is needed; every source step is shown as preserved in place and `candidateAvailable` is false because the original document already matches the target.
+A manifest is neither required nor consulted for an exact result. No migration candidate is created; every source step is shown as preserved in place and `candidateAvailable` is false because the original document already matches the target.
 
 ### 3.3 Incompatible — Class D before manifest interpretation
 
@@ -72,7 +73,7 @@ Return `incompatible` when:
 - the evidence contains a stable step ID absent from the exact source inventory;
 - the manifest cannot account deterministically for the evidence current step.
 
-The result must state the missing or mismatched precondition. It must not guess a nearby revision or choose an arbitrary manifest.
+The result states the missing or mismatched precondition. It never guesses a nearby revision or chooses an arbitrary manifest.
 
 ### 3.4 Declared lossless — Class B
 
@@ -92,14 +93,14 @@ A title change or reorder may therefore be lossless. Numeric indexes are recalcu
 
 Return `declared-partial` when an applicable direct manifest contains at least one `retire` or `introduce` operation and all preserved source observations remain attributable by exact stable ID.
 
-The preview must distinguish:
+The preview distinguishes:
 
 - preserved steps whose allowlisted observations remain attributable;
 - retired source steps retained only as historical source evidence;
 - introduced target steps with explicit empty/unobserved target state;
 - current position preserved and remapped to its target index, or unresolved because the active source step is retired.
 
-An unresolved current position makes a complete candidate unavailable but does not erase the factual partial classification. The preview must state that a future confirmation/application policy must choose a target position before any target document can be completed.
+An unresolved current position makes a complete candidate unavailable but does not erase the factual partial classification. The preview states that a future confirmation/application policy must choose a target position before any target document can be completed.
 
 The current manifest vocabulary does not support split, merge, fan-out, fan-in, aggregation, or semantic transformation. Such features are `unsupported`, not partial.
 
@@ -133,37 +134,60 @@ The current-position result is one of:
 
 The classifier never selects the next index, previous index, nearest preserved step, first introduced step, or any other fallback for `unresolved-retired`.
 
-## 6. Candidate boundary
+## 6. Non-persisted candidate boundary
 
-This increment may expose `candidateAvailable` and a deterministic candidate plan, but it must not persist or download a migrated document.
-
-A complete non-persisted target candidate is available only for:
+A complete in-memory target candidate is returned only for:
 
 - Class B; or
 - Class C when the current source step is preserved and therefore remaps deterministically.
 
-For a candidate plan:
+Candidate construction follows these exact rules:
 
 - preserved per-step evidence is copied by exact stable ID;
 - introduced target steps receive zero attempts and all observable outcome booleans `false`;
 - target indexes and authored title snapshots come from `targetModule`;
 - retired source evidence remains only in the preview and is not silently inserted into active target evidence;
+- target module identity, title, language, revision, and step count come from `targetModule`;
+- the candidate is structurally valid learner-evidence v2 and is an exact contextual match for `targetModule`;
 - the original evidence input remains unchanged.
 
-If the current step is retired, `candidateAvailable` is false and no candidate document is produced.
+If the current step is retired, `candidateAvailable` is false and `candidate` is `null`.
 
-Actual candidate serialization, confirmation, original-copy preservation, browser storage writes, and restore behavior remain separate reviewed work unless this issue explicitly accepts them after tests prove the boundary.
+The classifier does not persist, download, confirm, or apply the candidate. Confirmation, original-copy preservation, browser storage writes, and restore behavior remain separate reviewed work.
 
-## 7. Error and output rules
+## 7. API and CLI
 
-- Structural validation errors are namespaced by input and precede classification.
+The in-memory classification API is exposed by `build/classify_evidence_compatibility_v2.py`. The structural loader and CLI are exposed by `build/check_evidence_compatibility_preview_v2.py`.
+
+Exact target comparison:
+
+```bash
+python prototype/pedagogical-module/build/check_evidence_compatibility_preview_v2.py \
+  evidence-v2.json target-module.json
+```
+
+Direct manifest-aware preview:
+
+```bash
+python prototype/pedagogical-module/build/check_evidence_compatibility_preview_v2.py \
+  evidence-v2.json target-module.json \
+  --source source-module.json \
+  --manifest migration-manifest.json \
+  --json
+```
+
+The CLI exits `0` for `exact`, `declared-lossless`, and `declared-partial`. It exits non-zero for input validation failure, `incompatible`, or `unsupported`. Human-readable and JSON output describe the same classification and preview.
+
+## 8. Error and output rules
+
+- Structural read and validation errors are namespaced by input and precede classification.
+- Malformed evidence, target, source, and manifest inputs are accumulated in deterministic input order where no downstream claim depends on them.
 - Result ordering is stable across runs.
-- All issues are accumulated only where doing so cannot create false downstream claims from an invalid prerequisite.
+- Issues are accumulated only where doing so cannot create false downstream claims from an invalid prerequisite.
 - Revision values are compared only for equality and never interpreted as chronology, precedence, distance, or adjacency.
-- The CLI exits `0` for `exact`, `declared-lossless`, and `declared-partial` previews; it exits non-zero for validation failure, `incompatible`, or `unsupported`.
-- Machine-readable output and human-readable output describe the same classification and preview.
+- Unsupported versions and operations are reported separately from supported-but-incompatible direct transitions.
 
-## 8. Privacy and side effects
+## 9. Privacy and side effects
 
 The classifier and preview:
 
@@ -171,11 +195,11 @@ The classifier and preview:
 - make no network request or registry lookup;
 - do not read browser storage;
 - do not mutate input objects or files;
-- do not write a candidate automatically;
+- do not write or download a candidate automatically;
 - do not add learner identity, timestamps, analytics, free text, inferred mastery, diagnosis, or device data;
 - preserve learner-evidence v1 unchanged.
 
-## 9. Deferred work
+## 10. Deferred work
 
 - multi-hop path discovery or chaining;
 - manifest registry selection;

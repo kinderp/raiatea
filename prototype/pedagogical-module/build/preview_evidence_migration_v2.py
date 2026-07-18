@@ -35,6 +35,10 @@ def _prefixed_issue(namespace: str, issue: object) -> str:
     return f"$.{namespace}: {text}"
 
 
+def _read_issue(namespace: str, exc: OSError) -> str:
+    return f"$.{namespace}: cannot read input: {exc}"
+
+
 def _identity_from_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
     module = evidence.get("module")
     if not isinstance(module, dict):
@@ -105,20 +109,25 @@ def _evidence_snapshot(step: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _empty_snapshot() -> dict[str, Any]:
+    return {
+        "attempts": 0,
+        "correct": False,
+        "usedRemediation": False,
+        "activityCompleted": False,
+    }
+
+
 def _candidate_step(
     target_index: int,
     target_step: dict[str, Any],
     source_evidence: dict[str, Any] | None,
 ) -> dict[str, Any]:
-    if source_evidence is None:
-        snapshot = {
-            "attempts": 0,
-            "correct": False,
-            "usedRemediation": False,
-            "activityCompleted": False,
-        }
-    else:
-        snapshot = _evidence_snapshot(source_evidence)
+    snapshot = (
+        _empty_snapshot()
+        if source_evidence is None
+        else _evidence_snapshot(source_evidence)
+    )
     return {
         "index": target_index,
         "stepId": target_step["id"],
@@ -304,12 +313,7 @@ def classify_preview(
                     "targetTitle": target_step["title"],
                     "status": "introduced",
                     "evidenceDisposition": "empty",
-                    "evidence": {
-                        "attempts": 0,
-                        "correct": False,
-                        "usedRemediation": False,
-                        "activityCompleted": False,
-                    },
+                    "evidence": _empty_snapshot(),
                 }
             )
 
@@ -395,6 +399,8 @@ def classify_preview(
 def _load_json(path: Path, namespace: str) -> tuple[Any | None, list[str]]:
     try:
         return json.loads(path.read_text(encoding="utf-8")), []
+    except OSError as exc:
+        return None, [_read_issue(namespace, exc)]
     except json.JSONDecodeError as exc:
         return None, [
             f"$.{namespace}: invalid JSON at line {exc.lineno}, "
@@ -439,6 +445,42 @@ def _declares_unsupported_manifest(raw: Any) -> bool:
     if isinstance(operations, dict):
         return not set(operations).issubset(manifest_validator.OPERATION_FIELDS)
     return False
+
+
+def _load_evidence(
+    path: Path, namespace: str, issues: list[str]
+) -> dict[str, Any] | None:
+    try:
+        return evidence_validator.load_and_validate(path)
+    except evidence_validator.EvidenceExportV2ValidationError as exc:
+        issues.extend(_prefixed_issue(namespace, issue) for issue in exc.issues)
+    except OSError as exc:
+        issues.append(_read_issue(namespace, exc))
+    return None
+
+
+def _load_module(
+    path: Path, namespace: str, issues: list[str]
+) -> dict[str, Any] | None:
+    try:
+        return module_validator.load_and_validate(path)
+    except module_validator.ModuleValidationError as exc:
+        issues.extend(_prefixed_issue(namespace, issue) for issue in exc.issues)
+    except OSError as exc:
+        issues.append(_read_issue(namespace, exc))
+    return None
+
+
+def _load_manifest(
+    path: Path, namespace: str, issues: list[str]
+) -> dict[str, Any] | None:
+    try:
+        return manifest_validator.load_and_validate(path)
+    except manifest_validator.MigrationManifestValidationError as exc:
+        issues.extend(_prefixed_issue(namespace, issue) for issue in exc.issues)
+    except OSError as exc:
+        issues.append(_read_issue(namespace, exc))
+    return None
 
 
 def load_and_preview(
@@ -489,42 +531,19 @@ def load_and_preview(
         )
 
     input_issues: list[str] = []
-    evidence: dict[str, Any] | None = None
-    target_module: dict[str, Any] | None = None
+    evidence = _load_evidence(evidence_path, "evidence", input_issues)
+    target_module = _load_module(target_module_path, "targetModule", input_issues)
     source_module: dict[str, Any] | None = None
     manifest: dict[str, Any] | None = None
-
-    try:
-        evidence = evidence_validator.load_and_validate(evidence_path)
-    except evidence_validator.EvidenceExportV2ValidationError as exc:
-        input_issues.extend(_prefixed_issue("evidence", issue) for issue in exc.issues)
-
-    try:
-        target_module = module_validator.load_and_validate(target_module_path)
-    except module_validator.ModuleValidationError as exc:
-        input_issues.extend(
-            _prefixed_issue("targetModule", issue) for issue in exc.issues
-        )
-
     if source_module_path is not None and manifest_path is not None:
-        try:
-            source_module = module_validator.load_and_validate(source_module_path)
-        except module_validator.ModuleValidationError as exc:
-            input_issues.extend(
-                _prefixed_issue("sourceModule", issue) for issue in exc.issues
-            )
-        try:
-            manifest = manifest_validator.load_and_validate(manifest_path)
-        except manifest_validator.MigrationManifestValidationError as exc:
-            input_issues.extend(
-                _prefixed_issue("manifest", issue) for issue in exc.issues
-            )
+        source_module = _load_module(source_module_path, "sourceModule", input_issues)
+        manifest = _load_manifest(manifest_path, "manifest", input_issues)
 
     if input_issues:
         raise EvidenceMigrationPreviewInputError(input_issues)
+    if evidence is None or target_module is None:
+        raise AssertionError("validated preview inputs unexpectedly unavailable")
 
-    assert evidence is not None
-    assert target_module is not None
     return classify_preview(
         evidence,
         target_module,

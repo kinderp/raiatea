@@ -65,6 +65,12 @@ jobs:
               --output "/tmp/raiatea-modules/$name.html"
           done
 
+      - name: Build runnable pilot
+        run: |
+          rm -rf /tmp/raiatea-pilot
+          python prototype/pedagogical-module/build/build_pilot.py \
+            --output /tmp/raiatea-pilot
+
       - name: Verify generated artifacts
         run: |
           for artifact in /tmp/raiatea-modules/*.html; do
@@ -77,6 +83,12 @@ jobs:
             test -s "$visual"
             grep -q '"type": "primitives"' "$visual"
           done
+          test -s /tmp/raiatea-pilot/index.html
+          test -s /tmp/raiatea-pilot/query-key-value.html
+          test -s /tmp/raiatea-pilot/self-attention.html
+          test -s /tmp/raiatea-pilot/pilot-manifest.json
+          grep -q 'query-key-value.html' /tmp/raiatea-pilot/index.html
+          grep -q 'self-attention.html' /tmp/raiatea-pilot/index.html
 
   browser-interactions:
     runs-on: ubuntu-latest

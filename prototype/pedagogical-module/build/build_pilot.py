@@ -18,16 +18,11 @@ EXAMPLES = ROOT / "examples"
 TEMPLATE = ROOT / "src" / "template.html"
 CSS = ROOT / "src" / "module.css"
 JS = ROOT / "src" / "module.js"
+DASHBOARD_JS = ROOT / "src" / "pilot-dashboard.js"
 
 ROUTE_SPECS = (
-    {
-        "source": EXAMPLES / "self-attention.json",
-        "output": "self-attention.html",
-    },
-    {
-        "source": EXAMPLES / "query-key-value.json",
-        "output": "query-key-value.html",
-    },
+    {"source": EXAMPLES / "self-attention.json", "output": "self-attention.html"},
+    {"source": EXAMPLES / "query-key-value.json", "output": "query-key-value.html"},
 )
 
 
@@ -60,6 +55,7 @@ def _load_route() -> tuple[dict[str, Any], ...]:
                 "id": data["id"],
                 "revision": data["revision"],
                 "title": data["title"],
+                "stepCount": len(data["steps"]),
                 "source": source,
                 "output": output,
                 "module": data,
@@ -82,29 +78,45 @@ def _navigation(previous: dict[str, Any] | None, next_item: dict[str, Any] | Non
             f'<a href="{html.escape(next_item["output"], quote=True)}">'
             f'{html.escape(next_item["title"])} →</a>'
         )
-    return (
-        '<nav class="pilot-route" aria-label="Percorso pilot">'
-        + " · ".join(links)
-        + "</nav>"
-    )
+    return '<nav class="pilot-route" aria-label="Percorso pilot">' + " · ".join(links) + "</nav>"
 
 
 def _inject_navigation(document: str, navigation: str) -> str:
-    marker = "</body>"
-    if marker not in document:
+    if "</body>" not in document:
         raise ValueError("generated module is missing </body>")
-    return document.replace(marker, navigation + marker, 1)
+    return document.replace("</body>", navigation + "</body>", 1)
 
 
-def _launcher(route: tuple[dict[str, Any], ...]) -> str:
+def _public_manifest(route: tuple[dict[str, Any], ...]) -> dict[str, Any]:
+    modules: list[dict[str, Any]] = []
+    for index, item in enumerate(route):
+        modules.append(
+            {
+                "id": item["id"],
+                "revision": item["revision"],
+                "title": item["title"],
+                "stepCount": item["stepCount"],
+                "order": index,
+                "file": item["output"],
+                "previous": route[index - 1]["output"] if index > 0 else None,
+                "next": route[index + 1]["output"] if index + 1 < len(route) else None,
+            }
+        )
+    return {"format": "raiatea-pilot", "version": 1, "modules": modules}
+
+
+def _launcher(route: tuple[dict[str, Any], ...], manifest: dict[str, Any]) -> str:
     cards = "".join(
-        "<li>"
+        f'<li data-pilot-module="{html.escape(item["id"], quote=True)}">'
         f'<a href="{html.escape(item["output"], quote=True)}">'
         f'{index + 1}. {html.escape(item["title"])}</a>'
+        '<p><strong data-pilot-status>Non iniziato</strong> · '
+        f'<span data-pilot-count>0/{item["stepCount"]} attività verificate</span></p>'
         "</li>"
         for index, item in enumerate(route)
     )
     first = html.escape(route[0]["output"], quote=True)
+    manifest_json = json.dumps(manifest, ensure_ascii=False, sort_keys=True).replace("</", "<\\/")
     return f"""<!doctype html>
 <html lang="it">
 <head>
@@ -115,46 +127,34 @@ def _launcher(route: tuple[dict[str, Any], ...]) -> str:
     body {{ font-family: system-ui, sans-serif; max-width: 52rem; margin: 3rem auto; padding: 0 1rem; line-height: 1.5; }}
     main {{ border: 1px solid #bbb; border-radius: 1rem; padding: 1.5rem; }}
     .start {{ display: inline-block; padding: .7rem 1rem; border: 1px solid currentColor; border-radius: .6rem; }}
+    li {{ margin-block: 1rem; }}
   </style>
 </head>
 <body>
   <main>
     <h1>Raiatea: primo percorso pilot</h1>
     <p>Un percorso locale in due moduli: prima collochi la self-attention nel modello, poi distingui i ruoli di query, key e value.</p>
+    <p data-pilot-recommendation aria-live="polite">Prossimo passo consigliato: {html.escape(route[0]["title"])}.</p>
     <ol>{cards}</ol>
     <p><a class="start" href="{first}">Inizia il percorso</a></p>
-    <p><small>Il pilot funziona offline e salva i progressi soltanto nel browser locale.</small></p>
+    <p><small>Il pilot funziona offline e legge i progressi soltanto dal browser locale.</small></p>
   </main>
+  <script>window.RAIATEA_PILOT={manifest_json};</script>
+  <script src="pilot-dashboard.js" defer></script>
 </body>
 </html>
 """
 
 
-def _manifest(route: tuple[dict[str, Any], ...]) -> dict[str, Any]:
-    modules: list[dict[str, Any]] = []
-    for index, item in enumerate(route):
-        modules.append(
-            {
-                "id": item["id"],
-                "revision": item["revision"],
-                "title": item["title"],
-                "order": index,
-                "file": item["output"],
-                "previous": route[index - 1]["output"] if index > 0 else None,
-                "next": route[index + 1]["output"] if index + 1 < len(route) else None,
-            }
-        )
-    return {"format": "raiatea-pilot", "version": 1, "modules": modules}
-
-
 def _verify_output(directory: Path, manifest: dict[str, Any]) -> None:
-    required = {"index.html", "pilot-manifest.json"}
+    required = {"index.html", "pilot-manifest.json", "pilot-dashboard.js"}
     required.update(module["file"] for module in manifest["modules"])
     missing = sorted(name for name in required if not (directory / name).is_file())
     if missing:
         raise ValueError(f"pilot output is missing files: {missing}")
-
     launcher = (directory / "index.html").read_text(encoding="utf-8")
+    if 'src="pilot-dashboard.js"' not in launcher:
+        raise ValueError("launcher is missing dashboard script")
     for module in manifest["modules"]:
         if f'href="{module["file"]}"' not in launcher:
             raise ValueError(f"launcher is missing module link {module['file']}")
@@ -162,21 +162,16 @@ def _verify_output(directory: Path, manifest: dict[str, Any]) -> None:
         for link in ("index.html", module["previous"], module["next"]):
             if link is not None and f'href="{link}"' not in document:
                 raise ValueError(f"{module['file']} is missing route link {link}")
-
-    serialized = json.dumps(manifest, ensure_ascii=False)
-    generated = launcher + serialized
+    generated = launcher + json.dumps(manifest, ensure_ascii=False)
     if str(directory.resolve()) in generated:
         raise ValueError("pilot output contains an absolute output path")
 
 
-def _install_directory_no_replace(
-    staged: Path, output: Path, manifest: dict[str, Any]
-) -> None:
+def _install_directory_no_replace(staged: Path, output: Path, manifest: dict[str, Any]) -> None:
     try:
         os.mkdir(output, 0o755)
     except FileExistsError as exc:
         raise ValueError("pilot output path already exists") from exc
-
     installed: list[Path] = []
     try:
         for source in sorted(staged.iterdir(), key=lambda path: path.name):
@@ -198,7 +193,6 @@ def _install_directory_no_replace(
         try:
             output.rmdir()
         except OSError:
-            # Preserve any path or file created concurrently by another actor.
             pass
         raise
 
@@ -214,6 +208,7 @@ def build_pilot(output: Path) -> Path:
         template = TEMPLATE.read_text(encoding="utf-8")
         css = CSS.read_text(encoding="utf-8")
         js = JS.read_text(encoding="utf-8")
+        dashboard_js = DASHBOARD_JS.read_text(encoding="utf-8")
         for index, item in enumerate(route):
             document = render_module(item["module"], template, css, js)
             raise_for_issues(validate_rendered_html(document))
@@ -222,9 +217,9 @@ def build_pilot(output: Path) -> Path:
             document = _inject_navigation(document, _navigation(previous, next_item))
             raise_for_issues(validate_rendered_html(document))
             (temporary / item["output"]).write_text(document, encoding="utf-8")
-
-        manifest = _manifest(route)
-        (temporary / "index.html").write_text(_launcher(route), encoding="utf-8")
+        manifest = _public_manifest(route)
+        (temporary / "index.html").write_text(_launcher(route, manifest), encoding="utf-8")
+        (temporary / "pilot-dashboard.js").write_text(dashboard_js, encoding="utf-8")
         (temporary / "pilot-manifest.json").write_text(
             json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
             encoding="utf-8",

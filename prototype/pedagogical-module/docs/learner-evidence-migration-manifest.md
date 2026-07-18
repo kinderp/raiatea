@@ -17,11 +17,11 @@ A migration manifest records one authored transition between two exact canonical
 
 The first contract supports only operations whose evidence semantics do not require invented aggregation or duplication policy:
 
-- `preserve`: one source stable step ID maps one-to-one to one target stable step ID;
+- `preserve`: one source stable step ID remains the exact same target stable step ID;
 - `retire`: one source stable step ID has no target evidence destination;
 - `introduce`: one target stable step ID has no source evidence origin.
 
-A stable-ID-preserving title rename uses `preserve`. Reorder is represented by the target revision's authored order and is not a mapping operation.
+A title rename or reorder with unchanged pedagogical responsibility uses `preserve` and retains the exact `stepId`. A changed stable identity is never aliased through `preserve`; it must be represented as retiring the source ID and introducing the target ID. Reorder is represented by the target revision's authored order and is not a special mapping operation.
 
 Split, merge, fan-out, fan-in, aggregation, evidence synthesis, semantic matching, and LLM inference are unsupported and fail closed.
 
@@ -31,6 +31,7 @@ The manifest declares complete source and target stable-ID inventories and compl
 
 - every source ID appears exactly once in `preserve` or `retire`;
 - every target ID appears exactly once in `preserve` or `introduce`;
+- every preserve entry uses the same exact source and target stable ID;
 - preserve mappings are one-to-one;
 - operation arrays are deterministic and duplicate-free;
 - IDs use the canonical lowercase/digit/hyphen syntax;

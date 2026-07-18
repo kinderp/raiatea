@@ -1,0 +1,64 @@
+{
+  "id": "migration-context-fixture",
+  "revision": 11,
+  "title": "Migration context target with mismatched revision",
+  "language": "en",
+  "route": {
+    "summary": "Validate an opaque target revision mismatch.",
+    "previous": []
+  },
+  "prerequisites": [],
+  "visual": {
+    "type": "svg",
+    "markup": "<svg id=\"migration-context-target-revision-visual\" aria-label=\"Migration target revision fixture\"></svg>"
+  },
+  "steps": [
+    {
+      "id": "orient-concept",
+      "title": "Orient the learner with revised wording",
+      "explanation": "<p>Introduce the same conceptual responsibility.</p>",
+      "goal": "Recognize the concept.",
+      "observe": "Observe the target visual.",
+      "quiz": {
+        "question": "What identity remains stable?",
+        "answers": ["Orientation", "The title"],
+        "correctIndex": 0,
+        "correctFeedback": "Correct.",
+        "incorrectFeedback": "Review stable identity."
+      }
+    },
+    {
+      "id": "apply-concept",
+      "title": "Apply the replacement responsibility",
+      "explanation": "<p>Apply the new responsibility.</p>",
+      "goal": "Use the replacement responsibility.",
+      "observe": "Observe the application result.",
+      "quiz": {
+        "question": "Which responsibility replaces legacy practice?",
+        "answers": ["Application", "Orientation"],
+        "correctIndex": 0,
+        "correctFeedback": "Correct.",
+        "incorrectFeedback": "Review the target revision."
+      }
+    },
+    {
+      "id": "new-enrichment",
+      "title": "Complete the enrichment",
+      "explanation": "<p>Complete a newly introduced responsibility.</p>",
+      "goal": "Recognize newly introduced content.",
+      "observe": "Observe the enrichment.",
+      "quiz": {
+        "question": "Was this step present in the source revision?",
+        "answers": ["No", "Yes"],
+        "correctIndex": 0,
+        "correctFeedback": "Correct.",
+        "incorrectFeedback": "Review the manifest introduction."
+      }
+    }
+  ],
+  "concepts": [],
+  "next": {
+    "summary": "Continue after contextual validation.",
+    "items": ["Classify evidence later"]
+  }
+}

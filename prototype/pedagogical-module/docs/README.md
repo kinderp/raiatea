@@ -19,10 +19,11 @@ This directory collects the stable architecture and privacy decisions that gover
 - [`pilot-route-dashboard.md`](pilot-route-dashboard.md) — learner-facing route status derived only from exact module-local progress keys, closed completion semantics, advisory recommendation, refresh behavior, and privacy limits.
 - [`pilot-export-summary-walkthrough.md`](pilot-export-summary-walkthrough.md) — static learner guidance separating route status, module summary, and explicit module-scoped learner-evidence v1 download, including non-destructive and privacy boundaries.
 - [`pilot-end-to-end-acceptance.md`](pilot-end-to-end-acceptance.md) — final manual and automated acceptance journey over the generated pilot artifact, including build, remediation, dashboard, summary, export, privacy, and closeout criteria.
+- [`evaluator-release-layout.md`](evaluator-release-layout.md) — closed evaluator-release manifest, opaque version identity, deterministic versioned directory layout, regular-file inventory, and no-replace installation boundary.
 
-The pilot contracts define the evaluator-facing local learner journey, its read-only route dashboard, its explicit per-module evidence walkthrough, and the final acceptance path. Evidence and migration contracts remain separate and unchanged.
+The pilot contracts define the evaluator-facing local learner journey and its final acceptance path. The evaluator-release contract wraps that unchanged pilot in a deterministic distribution layout. Evidence and migration contracts remain separate and unchanged.
 
-## Reading order for evidence and pilot work
+## Reading order for evidence, pilot, and release work
 
 1. Read the retention and privacy boundary before changing stored or exported learner evidence.
 2. Read the module-evolution and authoring contracts before changing module revisions or step identities.
@@ -31,8 +32,9 @@ The pilot contracts define the evaluator-facing local learner journey, its read-
 5. Read the pilot-route-dashboard contract before deriving cross-module route status from browser-local progress.
 6. Read the pilot export/summary walkthrough before changing learner-facing guidance or browser download verification.
 7. Read the end-to-end acceptance contract before declaring the pilot ready for non-developer evaluation.
-8. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
+8. Read the evaluator-release layout contract before wrapping the pilot in versioned distribution metadata.
+9. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
 
 ## Current implementation boundary
 
-Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The pilot packager builds a deterministic offline two-module route with relative navigation and no-replace output installation. The route dashboard reads only the two exact `raiatea-progress:<module-id>` keys, derives `not-started`, `in-progress`, or `locally-completed`, and recommends the first incomplete module without writing storage or gating navigation. The launcher provides static guidance for interpreting the module-local summary and explicitly downloading the unchanged privacy-safe learner-evidence v1 document for the current module. The final acceptance increment verifies the complete generated journey without adding learner behavior. Multi-module evidence export, accounts, server persistence, analytics, LMS integration, grading, and AI recommendations remain deferred.
+Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The completed pilot provides a deterministic offline two-module journey, read-only route dashboard, module-scoped v1 export, evaluator guidance, and full browser acceptance. The evaluator-release builder now wraps the byte-identical pilot under `raiatea-evaluator-<version>/pilot/` and derives a closed sorted regular-file inventory in `release-manifest.json`, with no replacement of existing destinations. Checksums, archives, release notes, CI artifact publication, accounts, analytics, LMS integration, signing, installers, registries, and automatic updates remain deferred.

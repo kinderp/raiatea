@@ -5,7 +5,7 @@ Pull request: #61
 
 ## Reviewed implementation
 
-Initial review targeted head `fc48feafe49333f797aa06d7a0c64962fc3b0331`. Concurrent implementation commits through `a959f88a1f6343ae7648c344af4c989eeddd96f5` added the initial browser harness, workflow build, evaluator README, and final HTML validation. Final Actions and two clean reviews must target one unchanged head after all findings below are resolved.
+Initial review targeted head `fc48feafe49333f797aa06d7a0c64962fc3b0331`. Concurrent implementation commits through `a959f88a1f6343ae7648c344af4c989eeddd96f5` added the initial browser harness, workflow build, evaluator README, and final HTML validation. The complete correction landed on `2767b545592fa38827c869825ac1d88b6a61d3e2`. Final Actions and two clean reviews must target one unchanged head after all findings below are resolved.
 
 ## Findings
 
@@ -50,6 +50,12 @@ Resolution: `PILOT.md` is the concise evaluator-facing README with exact build, 
 The first builder validated renderer output before injecting the pilot navigation, so the exact packaged document was not the validated document.
 
 Resolution: final HTML validation runs after navigation injection and before staging output is installed.
+
+### F8 — infrastructure — observed — run 667 did not start repository steps
+
+GitHub Actions run 667 reported both jobs as failed, but the first attempt and the explicit rerun both returned no job steps and no downloadable logs. The rerun allocated new job IDs and failed in the same pre-step state, so no repository command, unit test, browser test, or workflow step produced a reproducible failure.
+
+Resolution boundary: record the runner-start failure without guessing at product changes. This finding-log-only commit triggers a fresh workflow run; code changes will be made only if that run produces an executable step or log with a repository failure.
 
 ## Open findings
 

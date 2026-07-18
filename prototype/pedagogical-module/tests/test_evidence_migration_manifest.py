@@ -65,7 +65,9 @@ class LearnerEvidenceMigrationManifestTests(unittest.TestCase):
             {"preserve", "retire", "introduce"},
             set(operations["required"]),
         )
-        preserve = operations["properties"]["preserve"]["items"]
+        preserve_array = operations["properties"]["preserve"]
+        self.assertTrue(preserve_array["uniqueItems"])
+        preserve = preserve_array["items"]
         self.assertFalse(preserve["additionalProperties"])
         self.assertEqual(
             {"sourceStepId", "targetStepId"}, set(preserve["required"])
@@ -79,11 +81,24 @@ class LearnerEvidenceMigrationManifestTests(unittest.TestCase):
             "cross-module.json": [
                 "$.target.moduleId: must match $.source.moduleId"
             ],
+            "alias-preserve.json": [
+                "$.operations.preserve[0].targetStepId: preserve must retain the exact source step ID 'old-step'"
+            ],
+            "duplicate-preserve.json": [
+                "$.operations.preserve: source step ID 'orient' is preserved more than once",
+                "$.operations.preserve: target step ID 'orient' is preserved more than once",
+                "$.operations: source step ID 'orient' is covered more than once",
+                "$.operations: target step ID 'orient' is covered more than once",
+            ],
             "fan-out.json": [
+                "$.operations.preserve[0].targetStepId: preserve must retain the exact source step ID 'source-step'",
+                "$.operations.preserve[1].targetStepId: preserve must retain the exact source step ID 'source-step'",
                 "$.operations.preserve: source step ID 'source-step' is preserved more than once",
                 "$.operations: source step ID 'source-step' is covered more than once",
             ],
             "fan-in.json": [
+                "$.operations.preserve[0].targetStepId: preserve must retain the exact source step ID 'source-a'",
+                "$.operations.preserve[1].targetStepId: preserve must retain the exact source step ID 'source-b'",
                 "$.operations.preserve: target step ID 'target-step' is preserved more than once",
                 "$.operations: target step ID 'target-step' is covered more than once",
             ],

@@ -12,7 +12,6 @@ if str(BUILD_DIR) not in sys.path:
     sys.path.insert(0, str(BUILD_DIR))
 
 from render_visual import render_visual  # noqa: E402
-from validate_module_identity import validate_module_identity  # noqa: E402
 from validate_module_v2 import (  # noqa: E402
     ModuleValidationError,
     load_and_validate,
@@ -122,10 +121,6 @@ def main() -> None:
             if args.skip_validation
             else load_and_validate(args.module)
         )
-        if not args.skip_validation:
-            identity_issues = validate_module_identity(data)
-            if identity_issues:
-                raise ValueError("\n".join(identity_issues))
         output = render_module(
             data,
             args.template.read_text(encoding="utf-8"),
@@ -140,8 +135,7 @@ def main() -> None:
             for issue in exc.issues:
                 print(f"- {issue}")
         else:
-            for issue in str(exc).splitlines():
-                print(f"- {issue}")
+            print(f"- {exc}")
         raise SystemExit(1) from exc
 
     args.output.parent.mkdir(parents=True, exist_ok=True)

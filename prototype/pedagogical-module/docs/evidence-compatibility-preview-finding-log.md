@@ -3,48 +3,69 @@
 Issue: #46  
 Pull request: #47
 
-## Reviewed candidate
+## Reviewed implementation
 
-Candidate head reviewed: `0eae0d15c85861b5aedfc098f5923692e1b0b0bf`.
+Implementation reviewed through head `5687037e50d9c6396f81cd05a6c89eee9f135ec9`. Final clean-review rounds must use the unchanged final head after this finding-log update and any remaining documentation-only changes.
 
 ## Findings
 
-### F1 — resolved — implementation already exceeded the initial Class A-only scaffold
+### F1 — major — resolved — non-object JSON could escape namespaced validation
 
-The branch contains one authoritative preview engine with Class A exact matching, Class B declared-lossless direct migrations, Class C declared-partial direct migrations, Class D fail-closed incompatibility, and Class E unsupported-version handling. The thin classifier module delegates to that engine rather than maintaining a second decision path.
+The initial loader asserted that parsed evidence and target JSON were objects. Arrays, strings, numbers, and `null` are valid JSON values and could therefore raise `AssertionError` instead of a deterministic input error.
 
-Resolution: retain `preview_evidence_migration_v2.py` as the authoritative implementation and keep `classify_evidence_compatibility_v2.py` as a compatibility wrapper only.
+Resolution: raw values are inspected without assertions; supported-version objects proceed to the existing structural validators, and non-object values fail under the exact `evidence` or `targetModule` namespace. Boundary regressions cover array and null inputs.
 
-### F2 — resolved — candidate generation needed an executable invariant
+### F2 — major — resolved — module loading bypassed canonical layout resolution
 
-A preview that reports `candidateAvailable` must not emit a malformed or contextually incompatible target document.
+The initial preview loader validated raw module dictionaries directly. That skipped the canonical loader's declarative-layout resolution and could reject an otherwise valid canonical module using `visual.type = layout`.
 
-Resolution: every generated candidate is validated structurally as learner-evidence v2 and checked for exact Class A compatibility against the target revision before it is returned.
+Resolution: source and target paths now use `validate_module_v2.load_and_validate`. A regression classifies the buildable declarative query/key/value module without bypassing its layout compiler.
 
-### F3 — resolved — retired current position must remain unresolved
+### F3 — major — resolved — incomplete optional migration context was checked too late
 
-Selecting the next, previous, nearest, or first target step would introduce hidden migration policy.
+An exact evidence/target pair could return Class A before noticing that only one of `sourceModule` and `manifest` had been supplied.
+
+Resolution: invocation shape is validated before exact classification. Source module and manifest are an inseparable optional pair for every classification, including Class A.
+
+### F4 — minor — resolved — generated candidate lacked an implementation invariant
+
+Candidate validity was previously demonstrated only by tests after the classifier returned it.
+
+Resolution: candidate construction now runs the learner-evidence v2 structural validator and the existing Class A exact contextual checker against the target before the candidate can be returned. Failure is an internal invariant violation rather than an invalid public result.
+
+### F5 — minor — resolved — human output did not state the no-mutation boundary
+
+A successful preview and candidate could be mistaken for an applied migration.
+
+Resolution: the human-readable CLI always prints that the result is preview-only and that no evidence file or learner state was changed. JSON output retains explicit `candidateAvailable` and never writes a file or storage record.
+
+### F6 — minor — resolved — overlapping CLI implementations appeared on the branch
+
+A second loader/CLI temporarily duplicated unsupported-version, structural-validation, and rendering logic, risking divergent behavior.
+
+Resolution: `preview_evidence_migration_v2.py` is the single authoritative engine, loader, and CLI. `classify_evidence_compatibility_v2.py` is only a compatibility wrapper, and all loader/CLI tests target the authoritative implementation.
+
+### F7 — resolved — retired current position must remain unresolved
+
+Selecting a nearest, previous, next, or first target step would introduce hidden migration policy.
 
 Resolution: a retired current step yields `unresolved-retired`, `candidateAvailable: false`, and no candidate document.
-
-### F4 — resolved — preview output must not become authorization
-
-Classification and candidate availability could otherwise be mistaken for confirmation or persistence permission.
-
-Resolution: the contract, result model, tests, and CLI keep preview generation read-only; no browser storage, input file, or input object is modified.
 
 ## Regression boundary
 
 The test suite covers:
 
 - exact Class A preview;
-- Class B rename/reorder by stable ID;
-- Class C introduction and retirement;
+- Class B title changes and reorder by stable ID;
+- Class C introduction, retirement, and replacement represented as retire plus introduce;
 - preserved and retired current positions;
-- missing, partial, mismatched, malformed, and unsupported migration contexts;
-- deterministic CLI and JSON output;
+- missing, incomplete, mismatched, malformed, non-object, and unsupported migration contexts;
+- canonical declarative-layout resolution;
+- deterministic human and JSON CLI output and exit status;
 - generated-candidate structural and exact contextual validity;
-- side-effect freedom;
-- unchanged learner-evidence v1, v2 structural, exact compatibility, and migration-manifest contracts.
+- privacy-safe allowlisted result data and side-effect freedom;
+- unchanged learner-evidence v1, v2 structural, exact compatibility, standalone manifest, and contextual-manifest contracts.
 
-No unresolved finding is known. Clean final-head review rounds must run only after GitHub Actions is green on an unchanged head.
+## Open findings
+
+None. GitHub Actions must be green and two consecutive clean review rounds must run on the same unchanged final head before merge.

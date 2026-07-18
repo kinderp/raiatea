@@ -95,11 +95,11 @@ The record contains only observable evidence:
 
 The summary panel distinguishes correct without remediation, correct after remediation, attempted but not consolidated, and not yet verified. This is deliberately not called a mastery score.
 
-### Privacy-safe JSON export
+### Privacy-safe JSON export: v1 browser contract
 
 The learner can explicitly download the current module evidence with **Esporta evidenze JSON**. The operation is local and user-initiated: the browser creates a file and does not send evidence to a server.
 
-The v1 document is identified by:
+The browser currently exports learner-evidence v1:
 
 ```json
 {
@@ -126,16 +126,48 @@ The export intentionally excludes:
 
 The predictable filename is `<module-id>-evidence-v1.json`. Export does not delete or modify the browser-local progress record. Signing, encryption, multi-module bundles, and cloud transfer remain outside this prototype.
 
-Validate a saved or example export with:
+Validate a saved or example v1 export with:
 
 ```bash
 python prototype/pedagogical-module/build/validate_evidence_export.py \
   prototype/pedagogical-module/evidence-examples/learner-evidence-export-v1.json
 ```
 
-### Import compatibility policy
+### Learner-evidence v2 structural contract
 
-A structurally valid export is not automatically safe to restore into every module revision. The side-effect-free compatibility checker requires:
+Learner-evidence v2 is a separately versioned document contract. It carries exact canonical module revision identity, stable pedagogical step IDs, the source revision's explicit step order, and the current position as both `currentStepId` and `currentStepIndex`.
+
+```json
+{
+  "format": "raiatea-learner-evidence",
+  "version": 2
+}
+```
+
+The closed schema lives in `schema/learner-evidence-export-v2.schema.json`; the representative document is `evidence-examples/learner-evidence-export-v2.json`. The side-effect-free validator checks internal consistency, including:
+
+- a positive opaque module revision identity;
+- canonical and unique exported `stepId` values;
+- contiguous indexes matching array positions;
+- module step-count consistency;
+- a current step ID present in the exported step set;
+- agreement between current step ID and current step index;
+- exact allowlists at every object boundary.
+
+Validate the representative v2 document with:
+
+```bash
+python prototype/pedagogical-module/build/validate_evidence_export_v2.py \
+  prototype/pedagogical-module/evidence-examples/learner-evidence-export-v2.json
+```
+
+Structural validity does not prove compatibility with an installed or published module revision. The current browser does not export, import, preview, restore, or migrate v2 documents. A later contextual checker must receive both the evidence and an immutable canonical module or publication record; until then, consumers needing compatibility decisions must fail closed.
+
+V1 and v2 coexist explicitly. The v1 validator rejects v2 fields and version `2`; the v2 validator rejects v1 documents. V2 is never silently substituted for a requested v1 export, and no automatic downgrade is defined.
+
+### V1 import compatibility policy
+
+A structurally valid v1 export is not automatically safe to restore into every module revision. The side-effect-free compatibility checker requires:
 
 - exact supported format and version through the structural validator;
 - exact module ID;
@@ -155,7 +187,7 @@ python prototype/pedagogical-module/build/check_evidence_compatibility.py \
 
 The checker reads and validates both files, reports every incompatibility, and exits non-zero on failure. It does not access browser storage or apply progress.
 
-### Explicit restore with conflict preview
+### Explicit v1 restore with conflict preview
 
 The learner can select a JSON file with **Importa evidenze JSON**. Selection alone never changes progress. The browser performs the same conservative v1 structural and module-compatibility checks, then shows a preview comparing:
 
@@ -178,7 +210,7 @@ Malformed, oversized, unsupported, cross-module, or revision-incompatible files 
 
 The current conflict policy is intentionally narrow:
 
-- compatible evidence replaces the current module record only after confirmation;
+- compatible v1 evidence replaces the current module record only after confirmation;
 - histories are not merged;
 - versions are not migrated or coerced;
 - there is no background upload, analytics, telemetry, cloud synchronization, or LMS transfer.
@@ -199,17 +231,19 @@ The current generated module contains no provider credentials, network queue, ex
 
 ### Module evolution and future evidence compatibility
 
-The architecture decision for durable module identity, explicit revisions, immutable step IDs, and authored migration responsibilities is documented in [`docs/module-evolution-and-evidence-compatibility.md`](docs/module-evolution-and-evidence-compatibility.md). The executable authoring rules for the canonical fields are documented in [`docs/module-revision-authoring.md`](docs/module-revision-authoring.md), and the documentation index is available in [`docs/README.md`](docs/README.md).
+The architecture decision for durable module identity, explicit revisions, immutable step IDs, and authored migration responsibilities is documented in [`docs/module-evolution-and-evidence-compatibility.md`](docs/module-evolution-and-evidence-compatibility.md). The executable authoring rules are in [`docs/module-revision-authoring.md`](docs/module-revision-authoring.md), the v2 stable-identity contract is in [`docs/learner-evidence-v2-stable-identity.md`](docs/learner-evidence-v2-stable-identity.md), and the documentation index is available in [`docs/README.md`](docs/README.md).
 
 The current implementation boundary is:
 
 - every canonical module carries a positive integer `revision`;
 - every pedagogical step carries a unique stable ID using lowercase letters, digits, and hyphens;
-- learner-evidence v1 still uses exact module ID, ordered indexes, and authored step titles and does not export `revision` or `stepId`;
+- learner-evidence v1 keeps its exact title/index browser export, compatibility, preview, and restore behavior;
+- learner-evidence v2 has a separate closed schema, example, and structural validator carrying revision identity and stable step IDs;
+- v2 browser export/import and contextual compatibility against a canonical revision are not implemented;
 - rename, reorder, split, merge, retirement, and replacement are not migrated automatically;
 - future migrations must be versioned, authored, directional, side-effect free during validation and preview, and explicitly confirmed before any state change.
 
-Defining evidence v2, publishing a migration-manifest schema, and implementing migration preview remain separate reviewable increments.
+Contextual v2 compatibility, migration manifests, compatibility previews, and state-changing migration remain separate reviewable increments.
 
 ## Step-level provenance
 
@@ -249,7 +283,7 @@ python -m unittest discover \
   -v
 ```
 
-The suite covers all example modules, canonical revision and step-ID fixtures, adaptive remediation, micro-activities, learner evidence, export validation, import compatibility, step provenance, semantic visual references, generated output, and common invalid cases.
+The suite covers all example modules, canonical revision and step-ID fixtures, adaptive remediation, micro-activities, v1 and v2 evidence validation, v1 browser export and import compatibility, step provenance, semantic visual references, generated output, and common invalid cases.
 
 ## Browser interaction tests
 
@@ -274,9 +308,9 @@ The Playwright configuration builds `examples/self-attention.json` through the c
 - preservation of arrow-key behavior while a reading control has focus;
 - reduced-motion concept navigation, centered target focus, and non-flashing highlight state;
 - targeted remediation, retry behavior, local evidence, and reload persistence;
-- versioned evidence download, predictable filename, exported values, and privacy exclusions;
-- compatible evidence preview without immediate mutation;
-- explicit replacement and reload persistence;
+- versioned v1 evidence download, predictable filename, exported values, and privacy exclusions;
+- compatible v1 evidence preview without immediate mutation;
+- explicit v1 replacement and reload persistence;
 - preservation of reading preferences and unrelated storage;
 - cancel, malformed JSON, and incompatible-module no-op behavior;
 - playback shutdown, latest-selection ordering, visible file chooser, and stale-preview invalidation;
@@ -290,15 +324,18 @@ CI installs Chromium with its Linux system dependencies before running the same 
 prototype/pedagogical-module/
 ├── schema/module.schema.json
 ├── schema/learner-evidence-export-v1.schema.json
+├── schema/learner-evidence-export-v2.schema.json
 ├── examples/self-attention.json
 ├── examples/self-attention-procedure.json
 ├── examples/query-key-value.json
 ├── examples/query-key-value.layout.json
 ├── evidence-examples/learner-evidence-export-v1.json
+├── evidence-examples/learner-evidence-export-v2.json
 ├── docs/README.md
 ├── docs/learner-evidence-boundaries.md
 ├── docs/module-evolution-and-evidence-compatibility.md
 ├── docs/module-revision-authoring.md
+├── docs/learner-evidence-v2-stable-identity.md
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js
@@ -309,12 +346,15 @@ prototype/pedagogical-module/
 ├── build/validate_module_v2.py
 ├── build/validate_module_identity.py
 ├── build/validate_evidence_export.py
+├── build/validate_evidence_export_v2.py
 ├── build/check_evidence_compatibility.py
 ├── tests/fixtures/module-identity/
+├── tests/fixtures/evidence-v2/
 ├── tests/test_layout_visual.py
 ├── tests/test_validation.py
 ├── tests/test_module_identity.py
 ├── tests/test_evidence_export.py
+├── tests/test_evidence_export_v2.py
 ├── tests/test_evidence_compatibility.py
 ├── browser-tests/module.spec.js
 ├── browser-tests/evidence-import-race.spec.js
@@ -330,9 +370,10 @@ prototype/pedagogical-module/
 - template replacement is intentionally dependency-free and simple;
 - the Python module validator is layered;
 - mathematical rendering uses plain text unless represented by visual primitives;
-- learner evidence is portable only as a one-module v1 JSON document;
-- restore supports explicit replacement of one compatible module record, not history merging;
-- canonical revision and step IDs are embedded in module JSON but are not part of learner-evidence v1;
+- the browser currently exports and restores only one-module v1 JSON documents;
+- v2 is available only as a closed schema, example, and structural validator;
+- no v2 browser export/import or contextual compatibility checker exists;
+- restore supports explicit replacement of one compatible v1 module record, not history merging;
 - no version migration, multi-module bundle, signing, encryption, cloud sync, or LMS transfer exists;
 - recommendation rules are deterministic and intentionally simple;
 - declarative layouts currently cover linear and branch/merge structures only;
@@ -342,10 +383,11 @@ prototype/pedagogical-module/
 
 ## Next improvements
 
-1. Design a separately versioned learner-evidence format that carries canonical revision and stable step IDs.
+1. Add side-effect-free contextual v2 compatibility against an immutable canonical module revision.
 2. Define and validate authored migration manifests before implementing migration preview.
 3. Add compatibility classification and human-readable migration preview without state changes.
 4. Add explicitly confirmed migration while preserving the original evidence copy.
-5. Define a provider-neutral adapter interface only when a concrete integration use case exists.
-6. Link multiple modules into a prerequisite route.
-7. Replace the temporary layered module validator with one consolidated implementation.
+5. Add explicit browser v2 export/import only after contextual compatibility is defined.
+6. Define a provider-neutral adapter interface only when a concrete integration use case exists.
+7. Link multiple modules into a prerequisite route.
+8. Replace the temporary layered module validator with one consolidated implementation.

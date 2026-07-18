@@ -1,6 +1,6 @@
 # Learner-evidence v2 stable identity contract
 
-Status: design contract for issue #36. This document defines a separately versioned evidence format and does not modify learner-evidence v1.
+Status: implementation contract for issue #36. This document defines a separately versioned evidence format and does not modify learner-evidence v1.
 
 ## Version boundary
 
@@ -40,7 +40,7 @@ Authored module IDs, step IDs, titles, labels, and source metadata must remain c
 
 ## Initial increment boundary
 
-The first v2 increment is schema, validator, examples, and documentation only.
+The first v2 increment provides a closed schema, one representative document, a deterministic structural validator, invalid fixtures, tests, and documentation only.
 
 It does not:
 
@@ -52,16 +52,28 @@ It does not:
 - mutate browser storage;
 - transmit evidence to a server or LMS.
 
-## Fail-closed validation
+## Structural validation versus contextual compatibility
 
-The v2 validator must reject:
+The v2 structural validator has only the evidence document as input. It proves internal consistency, not compatibility with an installed or published module revision.
+
+- any positive integer revision is structurally valid as an opaque identity;
+- every exported step ID must be syntactically valid and unique inside the document;
+- `currentStepId` must refer to one exported step and agree with `currentStepIndex`;
+- the validator cannot decide whether a revision is published, whether a step ID exists in that revision, or whether an ID is retired;
+- until a separate contextual checker is implemented, consumers that need those decisions must fail closed rather than infer compatibility.
+
+A future contextual compatibility checker must receive both the evidence and an immutable canonical module or publication record. That later increment owns unknown revision, unknown step, retired step, and cross-revision classification behavior.
+
+## Fail-closed structural validation
+
+The v2 validator rejects:
 
 - unsupported format or version;
-- missing, boolean, fractional, zero, or negative revisions;
+- missing, boolean, string, fractional, zero, or negative revisions;
 - malformed or duplicate stable step IDs;
 - missing, duplicate, non-canonical, or non-contiguous indexes;
 - inconsistent step counts;
-- unknown current step IDs;
+- unknown current step IDs within the exported step set;
 - mismatch between current step ID and current step index;
 - additional non-allowlisted fields at every closed object boundary.
 
@@ -71,4 +83,4 @@ V2 does not define an automatic downgrade to v1. A future explicit converter may
 
 ## Deferred work
 
-Compatibility classification, authored migration manifests, side-effect-free migration preview, and explicitly confirmed migration remain separate child issues under #19.
+Contextual compatibility classification, authored migration manifests, side-effect-free migration preview, explicitly confirmed migration, browser v2 export, and browser v2 import remain separate child issues under #19.

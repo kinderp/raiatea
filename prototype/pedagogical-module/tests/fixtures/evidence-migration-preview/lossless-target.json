@@ -1,0 +1,50 @@
+{
+  "id": "migration-context-fixture",
+  "revision": 3,
+  "title": "Migration context lossless reorder target",
+  "language": "en",
+  "route": {
+    "summary": "Reorder stable responsibilities without changing their identity.",
+    "previous": []
+  },
+  "prerequisites": [],
+  "visual": {
+    "type": "svg",
+    "markup": "<svg id=\"migration-preview-lossless-visual\" aria-label=\"Lossless migration fixture\"></svg>"
+  },
+  "steps": [
+    {
+      "id": "legacy-practice",
+      "title": "Practice the stable responsibility with revised wording",
+      "explanation": "<p>Practice the same responsibility after reordering.</p>",
+      "goal": "Apply the stable responsibility.",
+      "observe": "Observe the reordered practice result.",
+      "quiz": {
+        "question": "Which identity remains stable?",
+        "answers": ["legacy-practice", "The array index"],
+        "correctIndex": 0,
+        "correctFeedback": "Correct.",
+        "incorrectFeedback": "Review stable identity."
+      }
+    },
+    {
+      "id": "orient-concept",
+      "title": "Orient the learner with revised wording",
+      "explanation": "<p>Introduce the same responsibility later in the route.</p>",
+      "goal": "Recognize the stable concept.",
+      "observe": "Observe the reordered orientation result.",
+      "quiz": {
+        "question": "What determines identity?",
+        "answers": ["The stable ID", "The title"],
+        "correctIndex": 0,
+        "correctFeedback": "Correct.",
+        "incorrectFeedback": "Review the stable ID."
+      }
+    }
+  ],
+  "concepts": [],
+  "next": {
+    "summary": "Continue after the lossless preview.",
+    "items": ["Review the remapped current position"]
+  }
+}

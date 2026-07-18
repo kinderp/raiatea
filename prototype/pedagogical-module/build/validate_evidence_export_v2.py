@@ -120,8 +120,7 @@ def validate_evidence_export_v2(data: Any) -> list[str]:
             issues,
         )
         _canonical_id(module.get("id"), "$.module.id", issues)
-        if _positive_integer(module.get("revision"), "$.module.revision", issues):
-            pass
+        _positive_integer(module.get("revision"), "$.module.revision", issues)
         for field in ("title", "language"):
             _non_empty_string(module.get(field), f"$.module.{field}", issues)
         if _positive_integer(module.get("stepCount"), "$.module.stepCount", issues):

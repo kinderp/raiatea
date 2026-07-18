@@ -161,10 +161,15 @@ class ConfirmedEvidenceMigrationApplicationTests(unittest.TestCase):
         preparation = self._prepare()
         original = copy.deepcopy(self.evidence)
         cases = (
+            {},
             {"confirmed": False, "confirmation_token": preparation["confirmationToken"]},
             {"confirmed": True, "confirmation_token": None},
             {"confirmed": True, "confirmation_token": "0" * 64},
             {"confirmed": True, "confirmation_token": "raiatea-confirm-v1:not-hex"},
+            {
+                "confirmed": True,
+                "confirmation_token": "raiatea-confirm-v1:" + "A" * 64,
+            },
         )
         for values in cases:
             with self.subTest(values=values):

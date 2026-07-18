@@ -1,0 +1,21 @@
+{
+  "format": "raiatea-learner-evidence-migration",
+  "version": 1,
+  "source": {
+    "moduleId": "migration-context-fixture",
+    "revision": 1,
+    "stepIds": ["orient-concept", "legacy-practice"]
+  },
+  "target": {
+    "moduleId": "migration-context-fixture",
+    "revision": 2,
+    "stepIds": ["orient-concept", "apply-concept", "new-enrichment", "ghost-target"]
+  },
+  "operations": {
+    "preserve": [
+      {"sourceStepId": "orient-concept", "targetStepId": "orient-concept"}
+    ],
+    "retire": ["legacy-practice"],
+    "introduce": ["apply-concept", "new-enrichment", "ghost-target"]
+  }
+}

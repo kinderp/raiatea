@@ -13,10 +13,9 @@
   },
   "operations": {
     "preserve": [
-      {"sourceStepId": "orient-concept", "targetStepId": "orient-concept"},
-      {"sourceStepId": "practice-concept", "targetStepId": "apply-concept"}
+      {"sourceStepId": "orient-concept", "targetStepId": "orient-concept"}
     ],
-    "retire": ["legacy-summary"],
-    "introduce": ["new-enrichment"]
+    "retire": ["practice-concept", "legacy-summary"],
+    "introduce": ["apply-concept", "new-enrichment"]
   }
 }

@@ -1,11 +1,13 @@
 # Evidence compatibility preview finding log
 
-Issue: #46  
-Pull request: #47
+Original issue: #46  
+Original pull request: #47  
+Corrective issue: #53  
+Corrective pull request: #55
 
 ## Reviewed implementation
 
-Implementation reviewed through head `5687037e50d9c6396f81cd05a6c89eee9f135ec9`. Final clean-review rounds must use the unchanged final head after this finding-log update and any remaining documentation-only changes.
+The original implementation was squash-merged as `015a358b48c24ca8e5c4dc02663c7853013325d7`. The corrective unreadable-input implementation was reviewed through head `e2620304340e91b032b261fcc9a2e02f1d0840d6`; final clean-review rounds must use the unchanged final head after this finding-log update.
 
 ## Findings
 
@@ -51,6 +53,12 @@ Selecting a nearest, previous, next, or first target step would introduce hidden
 
 Resolution: a retired current step yields `unresolved-retired`, `candidateAvailable: false`, and no candidate document.
 
+### F8 — major — resolved — unreadable inputs could escape the preview error contract
+
+After the original merge, final verification found that malformed JSON was namespaced but `OSError` subclasses from missing files, permission failures, or unreadable referenced declarative layouts could escape as raw exceptions.
+
+Resolution: direct JSON reads and every structural/canonical loader now convert read failures into `EvidenceMigrationPreviewInputError` issues under the exact supplied-input namespace. Readability is established before unsupported-feature precedence is evaluated, and fixed evidence/target/source/manifest ordering remains unchanged. A missing-evidence regression proves the closed behavior.
+
 ## Regression boundary
 
 The test suite covers:
@@ -59,7 +67,7 @@ The test suite covers:
 - Class B title changes and reorder by stable ID;
 - Class C introduction, retirement, and replacement represented as retire plus introduce;
 - preserved and retired current positions;
-- missing, incomplete, mismatched, malformed, non-object, and unsupported migration contexts;
+- missing, unreadable, incomplete, mismatched, malformed, non-object, and unsupported migration contexts;
 - canonical declarative-layout resolution;
 - deterministic human and JSON CLI output and exit status;
 - generated-candidate structural and exact contextual validity;

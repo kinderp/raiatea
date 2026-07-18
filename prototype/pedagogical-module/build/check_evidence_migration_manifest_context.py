@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 import validate_evidence_migration_manifest as manifest_validator
-import validate_module_v2 as module_validator
+import validate_module as module_validator
 
 
 class MigrationManifestInputValidationError(ValueError):
@@ -105,9 +105,7 @@ def check_manifest_context(
                 "source",
                 source["stepIds"],
                 source_ids,
-                endpoint_identity_matches=(
-                    source_id_matches and source_revision_matches
-                ),
+                endpoint_identity_matches=(source_id_matches and source_revision_matches),
             )
         )
 
@@ -129,9 +127,7 @@ def check_manifest_context(
                 "target",
                 target["stepIds"],
                 target_ids,
-                endpoint_identity_matches=(
-                    target_id_matches and target_revision_matches
-                ),
+                endpoint_identity_matches=(target_id_matches and target_revision_matches),
             )
         )
 

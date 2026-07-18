@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import json
 from pathlib import Path
 from typing import Any
@@ -37,7 +36,9 @@ def _prefixed_issue(namespace: str, issue: object) -> str:
 
 
 def _identity_from_evidence(evidence: dict[str, Any]) -> dict[str, Any]:
-    module = evidence.get("module", {})
+    module = evidence.get("module")
+    if not isinstance(module, dict):
+        module = {}
     return {"moduleId": module.get("id"), "revision": module.get("revision")}
 
 
@@ -77,14 +78,18 @@ def _evidence_step_map(evidence: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {step["stepId"]: step for step in evidence["progress"]["steps"]}
 
 
-def _source_step_map(source_module: dict[str, Any]) -> dict[str, tuple[int, dict[str, Any]]]:
+def _source_step_map(
+    source_module: dict[str, Any],
+) -> dict[str, tuple[int, dict[str, Any]]]:
     return {
         step["id"]: (index, step)
         for index, step in enumerate(source_module["steps"])
     }
 
 
-def _target_step_map(target_module: dict[str, Any]) -> dict[str, tuple[int, dict[str, Any]]]:
+def _target_step_map(
+    target_module: dict[str, Any],
+) -> dict[str, tuple[int, dict[str, Any]]]:
     return {
         step["id"]: (index, step)
         for index, step in enumerate(target_module["steps"])
@@ -138,7 +143,7 @@ def _build_candidate(
         )
         for index, step in enumerate(target_module["steps"])
     ]
-    return {
+    candidate = {
         "format": evidence_validator.FORMAT,
         "version": evidence_validator.VERSION,
         "module": {
@@ -154,13 +159,21 @@ def _build_candidate(
             "steps": target_steps,
         },
     }
+    structural_issues = evidence_validator.validate_evidence_export_v2(candidate)
+    contextual_issues = exact_checker.check_exact_compatibility(target_module, candidate)
+    if structural_issues or contextual_issues:
+        raise AssertionError(
+            "internal candidate invariant failed: "
+            + "; ".join(structural_issues + contextual_issues)
+        )
+    return candidate
 
 
 def _exact_preview(
     evidence: dict[str, Any], target_module: dict[str, Any]
 ) -> dict[str, Any]:
     evidence_steps = _evidence_step_map(evidence)
-    steps = []
+    steps: list[dict[str, Any]] = []
     for index, target_step in enumerate(target_module["steps"]):
         source_step = evidence_steps[target_step["id"]]
         steps.append(
@@ -200,6 +213,11 @@ def classify_preview(
     manifest: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Classify and preview one direct migration without mutating inputs."""
+    if (source_module is None) != (manifest is None):
+        raise EvidenceMigrationPreviewInputError(
+            ["$.migrationContext: sourceModule and manifest must be supplied together"]
+        )
+
     exact_issues = exact_checker.check_exact_compatibility(target_module, evidence)
     if not exact_issues:
         return _exact_preview(evidence, target_module)
@@ -209,14 +227,9 @@ def classify_preview(
             classification="incompatible",
             evidence=evidence,
             target_module=target_module,
-            manifest_status="missing",
+            manifest_status="mismatched" if manifest is not None else "missing",
             summary="Evidence and target belong to different module routes.",
             issues=[exact_issues[0]],
-        )
-
-    if (source_module is None) != (manifest is None):
-        raise EvidenceMigrationPreviewInputError(
-            ["$.migrationContext: sourceModule and manifest must be supplied together"]
         )
 
     if source_module is None or manifest is None:
@@ -406,6 +419,28 @@ def _unsupported_result(
     )
 
 
+def _declares_unsupported_evidence(raw: Any) -> bool:
+    if not isinstance(raw, dict):
+        return False
+    return (
+        ("format" in raw and raw.get("format") != evidence_validator.FORMAT)
+        or ("version" in raw and raw.get("version") != evidence_validator.VERSION)
+    )
+
+
+def _declares_unsupported_manifest(raw: Any) -> bool:
+    if not isinstance(raw, dict):
+        return False
+    if "format" in raw and raw.get("format") != manifest_validator.FORMAT:
+        return True
+    if "version" in raw and raw.get("version") != manifest_validator.VERSION:
+        return True
+    operations = raw.get("operations")
+    if isinstance(operations, dict):
+        return not set(operations).issubset(manifest_validator.OPERATION_FIELDS)
+    return False
+
+
 def load_and_preview(
     evidence_path: Path,
     target_module_path: Path,
@@ -436,73 +471,63 @@ def load_and_preview(
     if read_issues:
         raise EvidenceMigrationPreviewInputError(read_issues)
 
-    assert isinstance(raw_evidence, dict)
-    assert isinstance(raw_target, dict)
-
-    target_issues = module_validator.validate_module(raw_target)
-    if target_issues:
-        raise EvidenceMigrationPreviewInputError(
-            [_prefixed_issue("targetModule", issue) for issue in target_issues]
-        )
-
-    if (
-        raw_evidence.get("format") != evidence_validator.FORMAT
-        or raw_evidence.get("version") != evidence_validator.VERSION
-    ):
+    evidence_for_result = raw_evidence if isinstance(raw_evidence, dict) else {}
+    target_for_result = raw_target if isinstance(raw_target, dict) else {}
+    if _declares_unsupported_evidence(raw_evidence):
         return _unsupported_result(
-            raw_evidence,
-            raw_target,
+            evidence_for_result,
+            target_for_result,
             manifest_status="not-needed" if raw_manifest is None else "unsupported",
-            issues=[
-                "$.evidence: unsupported learner-evidence format or version"
-            ],
+            issues=["$.evidence: unsupported learner-evidence format or version"],
         )
-
-    evidence_issues = evidence_validator.validate_evidence_export_v2(raw_evidence)
-    if evidence_issues:
-        raise EvidenceMigrationPreviewInputError(
-            [_prefixed_issue("evidence", issue) for issue in evidence_issues]
+    if _declares_unsupported_manifest(raw_manifest):
+        return _unsupported_result(
+            evidence_for_result,
+            target_for_result,
+            manifest_status="unsupported",
+            issues=["$.manifest: unsupported manifest format, version, or operation"],
         )
-
-    if raw_manifest is not None:
-        assert isinstance(raw_manifest, dict)
-        operations = raw_manifest.get("operations")
-        operation_keys = set(operations) if isinstance(operations, dict) else set()
-        if (
-            raw_manifest.get("format") != manifest_validator.FORMAT
-            or raw_manifest.get("version") != manifest_validator.VERSION
-            or not operation_keys.issubset(manifest_validator.OPERATION_FIELDS)
-        ):
-            return _unsupported_result(
-                raw_evidence,
-                raw_target,
-                manifest_status="unsupported",
-                issues=["$.manifest: unsupported manifest format, version, or operation"],
-            )
 
     input_issues: list[str] = []
+    evidence: dict[str, Any] | None = None
+    target_module: dict[str, Any] | None = None
     source_module: dict[str, Any] | None = None
     manifest: dict[str, Any] | None = None
-    if raw_source is not None and raw_manifest is not None:
-        assert isinstance(raw_source, dict)
-        source_issues = module_validator.validate_module(raw_source)
+
+    try:
+        evidence = evidence_validator.load_and_validate(evidence_path)
+    except evidence_validator.EvidenceExportV2ValidationError as exc:
+        input_issues.extend(_prefixed_issue("evidence", issue) for issue in exc.issues)
+
+    try:
+        target_module = module_validator.load_and_validate(target_module_path)
+    except module_validator.ModuleValidationError as exc:
         input_issues.extend(
-            _prefixed_issue("sourceModule", issue) for issue in source_issues
+            _prefixed_issue("targetModule", issue) for issue in exc.issues
         )
-        manifest_issues = manifest_validator.validate_migration_manifest(raw_manifest)
-        input_issues.extend(
-            _prefixed_issue("manifest", issue) for issue in manifest_issues
-        )
-        if not source_issues:
-            source_module = raw_source
-        if not manifest_issues:
-            manifest = raw_manifest
+
+    if source_module_path is not None and manifest_path is not None:
+        try:
+            source_module = module_validator.load_and_validate(source_module_path)
+        except module_validator.ModuleValidationError as exc:
+            input_issues.extend(
+                _prefixed_issue("sourceModule", issue) for issue in exc.issues
+            )
+        try:
+            manifest = manifest_validator.load_and_validate(manifest_path)
+        except manifest_validator.MigrationManifestValidationError as exc:
+            input_issues.extend(
+                _prefixed_issue("manifest", issue) for issue in exc.issues
+            )
+
     if input_issues:
         raise EvidenceMigrationPreviewInputError(input_issues)
 
+    assert evidence is not None
+    assert target_module is not None
     return classify_preview(
-        raw_evidence,
-        raw_target,
+        evidence,
+        target_module,
         source_module=source_module,
         manifest=manifest,
     )
@@ -527,6 +552,7 @@ def _print_human(result: dict[str, Any]) -> None:
     if result["currentPosition"] is not None:
         print(f"Current position: {result['currentPosition']['status']}")
     print(f"Candidate available: {str(result['candidateAvailable']).lower()}")
+    print("Preview only: no evidence file or learner state was changed.")
 
 
 def main() -> None:

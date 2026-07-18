@@ -14,7 +14,7 @@ TEXT_SUFFIXES = {
     ".txt",
     ".toml",
 }
-IGNORED_PARTS = {".git", "node_modules", "build", "dist", "__pycache__"}
+IGNORED_PARTS = {".git", "node_modules", "dist", "__pycache__"}
 
 
 class ValidatorConsolidationTests(unittest.TestCase):

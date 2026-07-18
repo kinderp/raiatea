@@ -16,6 +16,7 @@ import validate_module_v2 as module_validator
 
 CONFIRMATION_TOKEN = "APPLY-NEW-COPY"
 APPLICABLE_CLASSIFICATIONS = {"declared-lossless", "declared-partial"}
+FileIdentity = tuple[int, int]
 
 
 class EvidenceMigrationApplicationError(ValueError):
@@ -37,18 +38,64 @@ def _read_bytes(path: Path, namespace: str) -> bytes:
         ) from exc
 
 
+def _file_identity(path: Path) -> FileIdentity:
+    stat_result = path.lstat()
+    return stat_result.st_dev, stat_result.st_ino
+
+
+def _remove_owned_path(
+    path: Path,
+    expected_identity: FileIdentity,
+    namespace: str,
+) -> list[str]:
+    if not os.path.lexists(path):
+        return []
+    try:
+        current_identity = _file_identity(path)
+    except OSError as exc:
+        return [f"$.{namespace}: cannot inspect cleanup path: {exc}"]
+    if current_identity != expected_identity:
+        return [
+            f"$.{namespace}: cleanup path identity changed; foreign path was not removed"
+        ]
+    try:
+        path.unlink()
+    except OSError as exc:
+        return [f"$.{namespace}: cleanup failed: {exc}"]
+    return []
+
+
+def _issues_from_exception(exc: Exception) -> list[str]:
+    if isinstance(exc, EvidenceMigrationApplicationError):
+        return list(exc.issues)
+    issues = getattr(exc, "issues", None)
+    if issues is not None:
+        return [str(issue) for issue in issues]
+    return [f"$.application: {exc}"]
+
+
 def _verify_candidate_file(path: Path, target_module: dict[str, Any]) -> dict[str, Any]:
     try:
         candidate = evidence_validator.load_and_validate(path)
     except evidence_validator.EvidenceExportV2ValidationError as exc:
         raise EvidenceMigrationApplicationError(
-            [f"$.destination{str(issue)[1:]}" if str(issue).startswith("$") else f"$.destination: {issue}" for issue in exc.issues]
+            [
+                f"$.destination{str(issue)[1:]}"
+                if str(issue).startswith("$")
+                else f"$.destination: {issue}"
+                for issue in exc.issues
+            ]
         ) from exc
 
     issues = exact_checker.check_exact_compatibility(target_module, candidate)
     if issues:
         raise EvidenceMigrationApplicationError(
-            [f"$.destination{issue[1:]}" if issue.startswith("$") else f"$.destination: {issue}" for issue in issues]
+            [
+                f"$.destination{issue[1:]}"
+                if issue.startswith("$")
+                else f"$.destination: {issue}"
+                for issue in issues
+            ]
         )
     return candidate
 
@@ -124,7 +171,7 @@ def apply_new_copy(
     if classification not in APPLICABLE_CLASSIFICATIONS:
         if classification == "exact":
             issue = "$.classification: exact evidence requires no migration"
-        elif preview.get("currentPosition", {}).get("status") == "unresolved-retired":
+        elif (preview.get("currentPosition") or {}).get("status") == "unresolved-retired":
             issue = "$.currentPosition: retired current step has no approved target position"
         else:
             issue = f"$.classification: {classification} preview cannot be applied"
@@ -144,14 +191,17 @@ def apply_new_copy(
     if candidate_issues:
         raise EvidenceMigrationApplicationError(
             [
-                f"$.candidate{issue[1:]}" if issue.startswith("$") else f"$.candidate: {issue}"
+                f"$.candidate{issue[1:]}"
+                if issue.startswith("$")
+                else f"$.candidate: {issue}"
                 for issue in candidate_issues
             ]
         )
     payload = _serialize_candidate(candidate)
 
     temporary_path: Path | None = None
-    destination_installed = False
+    temporary_identity: FileIdentity | None = None
+    installed_identity: FileIdentity | None = None
     try:
         descriptor, temporary_name = tempfile.mkstemp(
             dir=destination_parent,
@@ -159,13 +209,14 @@ def apply_new_copy(
             suffix=".tmp",
         )
         temporary_path = Path(temporary_name)
+        temporary_identity = _file_identity(temporary_path)
         try:
             os.fchmod(descriptor, 0o600)
             with os.fdopen(descriptor, "wb", closefd=True) as temporary:
                 temporary.write(payload)
                 temporary.flush()
                 os.fsync(temporary.fileno())
-        except BaseException:
+        except Exception:
             try:
                 os.close(descriptor)
             except OSError:
@@ -192,9 +243,19 @@ def apply_new_copy(
             raise EvidenceMigrationApplicationError(
                 [f"$.destination: atomic create-if-absent failed: {exc}"]
             ) from exc
-        destination_installed = True
-        temporary_path.unlink()
+
+        installed_identity = _file_identity(destination_path)
+        if installed_identity != temporary_identity:
+            raise EvidenceMigrationApplicationError(
+                ["$.destination: installed file identity differs from prepared file"]
+            )
+        cleanup_issues = _remove_owned_path(
+            temporary_path, temporary_identity, "temporaryFile"
+        )
+        if cleanup_issues:
+            raise EvidenceMigrationApplicationError(cleanup_issues)
         temporary_path = None
+        temporary_identity = None
         _flush_directory(destination_parent)
 
         installed_candidate = _verify_candidate_file(destination_path, target_module)
@@ -224,20 +285,33 @@ def apply_new_copy(
             "sourceUnchanged": True,
             "browserStorageChanged": False,
         }
-    except BaseException:
-        if destination_installed and os.path.lexists(destination_path):
-            try:
-                destination_path.unlink()
-                _flush_directory(destination_parent)
-            except OSError:
-                pass
-        raise
-    finally:
-        if temporary_path is not None and os.path.lexists(temporary_path):
-            try:
-                temporary_path.unlink()
-            except OSError:
-                pass
+    except Exception as exc:
+        cleanup_issues: list[str] = []
+        if installed_identity is not None:
+            cleanup_issues.extend(
+                _remove_owned_path(destination_path, installed_identity, "destination")
+            )
+            _flush_directory(destination_parent)
+        if temporary_path is not None and temporary_identity is not None:
+            cleanup_issues.extend(
+                _remove_owned_path(temporary_path, temporary_identity, "temporaryFile")
+            )
+        source_issues: list[str] = []
+        try:
+            source_after_failure = evidence_path.read_bytes()
+        except OSError as source_exc:
+            source_issues.append(
+                f"$.evidence: cannot verify source preservation after failure: {source_exc}"
+            )
+        else:
+            if source_after_failure != source_before:
+                source_issues.append(
+                    "$.evidence: source bytes changed during failed migration application"
+                )
+        issues = _issues_from_exception(exc) + cleanup_issues + source_issues
+        if isinstance(exc, EvidenceMigrationApplicationError) and not cleanup_issues and not source_issues:
+            raise
+        raise EvidenceMigrationApplicationError(issues) from exc
 
 
 def _print_human(result: dict[str, Any]) -> None:

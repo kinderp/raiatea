@@ -199,16 +199,17 @@ The current generated module contains no provider credentials, network queue, ex
 
 ### Module evolution and future evidence compatibility
 
-The architecture decision for durable module identity, explicit revisions, future immutable step IDs, and authored migration responsibilities is documented in [`docs/module-evolution-and-evidence-compatibility.md`](docs/module-evolution-and-evidence-compatibility.md). The documentation index is available in [`docs/README.md`](docs/README.md).
+The architecture decision for durable module identity, explicit revisions, immutable step IDs, and authored migration responsibilities is documented in [`docs/module-evolution-and-evidence-compatibility.md`](docs/module-evolution-and-evidence-compatibility.md). The executable authoring rules for the canonical fields are documented in [`docs/module-revision-authoring.md`](docs/module-revision-authoring.md), and the documentation index is available in [`docs/README.md`](docs/README.md).
 
-The current implementation remains deliberately unchanged:
+The current implementation boundary is:
 
-- learner-evidence v1 still uses exact module ID, ordered indexes, and authored step titles;
-- the canonical module schema does not yet contain an explicit module revision or stable step IDs;
+- every canonical module carries a positive integer `revision`;
+- every pedagogical step carries a unique stable ID using lowercase letters, digits, and hyphens;
+- learner-evidence v1 still uses exact module ID, ordered indexes, and authored step titles and does not export `revision` or `stepId`;
 - rename, reorder, split, merge, retirement, and replacement are not migrated automatically;
 - future migrations must be versioned, authored, directional, side-effect free during validation and preview, and explicitly confirmed before any state change.
 
-Adding revisions or step IDs to the canonical model, defining evidence v2, publishing a migration-manifest schema, and implementing migration preview are separate reviewable increments.
+Defining evidence v2, publishing a migration-manifest schema, and implementing migration preview remain separate reviewable increments.
 
 ## Step-level provenance
 
@@ -248,7 +249,7 @@ python -m unittest discover \
   -v
 ```
 
-The suite covers all example modules, adaptive remediation, micro-activities, learner evidence, export validation, import compatibility, step provenance, semantic visual references, generated output, and common invalid cases.
+The suite covers all example modules, canonical revision and step-ID fixtures, adaptive remediation, micro-activities, learner evidence, export validation, import compatibility, step provenance, semantic visual references, generated output, and common invalid cases.
 
 ## Browser interaction tests
 
@@ -297,6 +298,7 @@ prototype/pedagogical-module/
 ├── docs/README.md
 ├── docs/learner-evidence-boundaries.md
 ├── docs/module-evolution-and-evidence-compatibility.md
+├── docs/module-revision-authoring.md
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js
@@ -305,10 +307,13 @@ prototype/pedagogical-module/
 ├── build/render_visual.py
 ├── build/validate_module.py
 ├── build/validate_module_v2.py
+├── build/validate_module_identity.py
 ├── build/validate_evidence_export.py
 ├── build/check_evidence_compatibility.py
+├── tests/fixtures/module-identity/
 ├── tests/test_layout_visual.py
 ├── tests/test_validation.py
+├── tests/test_module_identity.py
 ├── tests/test_evidence_export.py
 ├── tests/test_evidence_compatibility.py
 ├── browser-tests/module.spec.js
@@ -327,7 +332,7 @@ prototype/pedagogical-module/
 - mathematical rendering uses plain text unless represented by visual primitives;
 - learner evidence is portable only as a one-module v1 JSON document;
 - restore supports explicit replacement of one compatible module record, not history merging;
-- the canonical module model has no explicit revision or stable step IDs yet;
+- canonical revision and step IDs are embedded in module JSON but are not part of learner-evidence v1;
 - no version migration, multi-module bundle, signing, encryption, cloud sync, or LMS transfer exists;
 - recommendation rules are deterministic and intentionally simple;
 - declarative layouts currently cover linear and branch/merge structures only;
@@ -337,9 +342,10 @@ prototype/pedagogical-module/
 
 ## Next improvements
 
-1. Add explicit module revisions and stable step IDs without changing learner-evidence v1.
-2. Design a separately versioned learner-evidence format that carries those identifiers.
-3. Define and validate authored migration manifests before implementing migration preview.
-4. Define a provider-neutral adapter interface only when a concrete integration use case exists.
-5. Link multiple modules into a prerequisite route.
-6. Replace the temporary layered module validator with one consolidated implementation.
+1. Design a separately versioned learner-evidence format that carries canonical revision and stable step IDs.
+2. Define and validate authored migration manifests before implementing migration preview.
+3. Add compatibility classification and human-readable migration preview without state changes.
+4. Add explicitly confirmed migration while preserving the original evidence copy.
+5. Define a provider-neutral adapter interface only when a concrete integration use case exists.
+6. Link multiple modules into a prerequisite route.
+7. Replace the temporary layered module validator with one consolidated implementation.

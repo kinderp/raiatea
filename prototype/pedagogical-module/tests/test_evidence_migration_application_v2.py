@@ -138,6 +138,18 @@ class ConfirmedEvidenceMigrationApplicationTests(unittest.TestCase):
         )
         self.assertEqual("existing", self.destination_path.read_text(encoding="utf-8"))
 
+    @unittest.skipUnless(hasattr(os, "symlink"), "symbolic links unavailable")
+    def test_broken_symlink_destination_is_existing_and_never_replaced(self) -> None:
+        os.symlink("missing-target", self.destination_path)
+        with self.assertRaises(application.EvidenceMigrationApplicationError) as raised:
+            self.apply()
+        self.assertEqual(
+            ["$.destination: path already exists and will not be overwritten"],
+            list(raised.exception.issues),
+        )
+        self.assertTrue(self.destination_path.is_symlink())
+        self.assertEqual("missing-target", os.readlink(self.destination_path))
+
     def test_atomic_install_failure_removes_temporary_file(self) -> None:
         source_before = self.source_path.read_bytes()
         with mock.patch.object(os, "link", side_effect=OSError("link unavailable")):
@@ -146,6 +158,33 @@ class ConfirmedEvidenceMigrationApplicationTests(unittest.TestCase):
         self.assertIn("atomic create-if-absent failed", raised.exception.issues[0])
         self.assertFalse(self.destination_path.exists())
         self.assertEqual(source_before, self.source_path.read_bytes())
+        self.assertEqual([], list(self.directory.glob(".*.tmp")))
+
+    def test_source_drift_aborts_before_install_and_preserves_changed_source(self) -> None:
+        original_verify = application._verify_candidate_file
+        changed_source = self.source_path.read_bytes() + b"\n"
+        calls = 0
+
+        def mutate_after_prepare(
+            path: Path, target: dict[str, object]
+        ) -> dict[str, object]:
+            nonlocal calls
+            result = original_verify(path, target)  # type: ignore[arg-type,assignment]
+            calls += 1
+            if calls == 1:
+                self.source_path.write_bytes(changed_source)
+            return result  # type: ignore[return-value]
+
+        with mock.patch.object(
+            application, "_verify_candidate_file", side_effect=mutate_after_prepare
+        ):
+            with self.assertRaises(application.EvidenceMigrationApplicationError) as raised:
+                self.apply()
+        self.assertTrue(
+            any("source bytes changed" in issue for issue in raised.exception.issues)
+        )
+        self.assertEqual(changed_source, self.source_path.read_bytes())
+        self.assertFalse(self.destination_path.exists())
         self.assertEqual([], list(self.directory.glob(".*.tmp")))
 
     def test_post_install_verification_failure_rolls_back_new_destination_only(self) -> None:
@@ -170,6 +209,55 @@ class ConfirmedEvidenceMigrationApplicationTests(unittest.TestCase):
         self.assertFalse(self.destination_path.exists())
         self.assertEqual(source_before, self.source_path.read_bytes())
         self.assertEqual([], list(self.directory.glob(".*.tmp")))
+
+    def test_rollback_does_not_delete_replaced_foreign_destination(self) -> None:
+        original_verify = application._verify_candidate_file
+        calls = 0
+
+        def replace_before_failure(
+            path: Path, target: dict[str, object]
+        ) -> dict[str, object]:
+            nonlocal calls
+            calls += 1
+            if calls == 2:
+                path.unlink()
+                path.write_text("foreign", encoding="utf-8")
+                raise application.EvidenceMigrationApplicationError(
+                    ["$.destination: simulated verification failure"]
+                )
+            return original_verify(path, target)  # type: ignore[arg-type,return-value]
+
+        with mock.patch.object(
+            application, "_verify_candidate_file", side_effect=replace_before_failure
+        ):
+            with self.assertRaises(application.EvidenceMigrationApplicationError) as raised:
+                self.apply()
+        self.assertTrue(
+            any("identity changed" in issue for issue in raised.exception.issues)
+        )
+        self.assertEqual("foreign", self.destination_path.read_text(encoding="utf-8"))
+
+    def test_cleanup_failure_is_reported(self) -> None:
+        original_remove = application._remove_owned_path
+
+        def fail_temporary_cleanup(
+            path: Path,
+            identity: tuple[int, int],
+            namespace: str,
+        ) -> list[str]:
+            if namespace == "temporaryFile":
+                return ["$.temporaryFile: simulated cleanup failure"]
+            return original_remove(path, identity, namespace)
+
+        with mock.patch.object(
+            application, "_remove_owned_path", side_effect=fail_temporary_cleanup
+        ):
+            with self.assertRaises(application.EvidenceMigrationApplicationError) as raised:
+                self.apply()
+        self.assertTrue(
+            any("cleanup failure" in issue for issue in raised.exception.issues)
+        )
+        self.assertFalse(self.destination_path.exists())
 
     def test_cli_requires_confirmation_and_reports_success_as_json(self) -> None:
         command = [
@@ -217,7 +305,9 @@ class ConfirmedEvidenceMigrationApplicationTests(unittest.TestCase):
         self.assertFalse(second_destination.exists())
 
     def test_learner_evidence_v1_contract_remains_unchanged(self) -> None:
-        module = module_validator.load_and_validate(ROOT / "examples" / "self-attention.json")
+        module = module_validator.load_and_validate(
+            ROOT / "examples" / "self-attention.json"
+        )
         evidence = v1_checker.evidence_validator.load_and_validate(
             ROOT / "evidence-examples" / "learner-evidence-export-v1.json"
         )

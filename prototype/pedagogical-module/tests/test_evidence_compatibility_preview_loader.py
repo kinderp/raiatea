@@ -38,6 +38,21 @@ class EvidenceCompatibilityPreviewLoaderTests(unittest.TestCase):
                 )
         self.assertEqual(["$.evidence: must be an object"], list(raised.exception.issues))
 
+    def test_missing_input_is_namespaced_read_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            missing_path = Path(temporary) / "missing-evidence.json"
+            with self.assertRaises(
+                preview.EvidenceMigrationPreviewInputError
+            ) as raised:
+                preview.load_and_preview(
+                    missing_path,
+                    CONTEXT_DIR / "exact-target.json",
+                )
+        self.assertEqual(1, len(raised.exception.issues))
+        self.assertTrue(
+            raised.exception.issues[0].startswith("$.evidence: cannot read input:")
+        )
+
     def test_malformed_inputs_accumulate_in_fixed_namespace_order(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             temporary_path = Path(temporary)

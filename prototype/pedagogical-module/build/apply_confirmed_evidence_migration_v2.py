@@ -5,7 +5,6 @@ import copy
 import hashlib
 import hmac
 import json
-import string
 from dataclasses import dataclass
 from typing import Any
 
@@ -18,6 +17,7 @@ import validate_module_v2 as module_validator
 CONTRACT_VERSION = 1
 CONFIRMATION_PREFIX = "raiatea-confirm-v1:"
 ELIGIBLE_CLASSIFICATIONS = {"declared-lossless", "declared-partial"}
+LOWERCASE_HEX = frozenset("0123456789abcdef")
 
 
 class EvidenceMigrationApplicationError(ValueError):
@@ -246,7 +246,7 @@ def _valid_confirmation_token(value: Any) -> bool:
     if not isinstance(value, str) or not value.startswith(CONFIRMATION_PREFIX):
         return False
     digest = value[len(CONFIRMATION_PREFIX) :]
-    return len(digest) == 64 and all(character in string.hexdigits for character in digest)
+    return len(digest) == 64 and all(character in LOWERCASE_HEX for character in digest)
 
 
 def apply_confirmed_migration(

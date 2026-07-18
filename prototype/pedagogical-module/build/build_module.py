@@ -12,7 +12,7 @@ if str(BUILD_DIR) not in sys.path:
     sys.path.insert(0, str(BUILD_DIR))
 
 from render_visual import render_visual  # noqa: E402
-from validate_module_v2 import (  # noqa: E402
+from validate_module import (  # noqa: E402
     ModuleValidationError,
     load_and_validate,
     raise_for_issues,
@@ -78,7 +78,7 @@ def render_module(data: dict, template: str, css: str, js: str) -> str:
         "{{ next_items }}": render_list(data["next"]["items"]),
         "{{ provenance }}": provenance,
         "{{ concept_cards }}": concept_cards,
-        "{{ module_json }}": json.dumps(data, ensure_ascii=False).replace("</", "<\\/"),
+        "{{ module_json }}": json.dumps(data, ensure_ascii=False).replace("</", "<\/"),
     }
 
     output = template

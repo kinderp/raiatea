@@ -16,7 +16,7 @@ module.exports = defineConfig({
   },
   webServer: {
     command: [
-      'rm -rf .browser-artifacts',
+      'python -c "import shutil; shutil.rmtree(\'.browser-artifacts\', ignore_errors=True)"',
       '&& python build/build_pilot.py --output .browser-artifacts',
       `&& python -m http.server ${port} --bind ${host} --directory .browser-artifacts`
     ].join(' '),

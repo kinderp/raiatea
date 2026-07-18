@@ -1,11 +1,11 @@
 # Raiatea pilot: avvio e prova
 
-Questo pilot locale presenta un percorso in due moduli:
+Questo README operativo descrive il primo pilot locale in due moduli:
 
-1. **Query, key e value**;
-2. **Self-attention**.
+1. **Il ruolo della self-attention nel modello GPT**;
+2. **Query, Key e Value nella self-attention**.
 
-Non richiede account, cloud, API key o connessione di rete durante l'uso.
+L'ordine segue il percorso pedagogico canonico: prima si colloca la self-attention nel flusso del modello, poi si distinguono query, key e value. Il pilot non richiede account, cloud, API key o connessione di rete durante l'uso.
 
 ## Requisiti
 
@@ -14,10 +14,9 @@ Non richiede account, cloud, API key o connessione di rete durante l'uso.
 
 ## Costruzione
 
-Dalla radice del repository:
+Dalla radice del repository, scegliere una destinazione che non esiste ancora:
 
 ```bash
-rm -rf /tmp/raiatea-pilot
 python prototype/pedagogical-module/build/build_pilot.py \
   --output /tmp/raiatea-pilot
 ```
@@ -25,9 +24,11 @@ python prototype/pedagogical-module/build/build_pilot.py \
 La directory contiene:
 
 - `index.html`;
-- `query-key-value.html`;
 - `self-attention.html`;
+- `query-key-value.html`;
 - `pilot-manifest.json`.
+
+Il builder non sovrascrive una destinazione esistente. Per ricostruire il pilot, eliminare esplicitamente una precedente directory usa-e-getta oppure scegliere un nuovo percorso.
 
 ## Avvio
 
@@ -50,11 +51,11 @@ Tornare nel terminale del server e premere `Ctrl+C`.
 ## Checklist di prova
 
 1. La pagina iniziale mostra i due moduli nell'ordine previsto.
-2. **Inizia il percorso** apre `Query, key e value`.
+2. **Inizia il percorso** apre il modulo di orientamento sulla self-attention.
 3. I pulsanti degli step permettono di avanzare nel modulo.
 4. Una risposta errata mostra il percorso di recupero previsto.
-5. Il link **Self-attention →** apre il secondo modulo.
-6. Il link **← Query, key e value** torna al primo modulo.
+5. Il link **Query, Key e Value nella self-attention →** apre il secondo modulo.
+6. Il link **← Il ruolo della self-attention nel modello GPT** torna al primo modulo.
 7. **Indice del pilot** riporta alla pagina iniziale.
 8. Ricaricando un modulo, il progresso locale resta disponibile nel browser.
 9. L'esportazione delle evidenze resta esplicita e locale.

@@ -6,42 +6,68 @@ import html
 import json
 import os
 import shutil
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 
-BUILD_DIR = Path(__file__).resolve().parent
-if str(BUILD_DIR) not in sys.path:
-    sys.path.insert(0, str(BUILD_DIR))
+from build_module import render_module
+from validate_module_v2 import load_and_validate, raise_for_issues, validate_rendered_html
 
-from build_module import render_module  # noqa: E402
-from validate_module_v2 import (  # noqa: E402
-    load_and_validate,
-    raise_for_issues,
-    validate_rendered_html,
-)
-
-ROOT = BUILD_DIR.parent
+ROOT = Path(__file__).parents[1]
 EXAMPLES = ROOT / "examples"
 TEMPLATE = ROOT / "src" / "template.html"
 CSS = ROOT / "src" / "module.css"
 JS = ROOT / "src" / "module.js"
 
-ROUTE = (
+ROUTE_SPECS = (
     {
-        "id": "query-key-value",
-        "title": "Query, key e value",
-        "source": EXAMPLES / "query-key-value.json",
-        "output": "query-key-value.html",
-    },
-    {
-        "id": "self-attention",
-        "title": "Self-attention",
         "source": EXAMPLES / "self-attention.json",
         "output": "self-attention.html",
     },
+    {
+        "source": EXAMPLES / "query-key-value.json",
+        "output": "query-key-value.html",
+    },
 )
+
+
+def _path_lexists(path: Path) -> bool:
+    return os.path.lexists(os.fspath(path))
+
+
+def _load_route() -> tuple[dict[str, Any], ...]:
+    route: list[dict[str, Any]] = []
+    outputs: set[str] = set()
+    identities: set[tuple[str, object]] = set()
+    for spec in ROUTE_SPECS:
+        source = Path(spec["source"])
+        output = str(spec["output"])
+        if Path(output).name != output or output in {"", ".", ".."}:
+            raise ValueError(f"invalid pilot output filename: {output!r}")
+        if output in outputs:
+            raise ValueError(f"duplicate pilot output filename: {output}")
+        data = load_and_validate(source)
+        identity = (data["id"], data["revision"])
+        if identity in identities:
+            raise ValueError(
+                "duplicate canonical module identity in pilot route: "
+                f"{data['id']} revision {data['revision']}"
+            )
+        outputs.add(output)
+        identities.add(identity)
+        route.append(
+            {
+                "id": data["id"],
+                "revision": data["revision"],
+                "title": data["title"],
+                "source": source,
+                "output": output,
+                "module": data,
+            }
+        )
+    if not route:
+        raise ValueError("pilot route must contain at least one module")
+    return tuple(route)
 
 
 def _navigation(previous: dict[str, Any] | None, next_item: dict[str, Any] | None) -> str:
@@ -94,7 +120,7 @@ def _launcher(route: tuple[dict[str, Any], ...]) -> str:
 <body>
   <main>
     <h1>Raiatea: primo percorso pilot</h1>
-    <p>Un percorso locale in due moduli per passare da query, key e value alla self-attention.</p>
+    <p>Un percorso locale in due moduli: prima collochi la self-attention nel modello, poi distingui i ruoli di query, key e value.</p>
     <ol>{cards}</ol>
     <p><a class="start" href="{first}">Inizia il percorso</a></p>
     <p><small>Il pilot funziona offline e salva i progressi soltanto nel browser locale.</small></p>
@@ -110,6 +136,7 @@ def _manifest(route: tuple[dict[str, Any], ...]) -> dict[str, Any]:
         modules.append(
             {
                 "id": item["id"],
+                "revision": item["revision"],
                 "title": item["title"],
                 "order": index,
                 "file": item["output"],
@@ -127,48 +154,86 @@ def _verify_output(directory: Path, manifest: dict[str, Any]) -> None:
     if missing:
         raise ValueError(f"pilot output is missing files: {missing}")
 
+    launcher = (directory / "index.html").read_text(encoding="utf-8")
     for module in manifest["modules"]:
+        if f'href="{module["file"]}"' not in launcher:
+            raise ValueError(f"launcher is missing module link {module['file']}")
         document = (directory / module["file"]).read_text(encoding="utf-8")
         for link in ("index.html", module["previous"], module["next"]):
             if link is not None and f'href="{link}"' not in document:
                 raise ValueError(f"{module['file']} is missing route link {link}")
 
     serialized = json.dumps(manifest, ensure_ascii=False)
-    if str(directory.resolve()) in serialized:
-        raise ValueError("pilot manifest contains an absolute output path")
+    generated = launcher + serialized
+    if str(directory.resolve()) in generated:
+        raise ValueError("pilot output contains an absolute output path")
+
+
+def _install_directory_no_replace(
+    staged: Path, output: Path, manifest: dict[str, Any]
+) -> None:
+    try:
+        os.mkdir(output, 0o755)
+    except FileExistsError as exc:
+        raise ValueError("pilot output path already exists") from exc
+
+    installed: list[Path] = []
+    try:
+        for source in sorted(staged.iterdir(), key=lambda path: path.name):
+            if not source.is_file() or source.is_symlink():
+                raise ValueError(f"pilot staging contains a non-regular file: {source.name}")
+            destination = output / source.name
+            try:
+                os.link(source, destination, follow_symlinks=False)
+            except FileExistsError as exc:
+                raise ValueError("pilot output changed during installation") from exc
+            installed.append(destination)
+        _verify_output(output, manifest)
+    except BaseException:
+        for destination in reversed(installed):
+            try:
+                destination.unlink()
+            except FileNotFoundError:
+                pass
+        try:
+            output.rmdir()
+        except OSError:
+            # Preserve any path or file created concurrently by another actor.
+            pass
+        raise
 
 
 def build_pilot(output: Path) -> Path:
-    if output.exists():
+    if _path_lexists(output):
         raise ValueError("pilot output path already exists")
     output_parent = output.parent.resolve()
     output_parent.mkdir(parents=True, exist_ok=True)
     temporary = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output_parent))
     try:
+        route = _load_route()
         template = TEMPLATE.read_text(encoding="utf-8")
         css = CSS.read_text(encoding="utf-8")
         js = JS.read_text(encoding="utf-8")
-        for index, item in enumerate(ROUTE):
-            data = load_and_validate(item["source"])
-            document = render_module(data, template, css, js)
-            previous = ROUTE[index - 1] if index > 0 else None
-            next_item = ROUTE[index + 1] if index + 1 < len(ROUTE) else None
+        for index, item in enumerate(route):
+            document = render_module(item["module"], template, css, js)
+            raise_for_issues(validate_rendered_html(document))
+            previous = route[index - 1] if index > 0 else None
+            next_item = route[index + 1] if index + 1 < len(route) else None
             document = _inject_navigation(document, _navigation(previous, next_item))
             raise_for_issues(validate_rendered_html(document))
             (temporary / item["output"]).write_text(document, encoding="utf-8")
 
-        manifest = _manifest(ROUTE)
-        (temporary / "index.html").write_text(_launcher(ROUTE), encoding="utf-8")
+        manifest = _manifest(route)
+        (temporary / "index.html").write_text(_launcher(route), encoding="utf-8")
         (temporary / "pilot-manifest.json").write_text(
             json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
             encoding="utf-8",
         )
         _verify_output(temporary, manifest)
-        os.replace(temporary, output)
+        _install_directory_no_replace(temporary, output, manifest)
         return output
-    except BaseException:
+    finally:
         shutil.rmtree(temporary, ignore_errors=True)
-        raise
 
 
 def main() -> None:

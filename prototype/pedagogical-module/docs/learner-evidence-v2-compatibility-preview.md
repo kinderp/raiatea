@@ -157,26 +157,26 @@ The classifier does not persist, download, confirm, or apply the candidate. Conf
 
 ## 7. API and CLI
 
-The in-memory classification API is exposed by `build/classify_evidence_compatibility_v2.py`. The structural loader and CLI are exposed by `build/check_evidence_compatibility_preview_v2.py`.
+The in-memory classification API is exposed by `build/classify_evidence_compatibility_v2.py`. The structural loader and CLI are exposed by `build/preview_evidence_migration_v2.py`.
 
 Exact target comparison:
 
 ```bash
-python prototype/pedagogical-module/build/check_evidence_compatibility_preview_v2.py \
+python prototype/pedagogical-module/build/preview_evidence_migration_v2.py \
   evidence-v2.json target-module.json
 ```
 
 Direct manifest-aware preview:
 
 ```bash
-python prototype/pedagogical-module/build/check_evidence_compatibility_preview_v2.py \
+python prototype/pedagogical-module/build/preview_evidence_migration_v2.py \
   evidence-v2.json target-module.json \
   --source source-module.json \
   --manifest migration-manifest.json \
   --json
 ```
 
-The CLI exits `0` for `exact`, `declared-lossless`, and `declared-partial`. It exits non-zero for input validation failure, `incompatible`, or `unsupported`. Human-readable and JSON output describe the same classification and preview.
+The CLI exits `0` for `exact`, `declared-lossless`, and `declared-partial`. It exits non-zero for input validation failure, `incompatible`, or `unsupported`. Human-readable and JSON output describe the same classification and preview. Human-readable output explicitly states that no evidence file or learner state was changed.
 
 ## 8. Error and output rules
 

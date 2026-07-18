@@ -24,6 +24,8 @@ def check_exact_compatibility(
     progress = evidence["progress"]
     exported_steps = progress["steps"]
     canonical_steps = module["steps"]
+    exported_ids = [step["stepId"] for step in exported_steps]
+    canonical_ids = [step["id"] for step in canonical_steps]
 
     if module_context["id"] != module["id"]:
         issues.append(
@@ -53,15 +55,32 @@ def check_exact_compatibility(
             f"{len(canonical_steps)}"
         )
 
-    for index, (exported_step, canonical_step) in enumerate(
-        zip(exported_steps, canonical_steps, strict=False)
-    ):
-        if exported_step["stepId"] != canonical_step["id"]:
+    canonical_id_set = set(canonical_ids)
+    exported_id_set = set(exported_ids)
+    for index, step_id in enumerate(exported_ids):
+        if step_id not in canonical_id_set:
             issues.append(
                 f"$.progress.steps[{index}].stepId: exported step ID "
-                f"'{exported_step['stepId']}' does not match canonical step ID "
-                f"'{canonical_step['id']}' at this route position"
+                f"'{step_id}' is not present in the canonical module revision"
             )
+
+    for step_id in canonical_ids:
+        if step_id not in exported_id_set:
+            issues.append(
+                "$.progress.steps: canonical step ID "
+                f"'{step_id}' is missing from the exported step sequence"
+            )
+
+    if canonical_id_set == exported_id_set and exported_ids != canonical_ids:
+        for index, (exported_id, canonical_id) in enumerate(
+            zip(exported_ids, canonical_ids, strict=False)
+        ):
+            if exported_id != canonical_id:
+                issues.append(
+                    f"$.progress.steps[{index}].stepId: exported step ID "
+                    f"'{exported_id}' does not match canonical step ID "
+                    f"'{canonical_id}' at this route position"
+                )
 
     current_index = progress["currentStepIndex"]
     current_step_id = progress["currentStepId"]

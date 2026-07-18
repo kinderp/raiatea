@@ -9,7 +9,9 @@ from pathlib import Path
 ROOT = Path(__file__).parents[1]
 BUILD_DIR = ROOT / "build"
 FIXTURE_DIR = ROOT / "tests" / "fixtures" / "evidence-v2-contextual"
-MODULE_PATH = ROOT / "tests" / "fixtures" / "module-identity" / "valid.json"
+MODULE_FIXTURE_DIR = ROOT / "tests" / "fixtures" / "module-identity"
+MODULE_PATH = MODULE_FIXTURE_DIR / "valid.json"
+INVALID_MODULE_PATH = MODULE_FIXTURE_DIR / "missing-revision.json"
 sys.path.insert(0, str(BUILD_DIR))
 
 import check_evidence_compatibility as v1_checker  # noqa: E402
@@ -51,10 +53,12 @@ class LearnerEvidenceV2ExactCompatibilityTests(unittest.TestCase):
             "step-count-mismatch.json": [
                 "$.module.stepCount: exported step count 1 does not match canonical module step count 2",
                 "$.progress.steps: exported step sequence length 1 does not match canonical module step sequence length 2",
+                "$.progress.steps: canonical step ID 'apply-concept' is missing from the exported step sequence",
             ],
             "extra-step-current.json": [
                 "$.module.stepCount: exported step count 3 does not match canonical module step count 2",
                 "$.progress.steps: exported step sequence length 3 does not match canonical module step sequence length 2",
+                "$.progress.steps[2].stepId: exported step ID 'extra-concept' is not present in the canonical module revision",
                 "$.progress.currentStepIndex: exported current step index 2 does not refer to an active canonical step",
             ],
             "reordered-step-ids.json": [
@@ -63,7 +67,8 @@ class LearnerEvidenceV2ExactCompatibilityTests(unittest.TestCase):
                 "$.progress.currentStepId: exported current step ID 'apply-concept' does not match canonical step ID 'orient-concept' at currentStepIndex 0",
             ],
             "replaced-step-id.json": [
-                "$.progress.steps[1].stepId: exported step ID 'replacement-concept' does not match canonical step ID 'apply-concept' at this route position",
+                "$.progress.steps[1].stepId: exported step ID 'replacement-concept' is not present in the canonical module revision",
+                "$.progress.steps: canonical step ID 'apply-concept' is missing from the exported step sequence",
                 "$.progress.currentStepId: exported current step ID 'replacement-concept' does not match canonical step ID 'apply-concept' at currentStepIndex 1",
             ],
         }
@@ -78,8 +83,8 @@ class LearnerEvidenceV2ExactCompatibilityTests(unittest.TestCase):
                     v2_checker.load_and_check(MODULE_PATH, FIXTURE_DIR / fixture_name)
                 self.assertEqual(expected_issues, list(raised.exception.issues))
 
-    def test_structural_failure_stops_before_contextual_comparison(self) -> None:
-        invalid = (
+    def test_structural_failures_stop_before_contextual_comparison(self) -> None:
+        invalid_evidence = (
             ROOT
             / "tests"
             / "fixtures"
@@ -87,7 +92,11 @@ class LearnerEvidenceV2ExactCompatibilityTests(unittest.TestCase):
             / "unsupported-version.json"
         )
         with self.assertRaises(v2_validator.EvidenceExportV2ValidationError):
-            v2_checker.load_and_check(MODULE_PATH, invalid)
+            v2_checker.load_and_check(MODULE_PATH, invalid_evidence)
+        with self.assertRaises(module_validator.ModuleValidationError):
+            v2_checker.load_and_check(
+                INVALID_MODULE_PATH, FIXTURE_DIR / "exact.json"
+            )
 
     def test_titles_language_and_source_are_not_compatibility_keys(self) -> None:
         evidence = copy.deepcopy(self.exact)

@@ -15,6 +15,7 @@
       "properties": {
         "preserve": {
           "type": "array",
+          "uniqueItems": true,
           "items": {
             "type": "object",
             "required": ["sourceStepId", "targetStepId"],

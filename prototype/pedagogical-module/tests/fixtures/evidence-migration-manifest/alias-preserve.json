@@ -1,0 +1,11 @@
+{
+  "format": "raiatea-learner-evidence-migration",
+  "version": 1,
+  "source": {"moduleId": "fixture-module", "revision": 1, "stepIds": ["old-step"]},
+  "target": {"moduleId": "fixture-module", "revision": 2, "stepIds": ["new-step"]},
+  "operations": {
+    "preserve": [{"sourceStepId": "old-step", "targetStepId": "new-step"}],
+    "retire": [],
+    "introduce": []
+  }
+}

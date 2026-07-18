@@ -13,16 +13,16 @@
       "properties": {
         "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
         "revision": {"type": "integer", "minimum": 1},
-        "title": {"type": "string", "minLength": 1},
-        "language": {"type": "string", "minLength": 1},
+        "title": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "language": {"type": "string", "minLength": 1, "pattern": "\\S"},
         "stepCount": {"type": "integer", "minimum": 1},
         "source": {
           "type": "object",
           "properties": {
-            "title": {"type": "string", "minLength": 1},
-            "chapter": {"type": "string", "minLength": 1},
-            "section": {"type": "string", "minLength": 1},
-            "figure": {"type": "string", "minLength": 1},
+            "title": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "chapter": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "section": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "figure": {"type": "string", "minLength": 1, "pattern": "\\S"},
             "pages": {
               "type": "array",
               "minItems": 1,
@@ -49,7 +49,7 @@
             "properties": {
               "index": {"type": "integer", "minimum": 0},
               "stepId": {"type": "string", "pattern": "^[a-z0-9-]+$"},
-              "title": {"type": "string", "minLength": 1},
+              "title": {"type": "string", "minLength": 1, "pattern": "\\S"},
               "attempts": {"type": "integer", "minimum": 0},
               "correct": {"type": "boolean"},
               "usedRemediation": {"type": "boolean"},

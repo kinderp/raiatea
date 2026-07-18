@@ -13,12 +13,12 @@ CONTEXT_DIR = ROOT / "tests" / "fixtures" / "evidence-migration-context"
 PREVIEW_DIR = ROOT / "tests" / "fixtures" / "evidence-migration-preview"
 sys.path.insert(0, str(BUILD_DIR))
 
-import check_evidence_compatibility_preview_v2 as checker  # noqa: E402
+import preview_evidence_migration_v2 as preview  # noqa: E402
 
 
 class EvidenceCompatibilityPreviewLoaderTests(unittest.TestCase):
     def test_loader_resolves_declarative_target_layout_before_classification(self) -> None:
-        result = checker.load_and_classify(
+        result = preview.load_and_preview(
             ROOT / "tests" / "fixtures" / "evidence-v2-contextual" / "exact.json",
             ROOT / "examples" / "query-key-value.json",
         )
@@ -30,9 +30,9 @@ class EvidenceCompatibilityPreviewLoaderTests(unittest.TestCase):
             evidence_path = Path(temporary) / "array.json"
             evidence_path.write_text("[]", encoding="utf-8")
             with self.assertRaises(
-                checker.EvidenceCompatibilityPreviewInputError
+                preview.EvidenceMigrationPreviewInputError
             ) as raised:
-                checker.load_and_classify(
+                preview.load_and_preview(
                     evidence_path,
                     CONTEXT_DIR / "exact-target.json",
                 )
@@ -48,9 +48,9 @@ class EvidenceCompatibilityPreviewLoaderTests(unittest.TestCase):
             source_path.write_text('{"id":', encoding="utf-8")
             manifest_path.write_text('{"version":', encoding="utf-8")
             with self.assertRaises(
-                checker.EvidenceCompatibilityPreviewInputError
+                preview.EvidenceMigrationPreviewInputError
             ) as raised:
-                checker.load_and_classify(
+                preview.load_and_preview(
                     evidence_path,
                     CONTEXT_DIR / "exact-target.json",
                     source_module_path=source_path,
@@ -64,7 +64,7 @@ class EvidenceCompatibilityPreviewLoaderTests(unittest.TestCase):
     def test_cli_emits_machine_readable_partial_preview(self) -> None:
         command = [
             sys.executable,
-            str(BUILD_DIR / "check_evidence_compatibility_preview_v2.py"),
+            str(BUILD_DIR / "preview_evidence_migration_v2.py"),
             str(PREVIEW_DIR / "source-current-preserved.json"),
             str(CONTEXT_DIR / "exact-target.json"),
             "--source",
@@ -89,7 +89,7 @@ class EvidenceCompatibilityPreviewLoaderTests(unittest.TestCase):
         result = subprocess.run(
             [
                 sys.executable,
-                str(BUILD_DIR / "check_evidence_compatibility_preview_v2.py"),
+                str(BUILD_DIR / "preview_evidence_migration_v2.py"),
                 str(PREVIEW_DIR / "source-current-preserved.json"),
                 str(CONTEXT_DIR / "exact-target.json"),
                 "--source",

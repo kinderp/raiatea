@@ -36,6 +36,15 @@ jobs:
           fi
           cat /tmp/raiatea-unit-tests.log
 
+      - name: Upload unit test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-diagnostics
+          path: /tmp/raiatea-unit-tests.log
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Compile declarative visual layouts
         run: |
           mkdir -p /tmp/raiatea-layouts
@@ -51,7 +60,7 @@ jobs:
         run: |
           for module in prototype/pedagogical-module/examples/*.json; do
             case "$module" in *.layout.json) continue ;; esac
-            python prototype/pedagogical-module/build/validate_module_v2.py "$module"
+            python prototype/pedagogical-module/build/validate_module.py "$module"
           done
 
       - name: Build all example modules

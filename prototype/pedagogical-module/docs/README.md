@@ -16,24 +16,19 @@ This directory collects the stable architecture and privacy decisions that gover
 - [`learner-evidence-v2-compatibility-preview.md`](learner-evidence-v2-compatibility-preview.md) — deterministic Class A–E precedence, direct-manifest classification, read-only preserved/introduced/retired preview, current-position outcomes, candidate availability, and explicit no-mutation boundary.
 - [`confirmed-evidence-migration-application.md`](confirmed-evidence-migration-application.md) — versioned two-phase in-memory preparation and exact-token confirmation contract that freshly recomputes the preview, preserves the original object, and returns a separate validated migrated copy.
 - [`first-runnable-pilot.md`](first-runnable-pilot.md) — canonical two-module pilot route, deterministic local build, relative launcher/navigation contract, no-replace installation boundary, and evaluator launch instructions.
+- [`pilot-route-dashboard.md`](pilot-route-dashboard.md) — learner-facing route status derived only from exact module-local progress keys, closed completion semantics, advisory recommendation, refresh behavior, and privacy limits.
 
-The immutability amendment, test-responsibility matrix, canonical authoring rules, evidence v2 contract, exact contextual compatibility contract, migration-manifest contract, contextual manifest-validation contract, compatibility-preview contract, and confirmed-application contract are normative parts of the module-evolution decision set. They must be read together with the main decision. The pilot contract is the normative packaging boundary for the first end-to-end local learner journey.
+The pilot contracts define the evaluator-facing local learner journey and its read-only route dashboard. Evidence and migration contracts remain separate and unchanged.
 
-## Reading order for evidence work
+## Reading order for evidence and pilot work
 
-1. Read the retention and privacy boundary to understand what data exists today, where each copy lives, and which operations may mutate or transmit it.
-2. Read the module-evolution decision before changing step identity, module revisions, evidence versions, compatibility policy, or migration behavior.
-3. Read the revision-immutability amendment and test-responsibility matrix before designing publication history, revision validation, or migration fixtures.
-4. Read the canonical revision and step-identity authoring rules before creating or changing a buildable module.
-5. Read the evidence v2 stable-identity contract before adding v2 exporters, compatibility checks, or migration behavior.
-6. Read the exact v2 compatibility contract before comparing evidence with a canonical revision.
-7. Read the migration-manifest contract before authoring or structurally validating revision-transition mappings.
-8. Read the contextual manifest-validation contract before comparing a manifest with caller-supplied canonical revisions.
-9. Read the compatibility-preview contract before classifying a direct transition, generating a candidate, or presenting preserved, introduced, retired, or unresolved state.
-10. Read the confirmed-application contract before creating confirmation tokens or returning migrated evidence copies.
-11. Read the first-runnable-pilot contract before packaging canonical modules into the evaluator-facing local route.
-12. Read the current schemas, validators, examples, tests, and prototype README before implementing a micro-step.
+1. Read the retention and privacy boundary before changing stored or exported learner evidence.
+2. Read the module-evolution and authoring contracts before changing module revisions or step identities.
+3. Read the evidence v2, manifest, preview, and confirmed-application contracts before changing compatibility or migration behavior.
+4. Read the first-runnable-pilot contract before packaging canonical modules into a local route.
+5. Read the pilot-route-dashboard contract before deriving cross-module route status from browser-local progress.
+6. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
 
 ## Current implementation boundary
 
-Canonical pedagogical modules require a positive integer `revision` and one unique lowercase/digit/hyphen `id` for every pedagogical step. Learner-evidence v1 remains frozen under its exact module-ID, ordered-index, and authored-step-title compatibility rules. Learner-evidence v2 has a separate closed schema, example, and side-effect-free structural validator carrying exact revision identity and stable step IDs. A separate exact contextual checker compares a structurally valid v2 document with one supplied canonical module revision. A closed migration-manifest schema and standalone validator describe complete same-module source/target inventories and `preserve`, `retire`, and `introduce` mappings without applying them. A separate side-effect-free contextual checker verifies that one structurally valid manifest exactly describes two supplied structurally valid canonical revisions, including ordered stable-step inventories. The read-only preview engine classifies exact, declared-lossless, declared-partial, incompatible, and unsupported direct transitions; emits deterministic preserved, introduced, retired, historical-only, and current-position outcomes; and may construct a non-persisted candidate only when current position is deterministic. The confirmed-application layer adds versioned, two-phase, in-memory preparation and application: it binds confirmation to complete validated current inputs and the freshly recomputed preview, rejects stale or ineligible transitions, and returns independent original/migrated copies without writing storage. The pilot packager now builds a deterministic, offline, canonical two-module route with a relative launcher and no-replace output installation. Filesystem publication of migrated evidence, browser v2 export/import and confirmation UI, route-wide progress aggregation, registries, manifest path selection/chaining, and split/merge semantics remain separate increments.
+Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The pilot packager builds a deterministic offline two-module route with relative navigation and no-replace output installation. The route dashboard reads only the two exact `raiatea-progress:<module-id>` keys, derives `not-started`, `in-progress`, or `locally-completed`, and recommends the first incomplete module without writing storage or gating navigation. Multi-module evidence export, accounts, server persistence, analytics, LMS integration, grading, and AI recommendations remain deferred.

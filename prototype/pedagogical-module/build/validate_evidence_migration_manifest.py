@@ -111,9 +111,7 @@ def _validate_id_array(
     return result
 
 
-def _canonical_order(
-    values: list[str], inventory: list[str]
-) -> list[str]:
+def _canonical_order(values: list[str], inventory: list[str]) -> list[str]:
     selected = set(values)
     return [step_id for step_id in inventory if step_id in selected]
 
@@ -245,9 +243,7 @@ def validate_migration_manifest(data: Any) -> list[str]:
     for step_id in source_ids:
         count = source_coverage[step_id]
         if count == 0:
-            issues.append(
-                f"$.operations: source step ID '{step_id}' is not covered"
-            )
+            issues.append(f"$.operations: source step ID '{step_id}' is not covered")
         elif count > 1:
             issues.append(
                 f"$.operations: source step ID '{step_id}' is covered more than once"
@@ -255,23 +251,30 @@ def validate_migration_manifest(data: Any) -> list[str]:
     for step_id in target_ids:
         count = target_coverage[step_id]
         if count == 0:
-            issues.append(
-                f"$.operations: target step ID '{step_id}' is not covered"
-            )
+            issues.append(f"$.operations: target step ID '{step_id}' is not covered")
         elif count > 1:
             issues.append(
                 f"$.operations: target step ID '{step_id}' is covered more than once"
             )
 
-    if preserved_sources != _canonical_order(preserved_sources, source_ids):
+    if (
+        len(preserved_sources) == len(set(preserved_sources))
+        and preserved_sources != _canonical_order(preserved_sources, source_ids)
+    ):
         issues.append(
             "$.operations.preserve: entries must follow $.source.stepIds order"
         )
-    if retired_ids != _canonical_order(retired_ids, source_ids):
+    if (
+        len(retired_ids) == len(set(retired_ids))
+        and retired_ids != _canonical_order(retired_ids, source_ids)
+    ):
         issues.append(
             "$.operations.retire: entries must follow $.source.stepIds order"
         )
-    if introduced_ids != _canonical_order(introduced_ids, target_ids):
+    if (
+        len(introduced_ids) == len(set(introduced_ids))
+        and introduced_ids != _canonical_order(introduced_ids, target_ids)
+    ):
         issues.append(
             "$.operations.introduce: entries must follow $.target.stepIds order"
         )

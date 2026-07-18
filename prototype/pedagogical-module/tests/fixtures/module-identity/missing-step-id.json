@@ -1,0 +1,26 @@
+{
+  "id": "identity-fixture",
+  "revision": 1,
+  "title": "Canonical identity fixture",
+  "language": "en",
+  "route": {"summary": "Validate canonical identity.", "previous": []},
+  "prerequisites": [],
+  "visual": {"type": "svg", "markup": "<svg id=\"identity-fixture-visual\"></svg>"},
+  "steps": [
+    {
+      "title": "Orient the learner",
+      "explanation": "<p>Introduce the concept.</p>",
+      "goal": "Recognize the concept.",
+      "observe": "Observe the visual.",
+      "quiz": {
+        "question": "What is the responsibility?",
+        "answers": ["Orientation", "Migration"],
+        "correctIndex": 0,
+        "correctFeedback": "Correct.",
+        "incorrectFeedback": "Review the step."
+      }
+    }
+  ],
+  "concepts": [],
+  "next": {"summary": "Continue after validation.", "items": ["Continue"]}
+}

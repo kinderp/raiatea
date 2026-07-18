@@ -1,5 +1,6 @@
 {
   "id": "self-attention-orientation",
+  "revision": 1,
   "title": "Il ruolo della self-attention nel modello GPT",
   "subtitle": "Una figura statica viene trasformata in una sequenza pedagogica controllabile, con prerequisiti, verifiche e collegamenti concettuali.",
   "language": "it",
@@ -38,6 +39,7 @@
   },
   "steps": [
     {
+      "id": "orient-with-system-map",
       "eyebrow": "Prima di osservare",
       "title": "Usare la figura come mappa",
       "explanation": "<p>La figura mostra dove agisce la self-attention, non ancora i suoi calcoli interni.</p>",
@@ -79,6 +81,7 @@
       }
     },
     {
+      "id": "convert-tokens-to-embeddings",
       "eyebrow": "Passo 1",
       "title": "Dal testo agli embedding",
       "explanation": "<p>Il modello deve convertire i token in vettori prima che la self-attention possa lavorare.</p>",
@@ -120,6 +123,7 @@
       }
     },
     {
+      "id": "contextualize-token-representations",
       "eyebrow": "Passo 2",
       "title": "Arricchire ogni token con il contesto",
       "explanation": "<p>La self-attention combina informazioni provenienti dagli altri token e produce rappresentazioni contestualizzate.</p>",
@@ -161,6 +165,7 @@
       }
     },
     {
+      "id": "transition-to-internal-calculations",
       "eyebrow": "Dopo la figura",
       "title": "Passare ai calcoli interni",
       "explanation": "<p>Ora puoi aprire il blocco verde e studiare query, score, softmax e somma pesata.</p>",

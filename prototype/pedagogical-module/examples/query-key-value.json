@@ -1,5 +1,6 @@
 {
   "id": "query-key-value",
+  "revision": 1,
   "title": "Query, Key e Value nella self-attention",
   "subtitle": "Tre trasformazioni lineari separano ciò che un token cerca, ciò con cui viene confrontato e l'informazione che può contribuire al contesto.",
   "language": "it",
@@ -16,6 +17,7 @@
   },
   "steps": [
     {
+      "id": "project-embedding-into-qkv",
       "eyebrow": "Passo 1", "title": "Un solo embedding, tre proiezioni",
       "explanation": "<p>Query, key e value non sono tre copie identiche: derivano dallo stesso embedding tramite tre matrici apprese diverse.</p>",
       "goal": "<b>Obiettivo:</b> distinguere origine comune e ruoli separati.",
@@ -26,6 +28,7 @@
       "quiz": {"question": "Da dove derivano query, key e value?", "answers": ["Da tre testi diversi", "Dallo stesso embedding con matrici diverse"], "correctIndex": 1, "correctFeedback": "Corretto.", "incorrectFeedback": "La sorgente è lo stesso embedding.", "remediation": {"title": "Riconosci la trasformazione", "explanation": "Una stessa rappresentazione può essere proiettata in spazi diversi con matrici diverse.", "conceptRef": "linear-transformation", "actionLabel": "Ripassa trasformazione lineare", "retryLabel": "Torna alla domanda originale", "activity": {"type": "choice", "prompt": "Quale espressione descrive una proiezione lineare?", "answers": ["q=xWq", "q=x+x+x"], "correctIndex": 0, "correctFeedback": "Esatto.", "incorrectFeedback": "Serve una matrice di trasformazione."}}}
     },
     {
+      "id": "compare-query-and-key",
       "eyebrow": "Passo 2", "title": "Query e key producono compatibilità",
       "explanation": "<p>La query del token corrente viene confrontata con le key dei token disponibili. Il prodotto scalare produce uno score.</p>",
       "goal": "<b>Idea:</b> query = richiesta; key = descrizione confrontabile.",
@@ -36,6 +39,7 @@
       "quiz": {"question": "Quali elementi determinano direttamente lo score?", "answers": ["Query e key", "Key e value"], "correctIndex": 0, "correctFeedback": "Corretto.", "incorrectFeedback": "Il confronto diretto avviene tra query e key."}
     },
     {
+      "id": "aggregate-value-content",
       "eyebrow": "Passo 3", "title": "Il value trasporta il contenuto",
       "explanation": "<p>Lo score, dopo normalizzazione, stabilisce quanto del value entra nella rappresentazione contestuale.</p>",
       "goal": "<b>Risultato:</b> separare il criterio di selezione dall'informazione selezionata.",

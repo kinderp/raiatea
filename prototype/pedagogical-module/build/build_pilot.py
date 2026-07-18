@@ -105,6 +105,23 @@ def _public_manifest(route: tuple[dict[str, Any], ...]) -> dict[str, Any]:
     return {"format": "raiatea-pilot", "version": 1, "modules": modules}
 
 
+def _walkthrough() -> str:
+    return """
+    <section aria-labelledby="evidence-walkthrough-title">
+      <h2 id="evidence-walkthrough-title">Come leggere il riepilogo ed esportare le evidenze</h2>
+      <p>Il pilot mostra tre viste diverse: lo stato della dashboard serve a orientarsi nel percorso; il riepilogo dentro ogni modulo descrive soltanto le interazioni osservate in quel modulo; il file JSON esportato contiene le evidenze del solo modulo aperto.</p>
+      <ol>
+        <li>Apri uno dei moduli dal percorso.</li>
+        <li>Completa o prova una verifica, poi raggiungi la sezione <strong>Riepilogo del percorso</strong>.</li>
+        <li>Leggi tentativi, risposte corrette, uso della remediation e attività di recupero completate. Questi dati non sono un voto o un mastery score.</li>
+        <li>Premi <strong>Esporta evidenze JSON</strong> per scaricare esplicitamente un file locale del modulo corrente.</li>
+        <li>Il nome del file è <code>&lt;module-id&gt;-evidence-v1.json</code>. Il pilot non crea ancora un portfolio o un export unico dell’intero percorso.</li>
+      </ol>
+      <p><small>Aprire questa guida non scarica file e non modifica progressi, preferenze o altri dati del browser.</small></p>
+    </section>
+    """
+
+
 def _launcher(route: tuple[dict[str, Any], ...], manifest: dict[str, Any]) -> str:
     cards = "".join(
         f'<li data-pilot-module="{html.escape(item["id"], quote=True)}">'
@@ -128,6 +145,7 @@ def _launcher(route: tuple[dict[str, Any], ...], manifest: dict[str, Any]) -> st
     main {{ border: 1px solid #bbb; border-radius: 1rem; padding: 1.5rem; }}
     .start {{ display: inline-block; padding: .7rem 1rem; border: 1px solid currentColor; border-radius: .6rem; }}
     li {{ margin-block: 1rem; }}
+    section {{ margin-block-start: 2rem; padding-block-start: 1rem; border-top: 1px solid #ccc; }}
   </style>
 </head>
 <body>
@@ -138,6 +156,7 @@ def _launcher(route: tuple[dict[str, Any], ...], manifest: dict[str, Any]) -> st
     <ol>{cards}</ol>
     <p><a class="start" href="{first}">Inizia il percorso</a></p>
     <p><small>Il pilot funziona offline e legge i progressi soltanto dal browser locale.</small></p>
+    {_walkthrough()}
   </main>
   <script>window.RAIATEA_PILOT={manifest_json};</script>
   <script src="pilot-dashboard.js" defer></script>
@@ -155,6 +174,8 @@ def _verify_output(directory: Path, manifest: dict[str, Any]) -> None:
     launcher = (directory / "index.html").read_text(encoding="utf-8")
     if 'src="pilot-dashboard.js"' not in launcher:
         raise ValueError("launcher is missing dashboard script")
+    if 'id="evidence-walkthrough-title"' not in launcher:
+        raise ValueError("launcher is missing evidence walkthrough")
     for module in manifest["modules"]:
         if f'href="{module["file"]}"' not in launcher:
             raise ValueError(f"launcher is missing module link {module['file']}")

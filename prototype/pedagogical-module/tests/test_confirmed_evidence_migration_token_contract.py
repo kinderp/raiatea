@@ -37,7 +37,9 @@ class ConfirmedEvidenceMigrationTokenContractTests(unittest.TestCase):
             source_module=self.source,
             manifest=self.manifest,
         )
-        uppercase_token = preparation["confirmationToken"].upper()
+        token = preparation["confirmationToken"]
+        digest = token[len(application.CONFIRMATION_PREFIX) :]
+        uppercase_token = application.CONFIRMATION_PREFIX + "A" + digest[1:]
         originals = tuple(
             copy.deepcopy(value)
             for value in (self.evidence, self.target, self.source, self.manifest)

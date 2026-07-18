@@ -74,6 +74,10 @@ class LearnerEvidenceExportV2Tests(unittest.TestCase):
             "invalid-revision.json": [
                 "$.module.revision: must be a positive integer"
             ],
+            "malformed-step-id.json": [
+                "$.progress.currentStepId: must contain only lowercase letters, digits, and hyphens",
+                "$.progress.steps[0].stepId: must contain only lowercase letters, digits, and hyphens",
+            ],
             "duplicate-step-id.json": [
                 "$.progress.steps[1].stepId: duplicate step id 'orient-concept'"
             ],
@@ -81,9 +85,17 @@ class LearnerEvidenceExportV2Tests(unittest.TestCase):
                 "$.progress.steps[0].index: must equal its array position",
                 "$.progress.steps[1].index: must equal its array position",
             ],
+            "unknown-current-step-id.json": [
+                "$.progress.currentStepId: must refer to an exported step",
+                "$.progress.currentStepId: must match "
+                "$.progress.steps[currentStepIndex].stepId",
+            ],
             "current-step-mismatch.json": [
                 "$.progress.currentStepId: must match "
                 "$.progress.steps[currentStepIndex].stepId"
+            ],
+            "step-count-mismatch.json": [
+                "$.progress.steps: length must match $.module.stepCount"
             ],
             "additional-field.json": [
                 "$.learnerEmail: field is not supported"
@@ -106,20 +118,6 @@ class LearnerEvidenceExportV2Tests(unittest.TestCase):
                     "$.module.revision: must be a positive integer",
                     v2_validator.validate_evidence_export_v2(data),
                 )
-
-    def test_unknown_current_step_and_index_mismatch_fail_closed(self) -> None:
-        data = self.clone_example()
-        data["progress"]["currentStepId"] = "retired-concept"
-        data["progress"]["currentStepIndex"] = 0
-        issues = v2_validator.validate_evidence_export_v2(data)
-        self.assertIn(
-            "$.progress.currentStepId: must refer to an exported step", issues
-        )
-        self.assertIn(
-            "$.progress.currentStepId: must match "
-            "$.progress.steps[currentStepIndex].stepId",
-            issues,
-        )
 
     def test_step_count_and_current_index_must_be_consistent(self) -> None:
         data = self.clone_example()

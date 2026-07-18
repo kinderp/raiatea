@@ -71,6 +71,12 @@ The public application function originally required both confirmation keyword ar
 
 Resolution: `confirmed` defaults to `False` and `confirmation_token` defaults to `None`; omitted values now fail under `$.confirmation.confirmed` or `$.confirmation.token` without inspecting, mutating, or applying the migration. A regression calls the API with both values omitted and requires `EvidenceMigrationApplicationError`.
 
+### F11 — major — resolved — a superseded CLI reintroduced the removed confirmation API
+
+After the API-only boundary had been documented and F6 resolved, a later branch commit reintroduced `confirm_evidence_migration_v2.py` and CLI tests that called the removed `confirmation_digest` helper and `confirmed_digest` keyword. GitHub Actions run 621 failed in unit tests, and the CLI also contradicted the approved in-memory API-only increment.
+
+Resolution: the superseded CLI and its tests were removed. The authoritative surface remains only `prepare_migration(...)` and `apply_confirmed_migration(...)`; the next green run must cover the resulting seven-file diff before final reviews.
+
 ## Open findings
 
 None. Actions and two consecutive clean review rounds are still required on one unchanged final head before protected squash merge.

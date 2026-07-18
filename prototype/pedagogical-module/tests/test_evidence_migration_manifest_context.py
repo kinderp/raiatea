@@ -124,6 +124,11 @@ class MigrationManifestContextTests(unittest.TestCase):
                 "'migration-context-fixture' does not match target module ID "
                 "'different-target-route'",
             ),
+            "target-revision-mismatch.json": (
+                "target",
+                "$.manifest.target.revision: manifest target revision '2' "
+                "does not match target module revision '11'",
+            ),
         }
         for fixture_name, (role, expected_issue) in cases.items():
             with self.subTest(fixture=fixture_name):
@@ -136,6 +141,18 @@ class MigrationManifestContextTests(unittest.TestCase):
                         source, target, self.manifest
                     ),
                 )
+
+    def test_revision_values_are_compared_only_by_exact_equality(self) -> None:
+        source = copy.deepcopy(self.source)
+        target = copy.deepcopy(self.target)
+        manifest = copy.deepcopy(self.manifest)
+        source["revision"] = 40
+        target["revision"] = 3
+        manifest["source"]["revision"] = 40
+        manifest["target"]["revision"] = 3
+        self.assertEqual(
+            [], context_checker.check_manifest_context(source, target, manifest)
+        )
 
     def test_explanatory_module_fields_are_not_contextual_keys(self) -> None:
         source = copy.deepcopy(self.source)
@@ -192,7 +209,7 @@ class MigrationManifestContextTests(unittest.TestCase):
         context_checker.check_manifest_context(source, target, manifest)
         self.assertEqual(originals, (source, target, manifest))
 
-    def test_cli_success_and_failure_do_not_infer_revision_order(self) -> None:
+    def test_cli_success_contextual_failure_and_structural_failure(self) -> None:
         checker = BUILD_DIR / "check_evidence_migration_manifest_context.py"
         success = subprocess.run(
             [
@@ -209,7 +226,7 @@ class MigrationManifestContextTests(unittest.TestCase):
         self.assertEqual(0, success.returncode, success.stderr)
         self.assertIn("Contextually valid migration manifest", success.stdout)
 
-        failure = subprocess.run(
+        contextual_failure = subprocess.run(
             [
                 sys.executable,
                 str(checker),
@@ -221,10 +238,43 @@ class MigrationManifestContextTests(unittest.TestCase):
             text=True,
             check=False,
         )
-        self.assertEqual(1, failure.returncode)
-        self.assertIn("does not match", failure.stdout)
+        self.assertEqual(1, contextual_failure.returncode)
+        self.assertIn(
+            "Migration manifest does not match the supplied canonical revisions:",
+            contextual_failure.stdout,
+        )
         for forbidden in ("older", "newer", "previous", "next", "higher", "lower"):
-            self.assertNotIn(forbidden, failure.stdout.lower())
+            self.assertNotIn(forbidden, contextual_failure.stdout.lower())
+
+        structural_failure = subprocess.run(
+            [
+                sys.executable,
+                str(checker),
+                str(
+                    ROOT
+                    / "tests"
+                    / "fixtures"
+                    / "module-identity"
+                    / "missing-revision.json"
+                ),
+                str(self.target_path),
+                str(FIXTURE_DIR / "unsupported-version.json"),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(1, structural_failure.returncode)
+        self.assertIn(
+            "Migration manifest contextual input validation failed:",
+            structural_failure.stdout,
+        )
+        self.assertIn("$.sourceModule.revision:", structural_failure.stdout)
+        self.assertIn("$.manifest.version:", structural_failure.stdout)
+        self.assertNotIn(
+            "Migration manifest does not match the supplied canonical revisions:",
+            structural_failure.stdout,
+        )
 
     def test_existing_evidence_and_manifest_contracts_remain_green(self) -> None:
         v1_module = module_validator.load_and_validate(

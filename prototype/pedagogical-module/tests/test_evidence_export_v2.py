@@ -60,6 +60,18 @@ class LearnerEvidenceExportV2Tests(unittest.TestCase):
             {"type": "integer", "minimum": 1},
             module_schema["properties"]["revision"],
         )
+        for field in ("title", "language"):
+            self.assertEqual(
+                {"type": "string", "minLength": 1, "pattern": "\\S"},
+                module_schema["properties"][field],
+            )
+        source_schema = module_schema["properties"]["source"]
+        self.assertFalse(source_schema["additionalProperties"])
+        for field in ("title", "chapter", "section", "figure"):
+            self.assertEqual(
+                {"type": "string", "minLength": 1, "pattern": "\\S"},
+                source_schema["properties"][field],
+            )
         progress_schema = self.schema["properties"]["progress"]
         self.assertFalse(progress_schema["additionalProperties"])
         self.assertIn("currentStepId", progress_schema["required"])
@@ -67,6 +79,10 @@ class LearnerEvidenceExportV2Tests(unittest.TestCase):
         step_schema = progress_schema["properties"]["steps"]["items"]
         self.assertFalse(step_schema["additionalProperties"])
         self.assertIn("stepId", step_schema["required"])
+        self.assertEqual(
+            {"type": "string", "minLength": 1, "pattern": "\\S"},
+            step_schema["properties"]["title"],
+        )
 
     def test_invalid_fixtures_report_expected_fail_closed_paths(self) -> None:
         expected = {
@@ -117,6 +133,27 @@ class LearnerEvidenceExportV2Tests(unittest.TestCase):
                 self.assertIn(
                     "$.module.revision: must be a positive integer",
                     v2_validator.validate_evidence_export_v2(data),
+                )
+
+    def test_whitespace_only_authored_strings_are_rejected(self) -> None:
+        cases = (
+            ("module title", ("module", "title"), "   "),
+            ("language", ("module", "language"), "\t"),
+            ("source title", ("module", "source", "title"), "\n"),
+            ("step title", ("progress", "steps", 0, "title"), "   "),
+        )
+        for name, path, value in cases:
+            with self.subTest(field=name):
+                data = self.clone_example()
+                target = data
+                for segment in path[:-1]:
+                    target = target[segment]
+                target[path[-1]] = value
+                self.assertTrue(
+                    any(
+                        issue.endswith(": must be a non-empty string")
+                        for issue in v2_validator.validate_evidence_export_v2(data)
+                    )
                 )
 
     def test_step_count_and_current_index_must_be_consistent(self) -> None:

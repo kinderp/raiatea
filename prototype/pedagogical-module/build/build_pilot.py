@@ -6,14 +6,23 @@ import html
 import json
 import os
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
 
-from build_module import render_module
-from validate_module_v2 import load_and_validate, raise_for_issues, validate_rendered_html
+BUILD_DIR = Path(__file__).resolve().parent
+if str(BUILD_DIR) not in sys.path:
+    sys.path.insert(0, str(BUILD_DIR))
 
-ROOT = Path(__file__).parents[1]
+from build_module import render_module  # noqa: E402
+from validate_module_v2 import (  # noqa: E402
+    load_and_validate,
+    raise_for_issues,
+    validate_rendered_html,
+)
+
+ROOT = BUILD_DIR.parent
 EXAMPLES = ROOT / "examples"
 TEMPLATE = ROOT / "src" / "template.html"
 CSS = ROOT / "src" / "module.css"
@@ -142,10 +151,10 @@ def build_pilot(output: Path) -> Path:
         for index, item in enumerate(ROUTE):
             data = load_and_validate(item["source"])
             document = render_module(data, template, css, js)
-            raise_for_issues(validate_rendered_html(document))
             previous = ROUTE[index - 1] if index > 0 else None
             next_item = ROUTE[index + 1] if index + 1 < len(ROUTE) else None
             document = _inject_navigation(document, _navigation(previous, next_item))
+            raise_for_issues(validate_rendered_html(document))
             (temporary / item["output"]).write_text(document, encoding="utf-8")
 
         manifest = _manifest(ROUTE)

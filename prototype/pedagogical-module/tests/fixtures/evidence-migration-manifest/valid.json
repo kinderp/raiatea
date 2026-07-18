@@ -5,10 +5,9 @@
   "target": {"moduleId": "fixture-module", "revision": 9, "stepIds": ["orient", "apply", "enrichment"]},
   "operations": {
     "preserve": [
-      {"sourceStepId": "orient", "targetStepId": "orient"},
-      {"sourceStepId": "practice", "targetStepId": "apply"}
+      {"sourceStepId": "orient", "targetStepId": "orient"}
     ],
-    "retire": ["legacy"],
-    "introduce": ["enrichment"]
+    "retire": ["practice", "legacy"],
+    "introduce": ["apply", "enrichment"]
   }
 }

@@ -111,13 +111,11 @@ def _validate_id_array(
     return result
 
 
-def _canonical_order(values: list[str], inventory: list[str]) -> list[str]:
+def _canonical_order(
+    values: list[str], inventory: list[str]
+) -> list[str]:
     selected = set(values)
     return [step_id for step_id in inventory if step_id in selected]
-
-
-def _is_unique(values: list[str]) -> bool:
-    return len(values) == len(set(values))
 
 
 def validate_migration_manifest(data: Any) -> list[str]:
@@ -185,6 +183,11 @@ def validate_migration_manifest(data: Any) -> list[str]:
                 target_step_id, f"{path}.targetStepId", issues
             )
             if source_valid and target_valid:
+                if source_step_id != target_step_id:
+                    issues.append(
+                        f"{path}.targetStepId: preserve must retain the exact source step ID "
+                        f"'{source_step_id}'"
+                    )
                 preserve_entries.append((index, source_step_id, target_step_id))
 
     retire_entries = _validate_id_array(
@@ -260,21 +263,15 @@ def validate_migration_manifest(data: Any) -> list[str]:
                 f"$.operations: target step ID '{step_id}' is covered more than once"
             )
 
-    if (
-        _is_unique(preserved_sources)
-        and preserved_sources != _canonical_order(preserved_sources, source_ids)
-    ):
+    if preserved_sources != _canonical_order(preserved_sources, source_ids):
         issues.append(
             "$.operations.preserve: entries must follow $.source.stepIds order"
         )
-    if _is_unique(retired_ids) and retired_ids != _canonical_order(retired_ids, source_ids):
+    if retired_ids != _canonical_order(retired_ids, source_ids):
         issues.append(
             "$.operations.retire: entries must follow $.source.stepIds order"
         )
-    if (
-        _is_unique(introduced_ids)
-        and introduced_ids != _canonical_order(introduced_ids, target_ids)
-    ):
+    if introduced_ids != _canonical_order(introduced_ids, target_ids):
         issues.append(
             "$.operations.introduce: entries must follow $.target.stepIds order"
         )

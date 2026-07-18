@@ -81,11 +81,11 @@ def _validate_endpoint(
         step_path = f"{path}.stepIds[{index}]"
         if not _stable_id(step_id, step_path, issues):
             continue
-        step_ids.append(step_id)
         if step_id in seen:
             issues.append(f"{step_path}: duplicate step ID '{step_id}'")
-        else:
-            seen.add(step_id)
+            continue
+        seen.add(step_id)
+        step_ids.append(step_id)
 
     return valid_module_id, valid_revision, step_ids
 
@@ -103,11 +103,11 @@ def _validate_id_array(
         item_path = f"{path}[{index}]"
         if not _stable_id(step_id, item_path, issues):
             continue
-        result.append((index, step_id))
         if step_id in seen:
             issues.append(f"{item_path}: duplicate step ID '{step_id}'")
-        else:
-            seen.add(step_id)
+            continue
+        seen.add(step_id)
+        result.append((index, step_id))
     return result
 
 

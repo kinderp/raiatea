@@ -255,8 +255,8 @@ def apply_confirmed_migration(
     *,
     source_module: Any | None = None,
     manifest: Any | None = None,
-    confirmed: bool,
-    confirmation_token: str | None,
+    confirmed: bool = False,
+    confirmation_token: str | None = None,
 ) -> dict[str, Any]:
     """Recompute, revalidate, and apply one migration entirely in memory."""
     if confirmed is not True:

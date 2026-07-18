@@ -10,7 +10,7 @@ ROOT = Path(__file__).parents[1]
 BUILD_DIR = ROOT / "build"
 sys.path.insert(0, str(BUILD_DIR))
 
-import load_canonical_module as canonical_loader  # noqa: E402
+import validate_module_v2 as canonical_loader  # noqa: E402
 
 
 class CanonicalModuleLoaderTests(unittest.TestCase):

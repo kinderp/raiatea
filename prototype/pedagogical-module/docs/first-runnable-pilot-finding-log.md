@@ -37,7 +37,13 @@ Resolution: `browser-tests/pilot.spec.js` opens the launcher, enters the first m
 
 The initial run and its failed-job rerun both reported `failure` for both jobs while GitHub returned no job steps or downloadable logs. This is recorded as an infrastructure observation rather than a code finding because no repository command was executed according to the available job metadata.
 
-Resolution boundary: the next commit triggers a fresh workflow run. Product changes will be made only for reproducible test output, not to guess at runner-start failures.
+Resolution boundary: a fresh commit was used to trigger a new workflow run. Product changes were made only for a reproducible review finding, not to guess at runner-start failures.
+
+### F6 — resolved — validation ran before route navigation was injected
+
+The initial builder validated each canonical module before adding the pilot navigation. A malformed or externally linked navigation fragment could therefore bypass the final self-contained HTML checks.
+
+Resolution: the builder now injects the route first and validates the final packaged document. It also establishes its own build-directory import path so the command remains stable when invoked through different Python entry points.
 
 ## Open findings
 

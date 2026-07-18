@@ -16,11 +16,11 @@ module.exports = defineConfig({
   },
   webServer: {
     command: [
-      'python build/build_module.py examples/self-attention.json',
-      '--output .browser-artifacts/self-attention.html',
+      'python -c "import shutil; shutil.rmtree(\'.browser-artifacts\', ignore_errors=True)"',
+      '&& python build/build_pilot.py --output .browser-artifacts',
       `&& python -m http.server ${port} --bind ${host} --directory .browser-artifacts`
     ].join(' '),
-    url: `${baseURL}/self-attention.html`,
+    url: `${baseURL}/index.html`,
     reuseExistingServer: !process.env.CI,
     timeout: 120000
   }

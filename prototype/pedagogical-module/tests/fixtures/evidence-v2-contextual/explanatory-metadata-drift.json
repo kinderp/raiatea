@@ -1,0 +1,20 @@
+{
+  "format": "raiatea-learner-evidence",
+  "version": 2,
+  "module": {
+    "id": "identity-fixture",
+    "revision": 1,
+    "title": "Titolo esplicativo differente",
+    "language": "it",
+    "stepCount": 2,
+    "source": {"title": "Fonte esplicativa", "section": "Sezione alternativa", "pages": [9]}
+  },
+  "progress": {
+    "currentStepId": "apply-concept",
+    "currentStepIndex": 1,
+    "steps": [
+      {"index": 0, "stepId": "orient-concept", "title": "Titolo snapshot rinominato", "attempts": 1, "correct": true, "usedRemediation": false, "activityCompleted": false},
+      {"index": 1, "stepId": "apply-concept", "title": "Altro titolo snapshot", "attempts": 0, "correct": false, "usedRemediation": false, "activityCompleted": false}
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "format": "raiatea-learner-evidence",
+  "version": 2,
+  "module": {"id": "identity-fixture", "revision": 1, "title": "Canonical identity fixture", "language": "en", "stepCount": 3},
+  "progress": {
+    "currentStepId": "extra-concept",
+    "currentStepIndex": 2,
+    "steps": [
+      {"index": 0, "stepId": "orient-concept", "title": "Orient", "attempts": 0, "correct": false, "usedRemediation": false, "activityCompleted": false},
+      {"index": 1, "stepId": "apply-concept", "title": "Apply", "attempts": 0, "correct": false, "usedRemediation": false, "activityCompleted": false},
+      {"index": 2, "stepId": "extra-concept", "title": "Extra", "attempts": 0, "correct": false, "usedRemediation": false, "activityCompleted": false}
+    ]
+  }
+}

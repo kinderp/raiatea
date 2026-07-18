@@ -161,9 +161,21 @@ python prototype/pedagogical-module/build/validate_evidence_export_v2.py \
   prototype/pedagogical-module/evidence-examples/learner-evidence-export-v2.json
 ```
 
-Structural validity does not prove compatibility with an installed or published module revision. The current browser does not export, import, preview, restore, or migrate v2 documents. A later contextual checker must receive both the evidence and an immutable canonical module or publication record; until then, consumers needing compatibility decisions must fail closed.
+Structural validity does not prove compatibility with an installed or published module revision. V1 and v2 coexist explicitly: the v1 validator rejects v2 fields and version `2`, the v2 validator rejects v1 documents, v2 is never silently substituted for a requested v1 export, and no automatic downgrade is defined.
 
-V1 and v2 coexist explicitly. The v1 validator rejects v2 fields and version `2`; the v2 validator rejects v1 documents. V2 is never silently substituted for a requested v1 export, and no automatic downgrade is defined.
+### Exact contextual compatibility for v2
+
+The exact contextual checker receives one structurally valid v2 document and one structurally valid canonical module revision. It requires exact module ID and opaque revision equality, the same step count, the same ordered stable step-ID sequence, and a current step ID/index that names the same active canonical step.
+
+```bash
+python prototype/pedagogical-module/build/check_evidence_compatibility_v2.py \
+  prototype/pedagogical-module/tests/fixtures/module-identity/valid.json \
+  prototype/pedagogical-module/tests/fixtures/evidence-v2-contextual/exact.json
+```
+
+Module titles, language, source metadata, and step titles remain explanatory snapshots rather than compatibility keys. Revision mismatches are reported without inferring older/newer or higher/lower ordering. The checker validates first, reports every deterministic contextual mismatch, exits non-zero on failure, and never mutates either input or browser storage.
+
+This is Class A exact matching only. A mismatch is not automatically classified as lossless, partial, incompatible, or unsupported; those outcomes require later publication-history and manifest-aware tooling. The current browser still does not export, import, preview, restore, or migrate v2 documents.
 
 ### V1 import compatibility policy
 
@@ -231,7 +243,7 @@ The current generated module contains no provider credentials, network queue, ex
 
 ### Module evolution and future evidence compatibility
 
-The architecture decision for durable module identity, explicit revisions, immutable step IDs, and authored migration responsibilities is documented in [`docs/module-evolution-and-evidence-compatibility.md`](docs/module-evolution-and-evidence-compatibility.md). The executable authoring rules are in [`docs/module-revision-authoring.md`](docs/module-revision-authoring.md), the v2 stable-identity contract is in [`docs/learner-evidence-v2-stable-identity.md`](docs/learner-evidence-v2-stable-identity.md), and the documentation index is available in [`docs/README.md`](docs/README.md).
+The architecture decision for durable module identity, explicit revisions, immutable step IDs, and authored migration responsibilities is documented in [`docs/module-evolution-and-evidence-compatibility.md`](docs/module-evolution-and-evidence-compatibility.md). The executable authoring rules are in [`docs/module-revision-authoring.md`](docs/module-revision-authoring.md), the v2 stable-identity contract is in [`docs/learner-evidence-v2-stable-identity.md`](docs/learner-evidence-v2-stable-identity.md), the exact contextual contract is in [`docs/learner-evidence-v2-exact-compatibility.md`](docs/learner-evidence-v2-exact-compatibility.md), and the documentation index is available in [`docs/README.md`](docs/README.md).
 
 The current implementation boundary is:
 
@@ -239,11 +251,12 @@ The current implementation boundary is:
 - every pedagogical step carries a unique stable ID using lowercase letters, digits, and hyphens;
 - learner-evidence v1 keeps its exact title/index browser export, compatibility, preview, and restore behavior;
 - learner-evidence v2 has a separate closed schema, example, and structural validator carrying revision identity and stable step IDs;
-- v2 browser export/import and contextual compatibility against a canonical revision are not implemented;
+- exact v2 contextual matching is available against one supplied canonical revision using exact ID, revision, stable-step sequence, and current-position checks;
+- browser v2 export/import, publication-history lookup, compatibility classes B–E, and migrations are not implemented;
 - rename, reorder, split, merge, retirement, and replacement are not migrated automatically;
 - future migrations must be versioned, authored, directional, side-effect free during validation and preview, and explicitly confirmed before any state change.
 
-Contextual v2 compatibility, migration manifests, compatibility previews, and state-changing migration remain separate reviewable increments.
+Publication registries, migration manifests, compatibility previews, and state-changing migration remain separate reviewable increments.
 
 ## Step-level provenance
 
@@ -283,7 +296,7 @@ python -m unittest discover \
   -v
 ```
 
-The suite covers all example modules, canonical revision and step-ID fixtures, adaptive remediation, micro-activities, v1 and v2 evidence validation, v1 browser export and import compatibility, step provenance, semantic visual references, generated output, and common invalid cases.
+The suite covers all example modules, canonical revision and step-ID fixtures, adaptive remediation, micro-activities, v1 and v2 evidence validation, v1 browser export/import compatibility, exact v2 contextual compatibility, step provenance, semantic visual references, generated output, and common invalid cases.
 
 ## Browser interaction tests
 
@@ -336,6 +349,7 @@ prototype/pedagogical-module/
 ├── docs/module-evolution-and-evidence-compatibility.md
 ├── docs/module-revision-authoring.md
 ├── docs/learner-evidence-v2-stable-identity.md
+├── docs/learner-evidence-v2-exact-compatibility.md
 ├── src/template.html
 ├── src/module.css
 ├── src/module.js
@@ -348,14 +362,17 @@ prototype/pedagogical-module/
 ├── build/validate_evidence_export.py
 ├── build/validate_evidence_export_v2.py
 ├── build/check_evidence_compatibility.py
+├── build/check_evidence_compatibility_v2.py
 ├── tests/fixtures/module-identity/
 ├── tests/fixtures/evidence-v2/
+├── tests/fixtures/evidence-v2-contextual/
 ├── tests/test_layout_visual.py
 ├── tests/test_validation.py
 ├── tests/test_module_identity.py
 ├── tests/test_evidence_export.py
 ├── tests/test_evidence_export_v2.py
 ├── tests/test_evidence_compatibility.py
+├── tests/test_evidence_compatibility_v2.py
 ├── browser-tests/module.spec.js
 ├── browser-tests/evidence-import-race.spec.js
 ├── browser-tests/evidence-import-conflict.spec.js
@@ -371,8 +388,9 @@ prototype/pedagogical-module/
 - the Python module validator is layered;
 - mathematical rendering uses plain text unless represented by visual primitives;
 - the browser currently exports and restores only one-module v1 JSON documents;
-- v2 is available only as a closed schema, example, and structural validator;
-- no v2 browser export/import or contextual compatibility checker exists;
+- v2 structural validation and exact contextual matching are local CLI/API capabilities only;
+- exact matching knows only the supplied target module, not publication history or migration paths;
+- no v2 browser export/import, compatibility classes B–E, or migration application exists;
 - restore supports explicit replacement of one compatible v1 module record, not history merging;
 - no version migration, multi-module bundle, signing, encryption, cloud sync, or LMS transfer exists;
 - recommendation rules are deterministic and intentionally simple;
@@ -383,11 +401,10 @@ prototype/pedagogical-module/
 
 ## Next improvements
 
-1. Add side-effect-free contextual v2 compatibility against an immutable canonical module revision.
-2. Define and validate authored migration manifests before implementing migration preview.
-3. Add compatibility classification and human-readable migration preview without state changes.
-4. Add explicitly confirmed migration while preserving the original evidence copy.
-5. Add explicit browser v2 export/import only after contextual compatibility is defined.
-6. Define a provider-neutral adapter interface only when a concrete integration use case exists.
-7. Link multiple modules into a prerequisite route.
-8. Replace the temporary layered module validator with one consolidated implementation.
+1. Define and validate authored migration manifests before implementing migration preview.
+2. Add compatibility classification and human-readable migration preview without state changes.
+3. Add explicitly confirmed migration while preserving the original evidence copy.
+4. Add explicit browser v2 export/import only after contextual compatibility and migration policy are complete.
+5. Define a provider-neutral adapter interface only when a concrete integration use case exists.
+6. Link multiple modules into a prerequisite route.
+7. Replace the temporary layered module validator with one consolidated implementation.

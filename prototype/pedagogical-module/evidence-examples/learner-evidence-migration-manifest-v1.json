@@ -1,0 +1,21 @@
+{
+  "format": "raiatea-learner-evidence-migration",
+  "version": 1,
+  "source": {
+    "moduleId": "example-module",
+    "revision": 1,
+    "stepIds": ["orient-concept", "practice-concept", "legacy-summary"]
+  },
+  "target": {
+    "moduleId": "example-module",
+    "revision": 7,
+    "stepIds": ["orient-concept", "apply-concept", "new-enrichment"]
+  },
+  "operations": {
+    "preserve": [
+      {"sourceStepId": "orient-concept", "targetStepId": "orient-concept"}
+    ],
+    "retire": ["practice-concept", "legacy-summary"],
+    "introduce": ["apply-concept", "new-enrichment"]
+  }
+}

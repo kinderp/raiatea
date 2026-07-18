@@ -12,7 +12,7 @@ if str(BUILD_DIR) not in sys.path:
     sys.path.insert(0, str(BUILD_DIR))
 
 from render_visual import render_visual  # noqa: E402
-from validate_module_v2 import (  # noqa: E402
+from load_canonical_module import (  # noqa: E402
     ModuleValidationError,
     load_and_validate,
     raise_for_issues,

@@ -1,10 +1,8 @@
 from __future__ import annotations
 
 import copy
-import json
 import subprocess
 import sys
-import tempfile
 import unittest
 from pathlib import Path
 
@@ -50,17 +48,37 @@ class MigrationManifestContextTests(unittest.TestCase):
             FIXTURE_DIR / "all-endpoint-mismatches.json"
         )
         expected = [
-            "$.manifest.source.moduleId: manifest source module ID 'other-route' does not match source module ID 'migration-context-fixture'",
-            "$.manifest.source.revision: manifest source revision '9' does not match source module revision '1'",
-            "$.manifest.source.stepIds: manifest source step IDs ['legacy-practice', 'orient-concept'] do not match source module step IDs ['orient-concept', 'legacy-practice']",
-            "$.manifest.target.moduleId: manifest target module ID 'other-route' does not match target module ID 'migration-context-fixture'",
-            "$.manifest.target.revision: manifest target revision '10' does not match target module revision '2'",
-            "$.manifest.target.stepIds: manifest target step IDs ['new-enrichment', 'apply-concept', 'orient-concept'] do not match target module step IDs ['orient-concept', 'apply-concept', 'new-enrichment']",
+            "$.manifest.source.moduleId: manifest source module ID "
+            "'other-route' does not match source module ID "
+            "'migration-context-fixture'",
+            "$.manifest.source.revision: manifest source revision '9' "
+            "does not match source module revision '1'",
+            "$.manifest.source.stepIds: manifest source step IDs "
+            "['legacy-practice', 'orient-concept'] do not match source module "
+            "step IDs ['orient-concept', 'legacy-practice']",
+            "$.manifest.target.moduleId: manifest target module ID "
+            "'other-route' does not match target module ID "
+            "'migration-context-fixture'",
+            "$.manifest.target.revision: manifest target revision '10' "
+            "does not match target module revision '2'",
+            "$.manifest.target.stepIds: manifest target step IDs "
+            "['new-enrichment', 'apply-concept', 'orient-concept'] do not match "
+            "target module step IDs ['orient-concept', 'apply-concept', "
+            "'new-enrichment']",
         ]
         self.assertEqual(
             expected,
             context_checker.check_manifest_context(self.source, self.target, manifest),
         )
+        with self.assertRaises(
+            context_checker.MigrationManifestContextError
+        ) as raised:
+            context_checker.load_and_check(
+                self.source_path,
+                self.target_path,
+                FIXTURE_DIR / "all-endpoint-mismatches.json",
+            )
+        self.assertEqual(expected, list(raised.exception.issues))
 
     def test_inventory_omission_addition_and_reorder_are_exact_mismatches(self) -> None:
         cases = {
@@ -72,16 +90,52 @@ class MigrationManifestContextTests(unittest.TestCase):
         }
         for fixture_name, first_prefix in cases.items():
             with self.subTest(fixture=fixture_name):
-                manifest = manifest_validator.load_and_validate(FIXTURE_DIR / fixture_name)
+                manifest = manifest_validator.load_and_validate(
+                    FIXTURE_DIR / fixture_name
+                )
                 issues = context_checker.check_manifest_context(
                     self.source, self.target, manifest
                 )
                 self.assertTrue(issues[0].startswith(first_prefix))
                 if fixture_name == "inventory-reorder.json":
                     self.assertEqual(2, len(issues))
-                    self.assertTrue(issues[1].startswith("$.manifest.target.stepIds:"))
+                    self.assertTrue(
+                        issues[1].startswith("$.manifest.target.stepIds:")
+                    )
                 else:
                     self.assertEqual(1, len(issues))
+
+    def test_supplied_source_target_and_revision_mismatch_fixtures(self) -> None:
+        cases = {
+            "source-id-mismatch.json": (
+                "source",
+                "$.manifest.source.moduleId: manifest source module ID "
+                "'migration-context-fixture' does not match source module ID "
+                "'different-source-route'",
+            ),
+            "source-revision-mismatch.json": (
+                "source",
+                "$.manifest.source.revision: manifest source revision '1' "
+                "does not match source module revision '7'",
+            ),
+            "target-id-mismatch.json": (
+                "target",
+                "$.manifest.target.moduleId: manifest target module ID "
+                "'migration-context-fixture' does not match target module ID "
+                "'different-target-route'",
+            ),
+        }
+        for fixture_name, (role, expected_issue) in cases.items():
+            with self.subTest(fixture=fixture_name):
+                module = module_validator.load_and_validate(FIXTURE_DIR / fixture_name)
+                source = module if role == "source" else self.source
+                target = module if role == "target" else self.target
+                self.assertEqual(
+                    [expected_issue],
+                    context_checker.check_manifest_context(
+                        source, target, self.manifest
+                    ),
+                )
 
     def test_explanatory_module_fields_are_not_contextual_keys(self) -> None:
         source = copy.deepcopy(self.source)
@@ -100,30 +154,25 @@ class MigrationManifestContextTests(unittest.TestCase):
         invalid_module = (
             ROOT / "tests" / "fixtures" / "module-identity" / "missing-revision.json"
         )
-        with tempfile.TemporaryDirectory() as directory:
-            unsupported_manifest = Path(directory) / "unsupported-manifest.json"
-            data = copy.deepcopy(self.manifest)
-            data["version"] = 2
-            unsupported_manifest.write_text(json.dumps(data), encoding="utf-8")
-            with self.assertRaises(
-                context_checker.MigrationManifestInputValidationError
-            ) as raised:
-                context_checker.load_and_check(
-                    invalid_module, invalid_module, unsupported_manifest
-                )
+        with self.assertRaises(
+            context_checker.MigrationManifestInputValidationError
+        ) as raised:
+            context_checker.load_and_check(
+                invalid_module,
+                invalid_module,
+                FIXTURE_DIR / "unsupported-version.json",
+            )
         issues = list(raised.exception.issues)
         self.assertTrue(issues[0].startswith("$.sourceModule.revision:"))
         self.assertTrue(issues[1].startswith("$.targetModule.revision:"))
         self.assertTrue(issues[2].startswith("$.manifest.version:"))
 
     def test_malformed_json_is_reported_under_each_input_namespace(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            malformed = Path(directory) / "malformed.json"
-            malformed.write_text('{"id":', encoding="utf-8")
-            with self.assertRaises(
-                context_checker.MigrationManifestInputValidationError
-            ) as raised:
-                context_checker.load_and_check(malformed, malformed, malformed)
+        malformed = FIXTURE_DIR / "malformed.json"
+        with self.assertRaises(
+            context_checker.MigrationManifestInputValidationError
+        ) as raised:
+            context_checker.load_and_check(malformed, malformed, malformed)
         issues = list(raised.exception.issues)
         self.assertEqual(3, len(issues))
         self.assertTrue(issues[0].startswith("$.sourceModule:"))
@@ -135,14 +184,24 @@ class MigrationManifestContextTests(unittest.TestCase):
         source = copy.deepcopy(self.source)
         target = copy.deepcopy(self.target)
         manifest = copy.deepcopy(self.manifest)
-        originals = (copy.deepcopy(source), copy.deepcopy(target), copy.deepcopy(manifest))
+        originals = (
+            copy.deepcopy(source),
+            copy.deepcopy(target),
+            copy.deepcopy(manifest),
+        )
         context_checker.check_manifest_context(source, target, manifest)
         self.assertEqual(originals, (source, target, manifest))
 
     def test_cli_success_and_failure_do_not_infer_revision_order(self) -> None:
         checker = BUILD_DIR / "check_evidence_migration_manifest_context.py"
         success = subprocess.run(
-            [sys.executable, str(checker), str(self.source_path), str(self.target_path), str(self.manifest_path)],
+            [
+                sys.executable,
+                str(checker),
+                str(self.source_path),
+                str(self.target_path),
+                str(self.manifest_path),
+            ],
             capture_output=True,
             text=True,
             check=False,
@@ -182,9 +241,14 @@ class MigrationManifestContextTests(unittest.TestCase):
         v2_evidence = v2_validator.load_and_validate(
             ROOT / "tests" / "fixtures" / "evidence-v2-contextual" / "exact.json"
         )
-        self.assertEqual([], v2_checker.check_exact_compatibility(v2_module, v2_evidence))
         self.assertEqual(
-            [], manifest_validator.validate_migration_manifest(copy.deepcopy(self.manifest))
+            [], v2_checker.check_exact_compatibility(v2_module, v2_evidence)
+        )
+        self.assertEqual(
+            [],
+            manifest_validator.validate_migration_manifest(
+                copy.deepcopy(self.manifest)
+            ),
         )
 
 

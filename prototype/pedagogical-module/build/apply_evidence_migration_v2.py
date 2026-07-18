@@ -33,7 +33,7 @@ class _PreparedMigration:
     public: dict[str, Any]
     candidate: dict[str, Any]
     candidate_bytes: bytes
-    source_bytes: bytes
+    input_bytes: dict[str, bytes]
     target_module: dict[str, Any]
 
 
@@ -52,13 +52,7 @@ def _canonical_compact_bytes(value: Any) -> bytes:
 
 def canonical_evidence_bytes(value: dict[str, Any]) -> bytes:
     return (
-        json.dumps(
-            value,
-            ensure_ascii=False,
-            sort_keys=True,
-            indent=2,
-        )
-        + "\n"
+        json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n"
     ).encode("utf-8")
 
 
@@ -83,6 +77,36 @@ def _input_snapshot(
         "sourceModule": _read_bytes(source_module_path, "sourceModule"),
         "manifest": _read_bytes(manifest_path, "manifest"),
     }
+
+
+def _changed_inputs(
+    expected: dict[str, bytes], current: dict[str, bytes]
+) -> list[str]:
+    return [name for name in expected if expected[name] != current[name]]
+
+
+def _assert_inputs_unchanged(
+    expected: dict[str, bytes],
+    evidence_path: Path,
+    target_module_path: Path,
+    source_module_path: Path,
+    manifest_path: Path,
+    *,
+    phase: str,
+) -> None:
+    changed = _changed_inputs(
+        expected,
+        _input_snapshot(
+            evidence_path,
+            target_module_path,
+            source_module_path,
+            manifest_path,
+        ),
+    )
+    if changed:
+        raise EvidenceMigrationApplicationError(
+            [f"$.inputs: input bytes changed {phase}: " + ", ".join(changed)]
+        )
 
 
 def _confirmation_payload(
@@ -139,20 +163,14 @@ def _prepare_internal(
     except preview_engine.EvidenceMigrationPreviewInputError as exc:
         raise EvidenceMigrationApplicationError(list(exc.issues)) from exc
 
-    after = _input_snapshot(
+    _assert_inputs_unchanged(
+        before,
         evidence_path,
         target_module_path,
         source_module_path,
         manifest_path,
+        phase="while preparing migration",
     )
-    changed = [name for name in before if before[name] != after[name]]
-    if changed:
-        raise EvidenceMigrationApplicationError(
-            [
-                "$.inputs: input bytes changed while preparing migration: "
-                + ", ".join(changed)
-            ]
-        )
 
     classification = preview["classification"]
     if classification == "exact":
@@ -166,10 +184,12 @@ def _prepare_internal(
         issues.extend(preview.get("issues", []))
         raise EvidenceMigrationApplicationError(issues)
     if not preview.get("candidateAvailable") or preview.get("candidate") is None:
-        current_status = None
         current_position = preview.get("currentPosition")
-        if isinstance(current_position, dict):
-            current_status = current_position.get("status")
+        current_status = (
+            current_position.get("status")
+            if isinstance(current_position, dict)
+            else None
+        )
         detail = (
             f"; current position is '{current_status}'"
             if current_status is not None
@@ -238,11 +258,19 @@ def _prepare_internal(
             [f"$.targetModule{str(issue)[1:]}" for issue in exc.issues]
         ) from exc
 
+    _assert_inputs_unchanged(
+        before,
+        evidence_path,
+        target_module_path,
+        source_module_path,
+        manifest_path,
+        phase="while finalizing preparation",
+    )
     return _PreparedMigration(
         public=public,
         candidate=candidate,
         candidate_bytes=candidate_bytes,
-        source_bytes=before["sourceEvidence"],
+        input_bytes=before,
         target_module=target_module,
     )
 
@@ -386,14 +414,19 @@ def apply_confirmed_migration(
         raise EvidenceMigrationApplicationError(
             ["$.paths: source or destination resolution changed before publication"]
         )
-    if _read_bytes(source_real, "evidence") != prepared.source_bytes:
-        raise EvidenceMigrationApplicationError(
-            ["$.evidence: source bytes changed before publication"]
-        )
+    _assert_inputs_unchanged(
+        prepared.input_bytes,
+        evidence_path,
+        target_module_path,
+        source_module_path,
+        manifest_path,
+        phase="before publication",
+    )
 
     temporary_path: Path | None = None
     published_identity: tuple[int, int] | None = None
     published = False
+    completed = False
     try:
         descriptor, temporary_name = tempfile.mkstemp(
             prefix=f".{destination_real.name}.raiatea-",
@@ -401,8 +434,8 @@ def apply_confirmed_migration(
             dir=destination_real.parent,
         )
         temporary_path = Path(temporary_name)
-        os.chmod(temporary_path, stat.S_IRUSR | stat.S_IWUSR)
         with os.fdopen(descriptor, "wb") as stream:
+            os.fchmod(stream.fileno(), stat.S_IRUSR | stat.S_IWUSR)
             stream.write(prepared.candidate_bytes)
             stream.flush()
             os.fsync(stream.fileno())
@@ -424,17 +457,17 @@ def apply_confirmed_migration(
             raise EvidenceMigrationApplicationError(
                 ["$.destination: temporary candidate bytes changed after writing"]
             )
-        if _read_bytes(source_real, "evidence") != prepared.source_bytes:
-            raise EvidenceMigrationApplicationError(
-                ["$.evidence: source bytes changed before publication"]
-            )
+        _assert_inputs_unchanged(
+            prepared.input_bytes,
+            evidence_path,
+            target_module_path,
+            source_module_path,
+            manifest_path,
+            phase="before publication",
+        )
 
         try:
-            os.link(
-                temporary_path,
-                destination_real,
-                follow_symlinks=False,
-            )
+            os.link(temporary_path, destination_real, follow_symlinks=False)
         except FileExistsError as exc:
             raise EvidenceMigrationApplicationError(
                 ["$.destination: destination was created concurrently"]
@@ -465,12 +498,16 @@ def apply_confirmed_migration(
             raise EvidenceMigrationApplicationError(
                 ["$.destination: published candidate digest mismatch"]
             )
-        if _read_bytes(source_real, "evidence") != prepared.source_bytes:
-            raise EvidenceMigrationApplicationError(
-                ["$.evidence: original source bytes changed during application"]
-            )
+        _assert_inputs_unchanged(
+            prepared.input_bytes,
+            evidence_path,
+            target_module_path,
+            source_module_path,
+            manifest_path,
+            phase="during application",
+        )
 
-        return {
+        receipt = {
             "contractVersion": CONTRACT_VERSION,
             "applied": True,
             "classification": prepared.public["classification"],
@@ -485,6 +522,8 @@ def apply_confirmed_migration(
             "originalPreserved": True,
             "browserStateChanged": False,
         }
+        completed = True
+        return receipt
     except EvidenceMigrationApplicationError:
         raise
     except Exception as exc:
@@ -497,16 +536,17 @@ def apply_confirmed_migration(
                 temporary_path.unlink(missing_ok=True)
             except OSError:
                 pass
-        if published and published_identity is not None:
-            success = 'published_bytes' in locals()
-            if not success and _same_published_inode(
-                destination_real, published_identity
-            ):
-                try:
-                    destination_real.unlink()
-                    _fsync_directory(destination_real.parent)
-                except OSError:
-                    pass
+        if (
+            published
+            and not completed
+            and published_identity is not None
+            and _same_published_inode(destination_real, published_identity)
+        ):
+            try:
+                destination_real.unlink()
+                _fsync_directory(destination_real.parent)
+            except OSError:
+                pass
 
 
 def _print_preparation(result: dict[str, Any]) -> None:

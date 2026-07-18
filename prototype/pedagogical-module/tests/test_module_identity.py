@@ -37,8 +37,8 @@ class CanonicalModuleIdentityTests(unittest.TestCase):
             validate_module_identity(module),
         )
 
-    def test_boolean_zero_negative_and_fractional_revisions_are_rejected(self) -> None:
-        for revision in (True, False, 0, -1, 1.5):
+    def test_invalid_revisions_are_rejected(self) -> None:
+        for revision in (True, False, 0, -1, 1.5, "1"):
             with self.subTest(revision=revision):
                 module = copy.deepcopy(self.module)
                 module["revision"] = revision

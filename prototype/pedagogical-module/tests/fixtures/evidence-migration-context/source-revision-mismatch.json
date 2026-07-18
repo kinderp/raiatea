@@ -1,0 +1,41 @@
+{
+  "id": "migration-context-fixture",
+  "revision": 7,
+  "title": "Migration context source with another revision",
+  "language": "en",
+  "route": {"summary": "Validate source revision mismatch.", "previous": []},
+  "prerequisites": [],
+  "visual": {"type": "svg", "markup": "<svg id=\"migration-context-source-r7-visual\" aria-label=\"Source revision mismatch\"></svg>"},
+  "steps": [
+    {
+      "id": "orient-concept",
+      "title": "Orient the learner",
+      "explanation": "<p>Introduce the concept.</p>",
+      "goal": "Recognize the concept.",
+      "observe": "Observe the source visual.",
+      "quiz": {
+        "question": "What is the first responsibility?",
+        "answers": ["Orientation", "Migration"],
+        "correctIndex": 0,
+        "correctFeedback": "Correct.",
+        "incorrectFeedback": "Review orientation."
+      }
+    },
+    {
+      "id": "legacy-practice",
+      "title": "Practice the legacy responsibility",
+      "explanation": "<p>Practice the original responsibility.</p>",
+      "goal": "Apply the original responsibility.",
+      "observe": "Observe the source result.",
+      "quiz": {
+        "question": "Which responsibility is present?",
+        "answers": ["Legacy practice", "New enrichment"],
+        "correctIndex": 0,
+        "correctFeedback": "Correct.",
+        "incorrectFeedback": "Review the source revision."
+      }
+    }
+  ],
+  "concepts": [],
+  "next": {"summary": "Continue.", "items": ["Validate target"]}
+}

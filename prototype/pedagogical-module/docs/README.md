@@ -12,8 +12,9 @@ This directory collects the stable architecture and privacy decisions that gover
 - [`learner-evidence-v2-stable-identity.md`](learner-evidence-v2-stable-identity.md) — separately versioned evidence contract carrying exact module revision, stable step IDs, explicit source order, privacy exclusions, and the initial structural-only boundary.
 - [`learner-evidence-v2-exact-compatibility.md`](learner-evidence-v2-exact-compatibility.md) — Class A exact contextual comparison against one supplied canonical module revision, including identity keys, explanatory snapshots, failure semantics, and deferred classifier responsibilities.
 - [`learner-evidence-migration-manifest.md`](learner-evidence-migration-manifest.md) — closed directional manifest contract with complete source/target inventories, one-to-one preservation, retirement/introduction operations, and no preview or mutation behavior.
+- [`learner-evidence-migration-manifest-contextual-validation.md`](learner-evidence-migration-manifest-contextual-validation.md) — deterministic comparison of one structurally valid manifest with the exact supplied canonical source and target revisions, with namespaced structural failures and no classification or mutation.
 
-The immutability amendment, test-responsibility matrix, canonical authoring rules, evidence v2 contract, exact contextual compatibility contract, and migration-manifest contract are normative parts of the module-evolution decision set. They must be read together with the main decision.
+The immutability amendment, test-responsibility matrix, canonical authoring rules, evidence v2 contract, exact contextual compatibility contract, migration-manifest contract, and contextual manifest-validation contract are normative parts of the module-evolution decision set. They must be read together with the main decision.
 
 ## Reading order for evidence work
 
@@ -23,9 +24,10 @@ The immutability amendment, test-responsibility matrix, canonical authoring rule
 4. Read the canonical revision and step-identity authoring rules before creating or changing a buildable module.
 5. Read the evidence v2 stable-identity contract before adding v2 exporters, compatibility checks, or migration behavior.
 6. Read the exact v2 compatibility contract before comparing evidence with a canonical revision.
-7. Read the migration-manifest contract before authoring or validating revision-transition mappings.
-8. Read the current schemas, validators, examples, tests, and prototype README before implementing a micro-step.
+7. Read the migration-manifest contract before authoring or structurally validating revision-transition mappings.
+8. Read the contextual manifest-validation contract before comparing a manifest with caller-supplied canonical revisions.
+9. Read the current schemas, validators, examples, tests, and prototype README before implementing a micro-step.
 
 ## Current implementation boundary
 
-Canonical pedagogical modules require a positive integer `revision` and one unique lowercase/digit/hyphen `id` for every pedagogical step. Learner-evidence v1 remains frozen under its exact module-ID, ordered-index, and authored-step-title compatibility rules. Learner-evidence v2 has a separate closed schema, example, and side-effect-free structural validator carrying exact revision identity and stable step IDs. A separate exact contextual checker compares a structurally valid v2 document with one supplied canonical module revision. A closed migration-manifest schema and standalone validator describe complete same-module source/target inventories and `preserve`, `retire`, and `introduce` mappings without applying them. Publication registries, contextual manifest validation against external modules, compatibility classes B–E, browser v2 export/import, migration previews, and state-changing migrations remain separate increments.
+Canonical pedagogical modules require a positive integer `revision` and one unique lowercase/digit/hyphen `id` for every pedagogical step. Learner-evidence v1 remains frozen under its exact module-ID, ordered-index, and authored-step-title compatibility rules. Learner-evidence v2 has a separate closed schema, example, and side-effect-free structural validator carrying exact revision identity and stable step IDs. A separate exact contextual checker compares a structurally valid v2 document with one supplied canonical module revision. A closed migration-manifest schema and standalone validator describe complete same-module source/target inventories and `preserve`, `retire`, and `introduce` mappings without applying them. A separate side-effect-free contextual checker verifies that one structurally valid manifest exactly describes two supplied structurally valid canonical revisions, including ordered stable-step inventories. Publication registries, compatibility classes B–E, browser v2 export/import, migration previews, and state-changing migrations remain separate increments.

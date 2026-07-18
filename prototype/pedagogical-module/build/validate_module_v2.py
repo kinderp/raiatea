@@ -7,6 +7,7 @@ from typing import Any
 
 import validate_module as base
 from layout_visual import compile_layout
+from validate_module_identity import validate_module_identity
 
 ValidationIssue = base.ValidationIssue
 ModuleValidationError = base.ModuleValidationError
@@ -28,6 +29,17 @@ TRANSFORMATION_KINDS = {
 def _non_empty(value: Any, path: str, issues: list[ValidationIssue]) -> None:
     if not isinstance(value, str) or not value.strip():
         issues.append(ValidationIssue(path, "must be a non-empty string"))
+
+
+def _identity_issues(data: Any) -> list[ValidationIssue]:
+    converted: list[ValidationIssue] = []
+    for issue in validate_module_identity(data):
+        path, separator, message = issue.partition(": ")
+        if not separator:
+            converted.append(ValidationIssue("$", issue))
+        else:
+            converted.append(ValidationIssue(path, message))
+    return converted
 
 
 def _validate_step_provenance(provenance: Any, path: str, issues: list[ValidationIssue]) -> None:
@@ -211,6 +223,8 @@ def validate_module(data: Any) -> list[ValidationIssue]:
     issues = list(base.validate_module(data))
     if not isinstance(data, dict):
         return issues
+
+    issues.extend(_identity_issues(data))
 
     concept_ids = {
         item.get("id")

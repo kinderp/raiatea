@@ -9,6 +9,7 @@ Every canonical module must declare a top-level `revision` field.
 - `revision` is a positive JSON integer.
 - `true`, `false`, zero, negative values, fractions, strings, and missing values are invalid.
 - Revision identifiers are publication identities, not mutable counters: once a `(module id, revision)` pair is published, it must not be reused for different authored content.
+- The integer representation does not define numeric, chronological, semantic, or precedence ordering; consumers compare revision identity only through exact equality or an authored contract.
 - The initial revision for the existing examples is `1`.
 
 ## Stable pedagogical step identity

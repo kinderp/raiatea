@@ -30,6 +30,29 @@ class ConfirmedEvidenceMigrationTokenContractTests(unittest.TestCase):
             preview / "source-current-preserved.json"
         )
 
+    def test_omitted_confirmation_arguments_fail_closed_and_side_effect_free(self) -> None:
+        originals = tuple(
+            copy.deepcopy(value)
+            for value in (self.evidence, self.target, self.source, self.manifest)
+        )
+
+        with self.assertRaises(application.EvidenceMigrationApplicationError) as raised:
+            application.apply_confirmed_migration(
+                self.evidence,
+                self.target,
+                source_module=self.source,
+                manifest=self.manifest,
+            )
+
+        self.assertEqual(
+            ["$.confirmation.confirmed: explicit confirmation is required"],
+            list(raised.exception.issues),
+        )
+        self.assertEqual(
+            originals,
+            (self.evidence, self.target, self.source, self.manifest),
+        )
+
     def test_uppercase_hex_confirmation_is_malformed_and_side_effect_free(self) -> None:
         preparation = application.prepare_migration(
             self.evidence,

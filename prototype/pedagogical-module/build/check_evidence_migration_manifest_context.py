@@ -32,6 +32,44 @@ def _module_step_ids(module: dict[str, Any]) -> list[str]:
     return [step["id"] for step in module["steps"]]
 
 
+def _inventory_issue(
+    role: str,
+    manifest_ids: list[str],
+    module_ids: list[str],
+    *,
+    endpoint_identity_matches: bool,
+) -> str:
+    path = f"$.manifest.{role}.stepIds"
+    if not endpoint_identity_matches:
+        return (
+            f"{path}: manifest {role} step IDs {manifest_ids!r} do not match "
+            f"{role} module step IDs {module_ids!r}"
+        )
+
+    missing = [step_id for step_id in module_ids if step_id not in manifest_ids]
+    unknown = [step_id for step_id in manifest_ids if step_id not in module_ids]
+
+    if len(manifest_ids) != len(module_ids):
+        return (
+            f"{path}: manifest {role} inventory length {len(manifest_ids)} does not "
+            f"match {role} module inventory length {len(module_ids)}; "
+            f"missing IDs {missing!r}; unknown IDs {unknown!r}"
+        )
+
+    if missing or unknown:
+        return (
+            f"{path}: manifest {role} inventory replaces canonical IDs; "
+            f"missing IDs {missing!r}; unknown IDs {unknown!r}; "
+            f"manifest order {manifest_ids!r}; canonical order {module_ids!r}"
+        )
+
+    return (
+        f"{path}: manifest {role} inventory contains the exact canonical IDs but "
+        f"uses a different order; manifest order {manifest_ids!r}; "
+        f"canonical order {module_ids!r}"
+    )
+
+
 def check_manifest_context(
     source_module: dict[str, Any],
     target_module: dict[str, Any],
@@ -44,13 +82,18 @@ def check_manifest_context(
     source_ids = _module_step_ids(source_module)
     target_ids = _module_step_ids(target_module)
 
-    if source["moduleId"] != source_module["id"]:
+    source_id_matches = source["moduleId"] == source_module["id"]
+    source_revision_matches = source["revision"] == source_module["revision"]
+    target_id_matches = target["moduleId"] == target_module["id"]
+    target_revision_matches = target["revision"] == target_module["revision"]
+
+    if not source_id_matches:
         issues.append(
             "$.manifest.source.moduleId: manifest source module ID "
             f"'{source['moduleId']}' does not match source module ID "
             f"'{source_module['id']}'"
         )
-    if source["revision"] != source_module["revision"]:
+    if not source_revision_matches:
         issues.append(
             "$.manifest.source.revision: manifest source revision "
             f"'{source['revision']}' does not match source module revision "
@@ -58,18 +101,23 @@ def check_manifest_context(
         )
     if source["stepIds"] != source_ids:
         issues.append(
-            "$.manifest.source.stepIds: manifest source step IDs "
-            f"{source['stepIds']!r} do not match source module step IDs "
-            f"{source_ids!r}"
+            _inventory_issue(
+                "source",
+                source["stepIds"],
+                source_ids,
+                endpoint_identity_matches=(
+                    source_id_matches and source_revision_matches
+                ),
+            )
         )
 
-    if target["moduleId"] != target_module["id"]:
+    if not target_id_matches:
         issues.append(
             "$.manifest.target.moduleId: manifest target module ID "
             f"'{target['moduleId']}' does not match target module ID "
             f"'{target_module['id']}'"
         )
-    if target["revision"] != target_module["revision"]:
+    if not target_revision_matches:
         issues.append(
             "$.manifest.target.revision: manifest target revision "
             f"'{target['revision']}' does not match target module revision "
@@ -77,9 +125,14 @@ def check_manifest_context(
         )
     if target["stepIds"] != target_ids:
         issues.append(
-            "$.manifest.target.stepIds: manifest target step IDs "
-            f"{target['stepIds']!r} do not match target module step IDs "
-            f"{target_ids!r}"
+            _inventory_issue(
+                "target",
+                target["stepIds"],
+                target_ids,
+                endpoint_identity_matches=(
+                    target_id_matches and target_revision_matches
+                ),
+            )
         )
 
     return issues

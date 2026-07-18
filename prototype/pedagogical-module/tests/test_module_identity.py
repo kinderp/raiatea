@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -68,6 +69,31 @@ class CanonicalModuleIdentityTests(unittest.TestCase):
         original = copy.deepcopy(self.module)
         validate_module_identity(self.module)
         self.assertEqual(original, self.module)
+
+    def test_every_canonical_example_has_revision_and_unique_step_ids(self) -> None:
+        example_paths = sorted(
+            path
+            for path in (ROOT / "examples").glob("*.json")
+            if not path.name.endswith(".layout.json")
+        )
+        self.assertGreater(len(example_paths), 0)
+        for path in example_paths:
+            with self.subTest(example=path.name):
+                module = json.loads(path.read_text(encoding="utf-8"))
+                self.assertEqual([], validate_module_identity(module))
+                self.assertEqual(1, module["revision"])
+
+    def test_learner_evidence_v1_does_not_expose_revision_or_step_ids(self) -> None:
+        evidence = json.loads(
+            (ROOT / "evidence-examples" / "learner-evidence-export-v1.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        self.assertNotIn("revision", evidence["module"])
+        self.assertNotIn("stepId", evidence["module"])
+        for step in evidence["progress"]["steps"]:
+            self.assertNotIn("id", step)
+            self.assertNotIn("stepId", step)
 
 
 if __name__ == "__main__":

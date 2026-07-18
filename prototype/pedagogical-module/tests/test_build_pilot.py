@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -28,14 +29,41 @@ class BuildPilotTests(unittest.TestCase):
             manifest = json.loads(
                 (output / "pilot-manifest.json").read_text(encoding="utf-8")
             )
+            self.assertEqual({"format", "version", "modules"}, set(manifest))
             self.assertEqual("raiatea-pilot", manifest["format"])
             self.assertEqual(1, manifest["version"])
+            self.assertTrue(
+                all(
+                    set(module)
+                    == {
+                        "id",
+                        "revision",
+                        "title",
+                        "order",
+                        "file",
+                        "previous",
+                        "next",
+                    }
+                    for module in manifest["modules"]
+                )
+            )
             self.assertEqual(
                 ["self-attention-orientation", "query-key-value"],
                 [module["id"] for module in manifest["modules"]],
             )
-            self.assertEqual([1, 1], [module["revision"] for module in manifest["modules"]])
-            self.assertEqual([0, 1], [module["order"] for module in manifest["modules"]])
+            self.assertEqual(
+                [1, 1], [module["revision"] for module in manifest["modules"]]
+            )
+            self.assertEqual(
+                [
+                    "Il ruolo della self-attention nel modello GPT",
+                    "Query, Key e Value nella self-attention",
+                ],
+                [module["title"] for module in manifest["modules"]],
+            )
+            self.assertEqual(
+                [0, 1], [module["order"] for module in manifest["modules"]]
+            )
             self.assertIsNone(manifest["modules"][0]["previous"])
             self.assertEqual(
                 "query-key-value.html", manifest["modules"][0]["next"]
@@ -107,6 +135,20 @@ class BuildPilotTests(unittest.TestCase):
             self.assertEqual("unchanged", marker.read_text(encoding="utf-8"))
             self.assertEqual([marker], list(output.iterdir()))
 
+    def test_dangling_destination_symlink_is_refused_without_changes(self) -> None:
+        if not hasattr(os, "symlink"):
+            self.skipTest("symbolic links are unavailable")
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            output = parent / "pilot-dist"
+            output.symlink_to(parent / "missing-directory", target_is_directory=True)
+            target = os.readlink(output)
+            with self.assertRaisesRegex(ValueError, "already exists"):
+                build_pilot.build_pilot(output)
+            self.assertTrue(output.is_symlink())
+            self.assertEqual(target, os.readlink(output))
+            self.assertEqual([output], list(parent.iterdir()))
+
     def test_destination_created_during_build_is_not_replaced(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary) / "pilot-dist"
@@ -138,7 +180,7 @@ class BuildPilotTests(unittest.TestCase):
             output = parent / "pilot-dist"
             specs = ({"source": invalid, "output": "invalid.html"},)
             with mock.patch.object(build_pilot, "ROUTE_SPECS", specs):
-                with self.assertRaises(Exception):
+                with self.assertRaises(ValueError):
                     build_pilot.build_pilot(output)
             self.assertFalse(build_pilot._path_lexists(output))
             self.assertEqual([], list(parent.glob(".pilot-dist.*")))

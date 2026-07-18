@@ -27,10 +27,14 @@ jobs:
 
       - name: Run unit tests
         run: |
-          python -m unittest discover \
+          if ! python -m unittest discover \
             -s prototype/pedagogical-module/tests \
             -p 'test_*.py' \
-            -v
+            -v > /tmp/raiatea-unit-tests.log 2>&1; then
+            tail -n 160 /tmp/raiatea-unit-tests.log
+            exit 1
+          fi
+          cat /tmp/raiatea-unit-tests.log
 
       - name: Compile declarative visual layouts
         run: |

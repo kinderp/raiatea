@@ -1,0 +1,35 @@
+{
+  "format": "raiatea-learner-evidence",
+  "version": 2,
+  "module": {
+    "id": "migration-context-fixture",
+    "revision": 1,
+    "title": "Migration context source",
+    "language": "en",
+    "stepCount": 2
+  },
+  "progress": {
+    "currentStepId": "orient-concept",
+    "currentStepIndex": 0,
+    "steps": [
+      {
+        "index": 0,
+        "stepId": "orient-concept",
+        "title": "Orient the learner",
+        "attempts": 2,
+        "correct": true,
+        "usedRemediation": true,
+        "activityCompleted": true
+      },
+      {
+        "index": 1,
+        "stepId": "legacy-practice",
+        "title": "Practice the legacy responsibility",
+        "attempts": 1,
+        "correct": false,
+        "usedRemediation": false,
+        "activityCompleted": false
+      }
+    ]
+  }
+}

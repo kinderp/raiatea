@@ -27,21 +27,22 @@ jobs:
 
       - name: Run unit tests
         run: |
+          log="prototype/pedagogical-module/unit-test.log"
           if ! python -m unittest discover \
             -s prototype/pedagogical-module/tests \
             -p 'test_*.py' \
-            -v > /tmp/raiatea-unit-tests.log 2>&1; then
-            tail -n 160 /tmp/raiatea-unit-tests.log
+            -v > "$log" 2>&1; then
+            tail -n 200 "$log"
             exit 1
           fi
-          cat /tmp/raiatea-unit-tests.log
+          cat "$log"
 
       - name: Upload unit test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: unit-test-diagnostics
-          path: /tmp/raiatea-unit-tests.log
+          path: prototype/pedagogical-module/unit-test.log
           if-no-files-found: error
           retention-days: 7
 

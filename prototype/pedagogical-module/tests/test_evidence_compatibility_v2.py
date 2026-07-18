@@ -52,6 +52,11 @@ class LearnerEvidenceV2ExactCompatibilityTests(unittest.TestCase):
                 "$.module.stepCount: exported step count 1 does not match canonical module step count 2",
                 "$.progress.steps: exported step sequence length 1 does not match canonical module step sequence length 2",
             ],
+            "extra-step-current.json": [
+                "$.module.stepCount: exported step count 3 does not match canonical module step count 2",
+                "$.progress.steps: exported step sequence length 3 does not match canonical module step sequence length 2",
+                "$.progress.currentStepIndex: exported current step index 2 does not refer to an active canonical step",
+            ],
             "reordered-step-ids.json": [
                 "$.progress.steps[0].stepId: exported step ID 'apply-concept' does not match canonical step ID 'orient-concept' at this route position",
                 "$.progress.steps[1].stepId: exported step ID 'orient-concept' does not match canonical step ID 'apply-concept' at this route position",

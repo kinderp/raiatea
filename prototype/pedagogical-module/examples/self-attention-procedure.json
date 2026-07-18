@@ -1,5 +1,6 @@
 {
   "id": "self-attention-procedure",
+  "revision": 1,
   "title": "Dalla query al vettore di contesto",
   "subtitle": "Un modulo procedurale che usa token, vettori, matrice degli score e somma pesata come primitive semantiche.",
   "language": "it",
@@ -125,6 +126,7 @@
   },
   "steps": [
     {
+      "id": "select-query-token",
       "eyebrow": "Passo 1",
       "title": "Scegliere il token query",
       "explanation": "<p>Costruiamo la rappresentazione contestuale di <b>journey</b>. Il suo embedding x² diventa la query dell'esempio.</p>",
@@ -136,6 +138,7 @@
       "quiz": {"question": "Quante query servono per ottenere il contesto di tutti i sei token?", "answers": ["Una", "Sei"], "correctIndex": 1, "correctFeedback": "Esatto: ogni token diventa query a turno.", "incorrectFeedback": "Una sola query produce un solo vettore di contesto."}
     },
     {
+      "id": "calculate-attention-scores",
       "eyebrow": "Passo 2",
       "title": "Calcolare gli score",
       "explanation": "<p>Confrontiamo x² con ciascun input mediante il prodotto scalare. Otteniamo un numero per token.</p>",
@@ -147,6 +150,7 @@
       "quiz": {"question": "Perché la riga contiene sei score?", "answers": ["Perché la query ha sei dimensioni", "Perché viene confrontata con sei token"], "correctIndex": 1, "correctFeedback": "Corretto.", "incorrectFeedback": "Il numero di score dipende dal numero di token confrontati."}
     },
     {
+      "id": "normalize-scores-with-softmax",
       "eyebrow": "Passo 3",
       "title": "Normalizzare con softmax",
       "explanation": "<p>La softmax trasforma gli score in una distribuzione positiva che somma a uno.</p>",
@@ -158,6 +162,7 @@
       "quiz": {"question": "Se tutti gli score fossero uguali, i pesi sarebbero?", "answers": ["Uniformi", "Tutti zero"], "correctIndex": 0, "correctFeedback": "Esatto.", "incorrectFeedback": "La softmax assegnerebbe la stessa quota a ogni token."}
     },
     {
+      "id": "construct-weighted-context-sum",
       "eyebrow": "Passo 4",
       "title": "Costruire la somma pesata",
       "explanation": "<p>Ogni embedding xʲ viene moltiplicato per il proprio peso α₂ⱼ. La somma produce z².</p>",
@@ -169,6 +174,7 @@
       "quiz": {"question": "Perché z² ha tre componenti?", "answers": ["Perché sommiamo vettori di tre componenti", "Perché usiamo tre token"], "correctIndex": 0, "correctFeedback": "Corretto.", "incorrectFeedback": "La dimensionalità deriva dagli embedding, non dal numero di token."}
     },
     {
+      "id": "interpret-context-vector",
       "eyebrow": "Dopo il calcolo",
       "title": "Interpretare z²",
       "explanation": "<p>z² non è testo e non è ancora una predizione. È un vettore intermedio che rappresenta journey alla luce dell'intera sequenza.</p>",

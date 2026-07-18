@@ -40,7 +40,13 @@ Contextual mismatches are rooted at the manifest field that makes the false decl
 5. `$.manifest.target.revision`;
 6. `$.manifest.target.stepIds`.
 
-An ordered inventory mismatch is reported once at the inventory path with the exact expected and actual sequences. The checker does not guess whether the difference is an insertion, deletion, rename, reorder, split, merge, or publication-history error.
+An ordered inventory mismatch produces one deterministic issue at the inventory path. When endpoint module ID and revision already match, the issue describes the directly observable difference:
+
+- different inventory lengths, including missing and unknown IDs;
+- equal-length replacement, including missing and unknown IDs;
+- the exact same IDs in a different order.
+
+When endpoint identity itself is mismatched, the checker keeps the inventory diagnostic conservative and reports only the two compared sequences. These messages describe factual set, length, and order differences; they do not classify compatibility, infer author intent, choose a preserve/retire/introduce operation, or decide whether a migration is safe.
 
 Structural failures are prefixed by input namespace in source-module, target-module, manifest order. Contextual comparison runs only when all three inputs are structurally valid.
 

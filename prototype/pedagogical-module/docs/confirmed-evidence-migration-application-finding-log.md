@@ -45,7 +45,7 @@ Resolution: regressions cover Class B and deterministic Class C application, com
 
 An early review requested a prepare/apply CLI because the original PR description listed one. During issue refinement, the approved first application increment was deliberately narrowed to an explicit in-memory API; filesystem writes, downloads, browser integration, and an application CLI are deferred with publication policy.
 
-Resolution: issue #48 and the normative contract now define `prepare_migration(...)` and `apply_confirmed_migration(...)` as the complete increment. The final PR description must reflect this API-only boundary rather than the superseded CLI plan.
+Resolution: issue #48 and the normative contract now define `prepare_migration(...)` and `apply_confirmed_migration(...)` as the complete increment. The final PR description reflects this API-only boundary rather than the superseded CLI plan.
 
 ### F7 — major — resolved — unreadable file-backed inputs were not normalized in shared loaders
 
@@ -63,7 +63,13 @@ Resolution: the rewritten tests separate eligibility refusal from stale-token bi
 
 The token parser used `string.hexdigits`, which accepts uppercase hexadecimal even though the normative contract requires exactly 64 lowercase hexadecimal digits.
 
-Resolution: validation now accepts only `0123456789abcdef`; a dedicated regression refuses an otherwise well-shaped uppercase token and proves all input objects remain unchanged.
+Resolution: validation now accepts only `0123456789abcdef`; dedicated regressions refuse otherwise well-shaped uppercase tokens and prove all input objects remain unchanged.
+
+### F10 — major — resolved — omitted confirmation arguments escaped as Python invocation errors
+
+The public application function originally required both confirmation keyword arguments at the Python signature boundary. A caller omitting either value could receive a raw `TypeError` before the deterministic application error contract ran.
+
+Resolution: `confirmed` defaults to `False` and `confirmation_token` defaults to `None`; omitted values now fail under `$.confirmation.confirmed` or `$.confirmation.token` without inspecting, mutating, or applying the migration. A regression calls the API with both values omitted and requires `EvidenceMigrationApplicationError`.
 
 ## Open findings
 

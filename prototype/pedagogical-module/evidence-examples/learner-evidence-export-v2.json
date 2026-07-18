@@ -1,0 +1,60 @@
+{
+  "format": "raiatea-learner-evidence",
+  "version": 2,
+  "module": {
+    "id": "self-attention-orientation",
+    "revision": 1,
+    "title": "Il ruolo della self-attention nel modello GPT",
+    "language": "it",
+    "stepCount": 4,
+    "source": {
+      "title": "Build a Large Language Model (From Scratch)",
+      "chapter": "3",
+      "section": "3.3",
+      "figure": "3.6",
+      "pages": [55]
+    }
+  },
+  "progress": {
+    "currentStepId": "convert-tokens-to-embeddings",
+    "currentStepIndex": 1,
+    "steps": [
+      {
+        "index": 0,
+        "stepId": "orient-with-system-map",
+        "title": "Usare la figura come mappa",
+        "attempts": 2,
+        "correct": true,
+        "usedRemediation": true,
+        "activityCompleted": true
+      },
+      {
+        "index": 1,
+        "stepId": "convert-tokens-to-embeddings",
+        "title": "Dal testo agli embedding",
+        "attempts": 1,
+        "correct": false,
+        "usedRemediation": false,
+        "activityCompleted": false
+      },
+      {
+        "index": 2,
+        "stepId": "contextualize-token-representations",
+        "title": "Arricchire ogni token con il contesto",
+        "attempts": 0,
+        "correct": false,
+        "usedRemediation": false,
+        "activityCompleted": false
+      },
+      {
+        "index": 3,
+        "stepId": "transition-to-internal-calculations",
+        "title": "Passare ai calcoli interni",
+        "attempts": 0,
+        "correct": false,
+        "usedRemediation": false,
+        "activityCompleted": false
+      }
+    ]
+  }
+}

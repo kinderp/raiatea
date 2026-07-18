@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raiatea.dev/schema/learner-evidence-export-v2.schema.json",
+  "title": "Raiatea Learner Evidence Export v2",
+  "type": "object",
+  "required": ["format", "version", "module", "progress"],
+  "properties": {
+    "format": {"const": "raiatea-learner-evidence"},
+    "version": {"const": 2},
+    "module": {
+      "type": "object",
+      "required": ["id", "revision", "title", "language", "stepCount"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "revision": {"type": "integer", "minimum": 1},
+        "title": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "language": {"type": "string", "minLength": 1, "pattern": "\\S"},
+        "stepCount": {"type": "integer", "minimum": 1},
+        "source": {
+          "type": "object",
+          "properties": {
+            "title": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "chapter": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "section": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "figure": {"type": "string", "minLength": 1, "pattern": "\\S"},
+            "pages": {
+              "type": "array",
+              "minItems": 1,
+              "items": {"type": "integer", "minimum": 1}
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "progress": {
+      "type": "object",
+      "required": ["currentStepId", "currentStepIndex", "steps"],
+      "properties": {
+        "currentStepId": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+        "currentStepIndex": {"type": "integer", "minimum": 0},
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["index", "stepId", "title", "attempts", "correct", "usedRemediation", "activityCompleted"],
+            "properties": {
+              "index": {"type": "integer", "minimum": 0},
+              "stepId": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+              "title": {"type": "string", "minLength": 1, "pattern": "\\S"},
+              "attempts": {"type": "integer", "minimum": 0},
+              "correct": {"type": "boolean"},
+              "usedRemediation": {"type": "boolean"},
+              "activityCompleted": {"type": "boolean"}
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

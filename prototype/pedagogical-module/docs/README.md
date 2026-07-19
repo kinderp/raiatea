@@ -22,8 +22,9 @@ This directory collects the stable architecture and privacy decisions that gover
 - [`evaluator-release-layout.md`](evaluator-release-layout.md) — closed evaluator-release manifest, opaque version identity, deterministic versioned directory layout, regular-file inventory, and no-replace installation boundary.
 - [`evaluator-release-archive.md`](evaluator-release-archive.md) — reproducible POSIX tar packaging, normalized member metadata, deterministic SHA-256 inventory, safe extraction, and independent verification boundary.
 - [`evaluator-release-notes-and-verification.md`](evaluator-release-notes-and-verification.md) — deterministic version-pinned release notes, non-developer verification/serve/cleanup workflow, unsigned-integrity wording, and stale-document detection.
+- [`evaluator-release-ci-artifact.md`](evaluator-release-ci-artifact.md) — least-privilege CI producer/consumer separation, exact one-file artifact transport, independent verification, and loopback smoke-test boundary.
 
-The pilot contracts define the evaluator-facing local learner journey and its final acceptance path. The evaluator-release contracts wrap that unchanged pilot in a deterministic directory and archive with integrity metadata and evaluator-facing verification guidance. Evidence and migration contracts remain separate and unchanged.
+The pilot contracts define the evaluator-facing local learner journey and its final acceptance path. The evaluator-release contracts wrap that unchanged pilot in a deterministic directory and archive with integrity metadata, evaluator guidance, and independently verified CI transport. Evidence and migration contracts remain separate and unchanged.
 
 ## Reading order for evidence, pilot, and release work
 
@@ -37,8 +38,9 @@ The pilot contracts define the evaluator-facing local learner journey and its fi
 8. Read the evaluator-release layout contract before wrapping the pilot in versioned distribution metadata.
 9. Read the evaluator archive contract before adding checksums, tar packaging, or extraction verification.
 10. Read the release-notes contract before changing evaluator-facing identity, verification, serve, stop, or cleanup instructions.
-11. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
+11. Read the CI artifact contract before changing workflow triggers, permissions, artifact payload, retention, verification, or smoke testing.
+12. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
 
 ## Current implementation boundary
 
-Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The completed pilot provides a deterministic offline two-module journey, read-only route dashboard, module-scoped v1 export, evaluator guidance, and full browser acceptance. The evaluator release is a normalized reproducible POSIX tar with deterministic `SHA256SUMS`, an independent fail-closed verifier, and version-pinned `RELEASE-NOTES.md` explaining local verification, serving, acceptance, shutdown, cleanup, and the absence of publisher authentication. CI artifact publication, accounts, analytics, LMS integration, signing, installers, registries, and automatic updates remain deferred.
+Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The completed pilot provides a deterministic offline two-module journey, read-only route dashboard, module-scoped v1 export, evaluator guidance, and full browser acceptance. The evaluator release is a normalized reproducible POSIX tar with deterministic `SHA256SUMS`, an independent fail-closed verifier, version-pinned `RELEASE-NOTES.md`, and a CI producer/consumer path that uploads exactly one short-lived archive, downloads it into a clean workspace, verifies it independently, and smoke-tests the extracted pilot on loopback. GitHub Releases, public hosting, accounts, analytics, LMS integration, signing, installers, registries, deployments, and automatic updates remain deferred.

@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).parents[1]
 BUILD = ROOT / "build"
@@ -75,6 +77,16 @@ class EvaluatorSessionAggregateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "already exists"):
                 aggregate.write_aggregate(path, value)
             self.assertEqual(original, path.read_bytes())
+
+    def test_write_closes_staging_descriptor_before_reopening(self) -> None:
+        item = self.snapshot("1" * 64, "linux", "posix", True)
+        value = aggregate.build_aggregate((item,))
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / "summary.json"
+            with mock.patch.object(aggregate.os, "close", wraps=os.close) as close:
+                aggregate.write_aggregate(path, value)
+            close.assert_called_once()
+            self.assertTrue(path.is_file())
 
     def test_cli_end_to_end_preserves_inputs(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

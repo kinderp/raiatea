@@ -1,0 +1,1 @@
+{"format":"raiatea-pilot-incident","version":1,"releaseVersion":"pilot-v1","checklistSha256":"1111111111111111111111111111111111111111111111111111111111111111","severity":"critical","category":"runtime","unsafeRuntime":false,"stopRequired":true,"actions":["stop-pilot","verify-cleanup"],"resolution":"open"}

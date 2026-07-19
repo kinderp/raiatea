@@ -1,0 +1,51 @@
+{
+  "format": "raiatea-desktop-acceptance-matrix",
+  "version": 1,
+  "rows": [
+    {
+      "platform": "linux",
+      "launcher": "posix",
+      "execution": "ci",
+      "checks": [
+        "archiveVerified",
+        "helpersChecksummed",
+        "invalidPortRejected",
+        "launchSucceeded",
+        "noMachineWideChanges",
+        "releaseIdentityValidated",
+        "stateCleanupSucceeded",
+        "stopSucceeded"
+      ]
+    },
+    {
+      "platform": "macos",
+      "launcher": "posix",
+      "execution": "manual-parity",
+      "checks": [
+        "archiveVerified",
+        "helpersChecksummed",
+        "invalidPortRejected",
+        "launchSucceeded",
+        "noMachineWideChanges",
+        "releaseIdentityValidated",
+        "stateCleanupSucceeded",
+        "stopSucceeded"
+      ]
+    },
+    {
+      "platform": "windows",
+      "launcher": "powershell",
+      "execution": "ci",
+      "checks": [
+        "archiveVerified",
+        "helpersChecksummed",
+        "invalidPortRejected",
+        "launchSucceeded",
+        "noMachineWideChanges",
+        "releaseIdentityValidated",
+        "stateCleanupSucceeded",
+        "stopSucceeded"
+      ]
+    }
+  ]
+}

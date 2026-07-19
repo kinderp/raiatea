@@ -39,7 +39,7 @@ foreach ($candidate in $candidates) {
     try {
         $command = Get-Command $candidate.Exe -ErrorAction Stop
         $prefixArgs = @($candidate.Prefix)
-        $resolved = & $command.Source @prefixArgs -c "import sys; raise SystemExit(1) if sys.version_info < (3,10) else print(sys.executable)"
+        $resolved = & $command.Source @prefixArgs -c "import sys; print(sys.executable) if sys.version_info >= (3,10) else sys.exit(1)"
         if ($LASTEXITCODE -eq 0 -and $resolved) {
             $candidatePath = ([string]$resolved).Trim()
             if (Test-Path -LiteralPath $candidatePath -PathType Leaf) { $PythonExe = $candidatePath; break }

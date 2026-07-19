@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import sys
 import tempfile
@@ -12,6 +13,8 @@ BUILD = ROOT / "build"
 CONTRACTS = ROOT / "contracts"
 sys.path.insert(0, str(BUILD))
 
+import build_evaluator_archive as archive_builder  # noqa: E402
+import build_field_pilot_archive as field_builder  # noqa: E402
 import evaluator_session_record as session  # noqa: E402
 
 
@@ -109,6 +112,24 @@ class EvaluatorSessionRecordTests(unittest.TestCase):
         self.assertIn("windows-powershell-acceptance", windows_workflow)
         for forbidden in ("curl http://", "Invoke-RestMethod", "telemetry", "analytics"):
             self.assertNotIn(forbidden, posix + powershell)
+
+    def test_field_pilot_archive_is_reproducible_and_checksum_complete(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            first = field_builder.build_field_pilot_archive(root / "first", "field-pilot-v1")
+            second = field_builder.build_field_pilot_archive(root / "second", "field-pilot-v1")
+            self.assertEqual(first.read_bytes(), second.read_bytes())
+            release = archive_builder.verify_evaluator_archive(first, root / "verified")
+            entries = {path: digest for digest, path in archive_builder._parse_checksums((release / "SHA256SUMS").read_text(encoding="ascii"))}
+            for relative in (
+                "evaluator-session-record.py",
+                "evaluator-session-record-v1.json",
+                "desktop-acceptance-matrix-v1.json",
+                "EVALUATOR-SESSION.md",
+            ):
+                target = release / relative
+                self.assertTrue(target.is_file())
+                self.assertEqual(hashlib.sha256(target.read_bytes()).hexdigest(), entries[relative])
 
 
 if __name__ == "__main__":

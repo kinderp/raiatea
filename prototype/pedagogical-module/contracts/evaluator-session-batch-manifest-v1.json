@@ -1,0 +1,18 @@
+{
+  "format": "raiatea-evaluator-session-batch-manifest",
+  "records": [
+    {
+      "path": "sessions/evaluator-01.json",
+      "recordFormat": "raiatea-evaluator-session",
+      "recordVersion": 1,
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "path": "sessions/evaluator-02.json",
+      "recordFormat": "raiatea-evaluator-session",
+      "recordVersion": 1,
+      "sha256": "2222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ],
+  "version": 1
+}

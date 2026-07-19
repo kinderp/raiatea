@@ -1,17 +1,20 @@
 [CmdletBinding()]
 param(
-    [ValidateRange(1024, 65535)][int]$Port = 8000,
+    [object]$Port = 8000,
     [switch]$NoOpen
 )
 
 $ErrorActionPreference = 'Stop'
 function Fail([string]$Code) { [Console]::Error.WriteLine($Code); exit 1 }
 
+$PortText = [string]$Port
+if ($PortText -notmatch '^[0-9]+$') { Fail 'PORT_INVALID' }
+try { $Port = [int]$PortText } catch { Fail 'PORT_INVALID' }
+if ($Port -lt 1024 -or $Port -gt 65535) { Fail 'PORT_INVALID' }
+
 $ReleaseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $StateDir = Join-Path $ReleaseDir '.raiatea-runtime'
 $StateFile = Join-Path $StateDir 'server-state.json'
-$OutLog = Join-Path $StateDir 'server.out.log'
-$ErrLog = Join-Path $StateDir 'server.err.log'
 
 foreach ($relative in @('RELEASE-NOTES.md','SHA256SUMS','release-manifest.json','pilot/index.html')) {
     $path = Join-Path $ReleaseDir $relative
@@ -52,10 +55,14 @@ try {
 
 New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 $pilot = Join-Path $ReleaseDir 'pilot'
-$quotedPilot = '"' + $pilot + '"'
-$arguments = @('-m','http.server',"$Port",'--bind','127.0.0.1','--directory',$quotedPilot)
+$startInfo = New-Object System.Diagnostics.ProcessStartInfo
+$startInfo.FileName = $PythonExe
+$startInfo.Arguments = "-m http.server $Port --bind 127.0.0.1 --directory `"$pilot`""
+$startInfo.UseShellExecute = $false
+$startInfo.CreateNoWindow = $true
 try {
-    $process = Start-Process -FilePath $PythonExe -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardOutput $OutLog -RedirectStandardError $ErrLog
+    $process = [System.Diagnostics.Process]::Start($startInfo)
+    if (-not $process) { Fail 'SERVER_START_FAILED' }
 } catch { Fail 'SERVER_START_FAILED' }
 
 $ready = $false

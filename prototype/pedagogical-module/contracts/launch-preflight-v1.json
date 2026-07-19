@@ -1,0 +1,53 @@
+{
+  "defaultPort": 8000,
+  "diagnostics": [
+    "PORT_IN_USE",
+    "PORT_INVALID",
+    "PYTHON_NOT_FOUND",
+    "PYTHON_UNSUPPORTED",
+    "RELEASE_FILE_UNSAFE",
+    "RELEASE_IDENTITY_MISMATCH",
+    "RELEASE_NOT_FOUND",
+    "SERVER_NOT_READY",
+    "SERVER_START_FAILED",
+    "STATE_ALREADY_EXISTS",
+    "STATE_FOREIGN_PROCESS",
+    "STATE_STALE",
+    "STOP_FAILED"
+  ],
+  "format": "raiatea-launch-preflight",
+  "host": "127.0.0.1",
+  "maxPort": 65535,
+  "minPort": 1024,
+  "pythonMinimum": {
+    "major": 3,
+    "minor": 10
+  },
+  "requiredFiles": [
+    "RELEASE-NOTES.md",
+    "SHA256SUMS",
+    "pilot/index.html",
+    "release-manifest.json"
+  ],
+  "runtimeCandidates": {
+    "posix": [
+      "python3",
+      "python"
+    ],
+    "windows": [
+      "py -3",
+      "python"
+    ]
+  },
+  "state": {
+    "directory": ".raiatea-runtime",
+    "filename": "server-state.json",
+    "marker": "raiatea-launch-state-v1"
+  },
+  "supportedPlatforms": [
+    "linux",
+    "macos",
+    "windows"
+  ],
+  "version": 1
+}

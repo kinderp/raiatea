@@ -37,3 +37,10 @@ class PilotSessionEventTests(unittest.TestCase):
         value = copy.deepcopy(self.value)
         value["extra"] = True
         self.assertTrue(module.validate_incident(value))
+
+    def test_malformed_action_arrays_are_rejected(self) -> None:
+        samples = (["stop-pilot", "stop-pilot"], ["verify-cleanup", "stop-pilot"], [7], "stop-pilot")
+        for sample in samples:
+            value = copy.deepcopy(self.value)
+            value["actions"] = sample
+            self.assertTrue(module.validate_incident(value))

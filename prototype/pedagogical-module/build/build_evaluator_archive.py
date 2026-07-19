@@ -13,6 +13,7 @@ from pathlib import Path, PurePosixPath
 import build_evaluator_release
 
 CHECKSUMS = "SHA256SUMS"
+RELEASE_NOTES = "RELEASE-NOTES.md"
 
 
 def _path_lexists(path: Path) -> bool:
@@ -25,6 +26,90 @@ def _sha256(path: Path) -> str:
         for chunk in iter(lambda: source.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _release_notes_text(version: str) -> str:
+    build_evaluator_release.validate_release_version(version)
+    return f"""# Raiatea evaluator release {version}
+
+## Identità della release
+
+- Versione: `{version}`
+- Archivio: `raiatea-evaluator-{version}.tar`
+- Formato archivio: POSIX USTAR normalizzato
+- File checksum: `SHA256SUMS`
+- Entrypoint del pilot: `pilot/index.html`
+
+## Contenuto e limiti
+
+Questa release contiene il pilot Raiatea locale, il manifest di release, queste note e l'inventario SHA-256. Non contiene installer, account, cloud runtime, hosting remoto, analytics, telemetria, integrazione LMS o aggiornamenti automatici. Le evidenze del discente restano locali nel browser e l'export rimane limitato al singolo modulo.
+
+L'archivio non è firmato. La verifica SHA-256 rileva modifiche accidentali o intenzionali ai file distribuiti, ma non autentica il publisher e non costituisce una firma digitale, una certificazione o una garanzia di provenienza.
+
+## Verifica ed estrazione consigliata
+
+Dalla radice del repository, usare una directory di destinazione nuova:
+
+```bash
+python prototype/pedagogical-module/build/build_evaluator_archive.py \
+  --output-parent /tmp/raiatea-verified \
+  --release-version {version} \
+  --verify /percorso/raiatea-evaluator-{version}.tar
+```
+
+Il verificatore controlla struttura e metadata dell'archivio, estrae senza seguire link, valida `release-manifest.json` e ricalcola ogni voce di `SHA256SUMS`. Se la destinazione esiste o un controllo fallisce, l'operazione viene rifiutata.
+
+Dopo la verifica, il contenuto si trova in:
+
+```text
+/tmp/raiatea-verified/raiatea-evaluator-{version}/
+```
+
+## Avvio locale del pilot
+
+```bash
+python -m http.server 8000 \
+  --bind 127.0.0.1 \
+  --directory /tmp/raiatea-verified/raiatea-evaluator-{version}/pilot
+```
+
+Aprire `http://127.0.0.1:8000/index.html` e seguire la checklist di accettazione del pilot. Per arrestare il server, premere `Ctrl+C` nel terminale.
+
+## Rimozione
+
+Dopo aver arrestato il server, eliminare esplicitamente la directory estratta e, quando non serve più, l'archivio scaricato. La release non installa servizi, processi permanenti o aggiornamenti automatici.
+"""
+
+
+def _validate_release_notes(text: str, version: str) -> list[str]:
+    expected = _release_notes_text(version)
+    if text == expected:
+        return []
+    issues: list[str] = []
+    required = (
+        f"Raiatea evaluator release {version}",
+        f"raiatea-evaluator-{version}.tar",
+        "pilot/index.html",
+        CHECKSUMS,
+        "non è firmato",
+        "non autentica il publisher",
+        "127.0.0.1",
+        "Ctrl+C",
+    )
+    for value in required:
+        if value not in text:
+            issues.append(f"release notes missing required value: {value}")
+    if not issues:
+        issues.append("release notes do not match the deterministic template")
+    return issues
+
+
+def _write_release_notes(release: Path, version: str) -> Path:
+    target = release / RELEASE_NOTES
+    if _path_lexists(target):
+        raise ValueError("release notes already exist")
+    target.write_text(_release_notes_text(version), encoding="utf-8", newline="\n")
+    return target
 
 
 def _distributed_files(release: Path) -> list[Path]:
@@ -161,6 +246,12 @@ def verify_evaluator_archive(archive: Path, output_parent: Path) -> Path:
             for digest, relative in entries:
                 if _sha256(temporary / PurePosixPath(relative)) != digest:
                     raise ValueError(f"checksum mismatch: {relative}")
+            notes_path = temporary / RELEASE_NOTES
+            if notes_path.is_symlink() or not notes_path.is_file():
+                raise ValueError("release notes are missing")
+            issues = _validate_release_notes(notes_path.read_text(encoding="utf-8"), version)
+            if issues:
+                raise ValueError("invalid release notes:\n- " + "\n- ".join(issues))
             os.replace(temporary, destination)
             return destination
         finally:
@@ -169,15 +260,17 @@ def verify_evaluator_archive(archive: Path, output_parent: Path) -> Path:
 
 
 def build_evaluator_archive(output_parent: Path, release_version: str) -> Path:
+    version = build_evaluator_release.validate_release_version(release_version)
     parent = output_parent.resolve()
     parent.mkdir(parents=True, exist_ok=True)
-    archive = parent / f"raiatea-evaluator-{release_version}.tar"
+    archive = parent / f"raiatea-evaluator-{version}.tar"
     if _path_lexists(archive):
         raise ValueError("archive output path already exists")
     workspace = Path(tempfile.mkdtemp(prefix=".raiatea-archive.", dir=parent))
     staged_archive = workspace / archive.name
     try:
-        release = build_evaluator_release.build_evaluator_release(workspace, release_version)
+        release = build_evaluator_release.build_evaluator_release(workspace, version)
+        _write_release_notes(release, version)
         _write_checksums(release)
         _write_archive(release, staged_archive)
         verify_parent = workspace / "verify"
@@ -192,14 +285,14 @@ def build_evaluator_archive(output_parent: Path, release_version: str) -> Path:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build a reproducible Raiatea evaluator archive")
+    parser = argparse.ArgumentParser(description="Build or verify a reproducible Raiatea evaluator archive")
     parser.add_argument("--output-parent", required=True, type=Path)
     parser.add_argument("--release-version", required=True)
     parser.add_argument("--verify", type=Path)
     args = parser.parse_args()
     try:
         result = verify_evaluator_archive(args.verify, args.output_parent) if args.verify else build_evaluator_archive(args.output_parent, args.release_version)
-    except (OSError, ValueError, tarfile.TarError) as exc:
+    except (OSError, UnicodeDecodeError, ValueError, tarfile.TarError) as exc:
         print("Evaluator archive operation failed:")
         print(f"- {exc}")
         raise SystemExit(1) from exc

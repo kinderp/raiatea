@@ -19,15 +19,48 @@ class EvaluatorArchiveTests(unittest.TestCase):
     def test_repeated_builds_are_byte_identical_and_verify(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            first_parent = root / "first"
-            second_parent = root / "second"
-            first = archive_builder.build_evaluator_archive(first_parent, "pilot-1")
-            second = archive_builder.build_evaluator_archive(second_parent, "pilot-1")
+            first = archive_builder.build_evaluator_archive(root / "first", "pilot-1")
+            second = archive_builder.build_evaluator_archive(root / "second", "pilot-1")
             self.assertEqual(first.read_bytes(), second.read_bytes())
             extracted = archive_builder.verify_evaluator_archive(first, root / "verified")
             self.assertTrue((extracted / "release-manifest.json").is_file())
             self.assertTrue((extracted / "pilot" / "index.html").is_file())
             self.assertTrue((extracted / "SHA256SUMS").is_file())
+            self.assertTrue((extracted / "RELEASE-NOTES.md").is_file())
+
+    def test_release_notes_are_version_pinned_deterministic_and_checksummed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = archive_builder.build_evaluator_archive(root, "notes-1")
+            extracted = archive_builder.verify_evaluator_archive(archive, root / "verify")
+            notes = (extracted / archive_builder.RELEASE_NOTES).read_text(encoding="utf-8")
+            self.assertEqual(archive_builder._release_notes_text("notes-1"), notes)
+            self.assertEqual([], archive_builder._validate_release_notes(notes, "notes-1"))
+            self.assertIn("raiatea-evaluator-notes-1.tar", notes)
+            self.assertIn("pilot/index.html", notes)
+            self.assertIn("non autentica il publisher", notes)
+            entries = dict((path, digest) for digest, path in archive_builder._parse_checksums(
+                (extracted / archive_builder.CHECKSUMS).read_text(encoding="ascii")
+            ))
+            self.assertIn(archive_builder.RELEASE_NOTES, entries)
+            self.assertEqual(
+                hashlib.sha256((extracted / archive_builder.RELEASE_NOTES).read_bytes()).hexdigest(),
+                entries[archive_builder.RELEASE_NOTES],
+            )
+
+    def test_release_notes_validator_rejects_stale_or_misleading_documents(self) -> None:
+        valid = archive_builder._release_notes_text("notes-2")
+        invalid = (
+            valid.replace("notes-2", "notes-3", 1),
+            valid.replace("pilot/index.html", "pilot/start.html"),
+            valid.replace("SHA256SUMS", "CHECKSUMS.txt"),
+            valid.replace("L'archivio non è firmato.", "L'archivio è firmato."),
+            valid.replace("non autentica il publisher", "autentica il publisher"),
+            valid.replace("--verify", "--extract"),
+        )
+        for text in invalid:
+            with self.subTest(text=text[:80]):
+                self.assertTrue(archive_builder._validate_release_notes(text, "notes-2"))
 
     def test_archive_members_and_metadata_are_normalized(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
@@ -38,6 +71,7 @@ class EvaluatorArchiveTests(unittest.TestCase):
             self.assertEqual(names, sorted(names))
             self.assertEqual(len(names), len(set(names)))
             self.assertTrue(all(name.startswith("raiatea-evaluator-metadata-1") for name in names))
+            self.assertIn("raiatea-evaluator-metadata-1/RELEASE-NOTES.md", names)
             for member in members:
                 self.assertIn(member.type, (tarfile.DIRTYPE, tarfile.REGTYPE))
                 self.assertEqual(0, member.mtime)
@@ -56,6 +90,7 @@ class EvaluatorArchiveTests(unittest.TestCase):
             paths = [path for _, path in entries]
             self.assertEqual(paths, sorted(paths))
             self.assertIn("release-manifest.json", paths)
+            self.assertIn("RELEASE-NOTES.md", paths)
             self.assertIn("pilot/index.html", paths)
             self.assertNotIn("SHA256SUMS", paths)
             for digest, relative in entries:
@@ -77,6 +112,21 @@ class EvaluatorArchiveTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "checksum|inventory"):
                 archive_builder.verify_evaluator_archive(tampered, output)
             self.assertFalse((output / "raiatea-evaluator-tamper-1").exists())
+
+    def test_stale_release_notes_archive_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            archive = archive_builder.build_evaluator_archive(root / "build", "stale-1")
+            stale = root / "stale.tar"
+            with tarfile.open(archive, "r:") as source, tarfile.open(stale, "w", format=tarfile.USTAR_FORMAT) as target:
+                for member in source.getmembers():
+                    data = source.extractfile(member).read() if member.isfile() else None
+                    if member.name.endswith("RELEASE-NOTES.md"):
+                        data = archive_builder._release_notes_text("other-1").encode("utf-8")
+                        member.size = len(data)
+                    target.addfile(member, io.BytesIO(data) if data is not None else None)
+            with self.assertRaisesRegex(ValueError, "checksum|release notes"):
+                archive_builder.verify_evaluator_archive(stale, root / "verify")
 
     def test_unsafe_and_link_members_are_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

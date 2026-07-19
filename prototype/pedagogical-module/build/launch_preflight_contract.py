@@ -33,8 +33,8 @@ REQUIRED_FILES = [
     "release-manifest.json",
 ]
 DIAGNOSTICS = [
-    "PORT_IN_USE",
     "PORT_INVALID",
+    "PORT_IN_USE",
     "PYTHON_NOT_FOUND",
     "PYTHON_UNSUPPORTED",
     "RELEASE_FILE_UNSAFE",

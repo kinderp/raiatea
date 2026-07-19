@@ -25,6 +25,7 @@ This directory collects the stable architecture and privacy decisions that gover
 - [`evaluator-release-ci-artifact.md`](evaluator-release-ci-artifact.md) — least-privilege CI producer/consumer separation, exact one-file artifact transport, independent verification, and loopback smoke-test boundary.
 - [`cross-platform-launch-preflight.md`](cross-platform-launch-preflight.md) — verified-release input, supported Python runtime, loopback/port rules, stable diagnostics, owned process state, stop and cleanup lifecycle for future desktop helpers.
 - [`posix-launch-stop-helpers.md`](posix-launch-stop-helpers.md) — portable macOS/Linux launch and stop helpers, loopback readiness, atomic local state, process-identity protection and archive composition.
+- [`windows-powershell-launch-stop-helpers.md`](windows-powershell-launch-stop-helpers.md) — Windows PowerShell launch and stop helpers, canonical runtime discovery, loopback readiness, owned state and process-command validation.
 
 The pilot contracts define the evaluator-facing local learner journey and its final acceptance path. The evaluator-release contracts wrap that unchanged pilot in a deterministic directory and archive with integrity metadata, evaluator guidance, independently verified CI transport, and desktop launch boundaries. Evidence and migration contracts remain separate and unchanged.
 
@@ -43,8 +44,9 @@ The pilot contracts define the evaluator-facing local learner journey and its fi
 11. Read the CI artifact contract before changing workflow triggers, permissions, artifact payload, retention, verification, or smoke testing.
 12. Read the cross-platform launch/preflight contract before implementing process state, port handling or browser opening.
 13. Read the POSIX helper contract before changing macOS/Linux launch, stop, diagnostics or helper packaging.
-14. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
+14. Read the Windows PowerShell helper contract before changing Windows launch, stop, diagnostics or desktop packaging.
+15. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
 
 ## Current implementation boundary
 
-Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The completed pilot provides a deterministic offline two-module journey, read-only route dashboard, module-scoped v1 export, evaluator guidance, and full browser acceptance. The evaluator release remains reproducible and independently verifiable; a compositional POSIX field-pilot builder now adds checksummed `launch-posix.sh`, `stop-posix.sh` and local instructions. The helpers discover Python 3.10+, bind only to loopback, use owned runtime state and refuse foreign processes. PowerShell, accounts, analytics, LMS integration, signing, installers, registries, deployments, services and automatic updates remain deferred.
+Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The completed pilot provides a deterministic offline two-module journey, read-only route dashboard, module-scoped v1 export, evaluator guidance, and full browser acceptance. The evaluator release remains reproducible and independently verifiable; the desktop field-pilot archive composes checksummed POSIX and PowerShell launch/stop helpers with local instructions. Both platforms require Python 3.10+, bind only to loopback, use owned runtime state and refuse foreign processes. Accounts, analytics, LMS integration, signing, installers, registries, deployments, services and automatic updates remain deferred.

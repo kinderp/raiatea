@@ -1,0 +1,19 @@
+{
+  "format": "raiatea-evaluator-session",
+  "version": 1,
+  "releaseVersion": "field-pilot-v1",
+  "platform": "linux",
+  "launcher": "posix",
+  "results": {
+    "archiveVerified": false,
+    "helpersChecksummed": false,
+    "invalidPortRejected": false,
+    "launchSucceeded": false,
+    "noMachineWideChanges": false,
+    "releaseIdentityValidated": false,
+    "stateCleanupSucceeded": false,
+    "stopSucceeded": false
+  },
+  "observations": "",
+  "declaration": "local-only, optional, non-identifying evaluator observation"
+}

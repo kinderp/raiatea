@@ -35,18 +35,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build and verify desktop archive
+      - name: Build and verify field pilot archive
         shell: pwsh
         run: |
-          $build = Join-Path $env:RUNNER_TEMP 'raiatea desktop build'
-          $verify = Join-Path $env:RUNNER_TEMP 'raiatea desktop verify'
+          $build = Join-Path $env:RUNNER_TEMP 'raiatea field pilot build'
+          $verify = Join-Path $env:RUNNER_TEMP 'raiatea field pilot verify'
           New-Item -ItemType Directory -Force -Path $build | Out-Null
-          python prototype/pedagogical-module/build/build_desktop_evaluator_archive.py --output-parent $build --release-version windows-ci-v1
+          python prototype/pedagogical-module/build/build_field_pilot_archive.py --output-parent $build --release-version windows-ci-v1
           $archive = Join-Path $build 'raiatea-evaluator-windows-ci-v1.tar'
           python prototype/pedagogical-module/build/build_evaluator_archive.py --output-parent $verify --release-version windows-ci-v1 --verify $archive
           $release = Join-Path $verify 'raiatea-evaluator-windows-ci-v1'
-          foreach ($name in @('Launch-Raiatea.ps1','Stop-Raiatea.ps1','WINDOWS-LAUNCH.md','launch-posix.sh','stop-posix.sh')) {
-            if (-not (Test-Path -LiteralPath (Join-Path $release $name) -PathType Leaf)) { throw "missing helper: $name" }
+          foreach ($name in @('Launch-Raiatea.ps1','Stop-Raiatea.ps1','WINDOWS-LAUNCH.md','launch-posix.sh','stop-posix.sh','evaluator-session-record.py','evaluator-session-record-v1.json','desktop-acceptance-matrix-v1.json','EVALUATOR-SESSION.md')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $release $name) -PathType Leaf)) { throw "missing field-pilot file: $name" }
           }
           "RELEASE=$release" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -63,6 +63,19 @@ jobs:
           & $stop
           if ($LASTEXITCODE -ne 0) { throw 'stop helper failed' }
           if (Test-Path -LiteralPath (Join-Path $env:RELEASE '.raiatea-runtime/server-state.json')) { throw 'runtime state was not removed' }
+
+      - name: Verify session record lifecycle
+        shell: pwsh
+        run: |
+          $tool = Join-Path $env:RELEASE 'evaluator-session-record.py'
+          $record = Join-Path $env:RUNNER_TEMP 'evaluator-session.json'
+          $copy = Join-Path $env:RUNNER_TEMP 'evaluator-session-copy.json'
+          python $tool create $record --release-version windows-ci-v1 --platform windows --launcher powershell --observations 'Navigation was clear.'
+          python $tool validate $record
+          python $tool export $record $copy
+          if (-not (Test-Path -LiteralPath $copy -PathType Leaf)) { throw 'session export missing' }
+          python $tool delete $record
+          if (Test-Path -LiteralPath $record) { throw 'session record was not deleted' }
 
       - name: Verify failure diagnostics
         shell: pwsh

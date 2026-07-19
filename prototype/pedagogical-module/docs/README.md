@@ -26,8 +26,9 @@ This directory collects the stable architecture and privacy decisions that gover
 - [`cross-platform-launch-preflight.md`](cross-platform-launch-preflight.md) — verified-release input, supported Python runtime, loopback/port rules, stable diagnostics, owned process state, stop and cleanup lifecycle for future desktop helpers.
 - [`posix-launch-stop-helpers.md`](posix-launch-stop-helpers.md) — portable macOS/Linux launch and stop helpers, loopback readiness, atomic local state, process-identity protection and archive composition.
 - [`windows-powershell-launch-stop-helpers.md`](windows-powershell-launch-stop-helpers.md) — Windows PowerShell launch and stop helpers, canonical runtime discovery, loopback readiness, owned state and process-command validation.
+- [`offline-evaluator-session-and-acceptance.md`](offline-evaluator-session-and-acceptance.md) — optional non-identifying local evaluator record, explicit create/validate/export/delete lifecycle, Linux/Windows CI coverage and bounded macOS manual parity.
 
-The pilot contracts define the evaluator-facing local learner journey and its final acceptance path. The evaluator-release contracts wrap that unchanged pilot in a deterministic directory and archive with integrity metadata, evaluator guidance, independently verified CI transport, and desktop launch boundaries. Evidence and migration contracts remain separate and unchanged.
+The pilot contracts define the evaluator-facing local learner journey and its final acceptance path. The evaluator-release contracts wrap that unchanged pilot in a deterministic directory and archive with integrity metadata, evaluator guidance, independently verified CI transport, desktop launch boundaries and a separate optional evaluator-observation layer. Evidence and migration contracts remain separate and unchanged.
 
 ## Reading order for evidence, pilot, and release work
 
@@ -45,8 +46,9 @@ The pilot contracts define the evaluator-facing local learner journey and its fi
 12. Read the cross-platform launch/preflight contract before implementing process state, port handling or browser opening.
 13. Read the POSIX helper contract before changing macOS/Linux launch, stop, diagnostics or helper packaging.
 14. Read the Windows PowerShell helper contract before changing Windows launch, stop, diagnostics or desktop packaging.
-15. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
+15. Read the offline evaluator-session contract before changing observation fields, local record lifecycle, platform coverage claims or field-pilot packaging.
+16. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
 
 ## Current implementation boundary
 
-Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The completed pilot provides a deterministic offline two-module journey, read-only route dashboard, module-scoped v1 export, evaluator guidance, and full browser acceptance. The evaluator release remains reproducible and independently verifiable; the desktop field-pilot archive composes checksummed POSIX and PowerShell launch/stop helpers with local instructions. Both platforms require Python 3.10+, bind only to loopback, use owned runtime state and refuse foreign processes. Accounts, analytics, LMS integration, signing, installers, registries, deployments, services and automatic updates remain deferred.
+Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The completed pilot provides a deterministic offline two-module journey, read-only route dashboard, module-scoped v1 export, evaluator guidance, and full browser acceptance. The evaluator release remains reproducible and independently verifiable; the field-pilot archive composes checksummed POSIX and PowerShell launch/stop helpers, local instructions, a closed evaluator-session tool, canonical fixture and acceptance matrix. The evaluator record is optional, non-identifying, explicit-only and never read by the pilot. Linux and Windows have executable CI coverage; macOS is documented as manual POSIX parity. Accounts, analytics, LMS integration, signing, installers, registries, deployments, services, remote submission and automatic updates remain deferred.

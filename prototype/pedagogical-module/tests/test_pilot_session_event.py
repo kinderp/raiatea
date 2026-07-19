@@ -16,4 +16,24 @@ FIXTURE = ROOT / "contracts" / "pilot-session-event-v1.json"
 
 
 class PilotSessionEventTests(unittest.TestCase):
-    pass
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.value = json.loads(FIXTURE.read_text(encoding="utf-8"))
+
+    def test_fixture_and_stop_rules(self) -> None:
+        self.assertEqual([], module.validate_incident(self.value))
+        self.assertTrue(module.required_stop("critical", "runtime", False))
+        self.assertTrue(module.required_stop("low", "privacy-boundary", False))
+        self.assertTrue(module.required_stop("low", "runtime", True))
+        self.assertFalse(module.required_stop("high", "runtime", False))
+
+    def test_inconsistent_values_fail_closed(self) -> None:
+        value = copy.deepcopy(self.value)
+        value["stopRequired"] = False
+        self.assertTrue(module.validate_incident(value))
+        value = copy.deepcopy(self.value)
+        value["actions"] = ["verify-cleanup"]
+        self.assertTrue(module.validate_incident(value))
+        value = copy.deepcopy(self.value)
+        value["extra"] = True
+        self.assertTrue(module.validate_incident(value))

@@ -47,26 +47,31 @@ def validate_incident(value: object) -> list[str]:
         issues.append("$.releaseVersion: invalid release version")
     if not _valid_digest(value["checklistSha256"]):
         issues.append("$.checklistSha256: must be lowercase SHA-256")
-    if value["severity"] not in SEVERITIES:
+    severity = value["severity"]
+    category = value["category"]
+    unsafe_runtime = value["unsafeRuntime"]
+    stop_required = value["stopRequired"]
+    if severity not in SEVERITIES:
         issues.append("$.severity: unsupported severity")
-    if value["category"] not in CATEGORIES:
+    if category not in CATEGORIES:
         issues.append("$.category: unsupported category")
-    if not isinstance(value["unsafeRuntime"], bool):
+    if not isinstance(unsafe_runtime, bool):
         issues.append("$.unsafeRuntime: must be boolean")
-    if not isinstance(value["stopRequired"], bool):
+    if not isinstance(stop_required, bool):
         issues.append("$.stopRequired: must be boolean")
     actions = value["actions"]
-    if not isinstance(actions, list) or tuple(actions) != tuple(sorted(set(actions))):
-        issues.append("$.actions: must be a sorted unique array")
+    valid_actions = isinstance(actions, list) and all(isinstance(action, str) for action in actions)
+    if not valid_actions or actions != sorted(set(actions)):
+        issues.append("$.actions: must be a sorted unique string array")
     elif any(action not in ACTIONS for action in actions):
         issues.append("$.actions: contains unsupported action")
     if value["resolution"] not in RESOLUTIONS:
         issues.append("$.resolution: unsupported resolution")
-    if value["severity"] in SEVERITIES and value["category"] in CATEGORIES and isinstance(value["unsafeRuntime"], bool) and isinstance(value["stopRequired"], bool):
-        expected = required_stop(value["severity"], value["category"], value["unsafeRuntime"])
-        if value["stopRequired"] != expected:
+    if severity in SEVERITIES and category in CATEGORIES and isinstance(unsafe_runtime, bool) and isinstance(stop_required, bool):
+        expected = required_stop(severity, category, unsafe_runtime)
+        if stop_required != expected:
             issues.append("$.stopRequired: does not match canonical stop criteria")
-        if expected and isinstance(actions, list) and "stop-pilot" not in actions:
+        if expected and valid_actions and "stop-pilot" not in actions:
             issues.append("$.actions: stop-required incidents must include stop-pilot")
     return issues
 

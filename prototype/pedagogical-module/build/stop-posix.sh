@@ -22,7 +22,8 @@ for candidate in python3 python; do
 done
 [ -n "$PYTHON" ] || fail PYTHON_NOT_FOUND
 
-STATE=$($PYTHON - "$STATE_FILE" <<'PY') || fail STATE_STALE
+if ! STATE=$(
+  "$PYTHON" - "$STATE_FILE" <<'PY'
 import json, pathlib, sys
 path = pathlib.Path(sys.argv[1])
 try:
@@ -41,6 +42,9 @@ if isinstance(port, bool) or not isinstance(port, int) or not 1024 <= port <= 65
     raise SystemExit(1)
 print(f"{pid} {port}")
 PY
+); then
+  fail STATE_STALE
+fi
 set -- $STATE
 PID=$1
 PORT=$2

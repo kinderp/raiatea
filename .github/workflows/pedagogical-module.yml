@@ -52,6 +52,44 @@ jobs:
           fi
           cat /tmp/raiatea-unit-tests.log
 
+      - name: Build and exercise synthesis kit
+        run: |
+          rm -rf /tmp/raiatea-synthesis-build /tmp/raiatea-synthesis-verify
+          rm -f /tmp/raiatea-synthesis-aggregate.json
+          mkdir -p /tmp/raiatea-synthesis-build
+          python prototype/pedagogical-module/build/build_synthesis_kit_archive.py \
+            --output-parent /tmp/raiatea-synthesis-build \
+            --release-version synthesis-ci-v1
+          archive=/tmp/raiatea-synthesis-build/raiatea-evaluator-synthesis-ci-v1.tar
+          test -f "$archive"
+          python prototype/pedagogical-module/build/build_evaluator_archive.py \
+            --output-parent /tmp/raiatea-synthesis-verify \
+            --release-version synthesis-ci-v1 \
+            --verify "$archive"
+          release=/tmp/raiatea-synthesis-verify/raiatea-evaluator-synthesis-ci-v1
+          for name in \
+            SYNTHESIS-KIT.md \
+            evaluator_session_record.py \
+            evaluator_session_batch_manifest.py \
+            evaluator_session_batch_intake.py \
+            evaluator_session_aggregate.py \
+            synthesis-example/batch-manifest.json \
+            synthesis-example/themes.json \
+            synthesis-example/aggregate.json; do
+            test -s "$release/$name"
+          done
+          (
+            cd "$release"
+            python evaluator_session_batch_manifest.py synthesis-example/batch-manifest.json
+            python evaluator_session_batch_intake.py synthesis-example/batch-manifest.json \
+              --root synthesis-example
+            python evaluator_session_aggregate.py synthesis-example/batch-manifest.json \
+              --root synthesis-example \
+              --themes synthesis-example/themes.json \
+              --output /tmp/raiatea-synthesis-aggregate.json
+          )
+          cmp "$release/synthesis-example/aggregate.json" /tmp/raiatea-synthesis-aggregate.json
+
       - name: Compile declarative visual layouts
         run: |
           mkdir -p /tmp/raiatea-layouts

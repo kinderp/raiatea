@@ -155,7 +155,9 @@ def write_aggregate(path: Path, aggregate: dict[str, Any]) -> Path:
     if os.path.lexists(os.fspath(path)):
         raise ValueError("aggregate output path already exists")
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = Path(tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)[1])
+    descriptor, temporary_name = tempfile.mkstemp(prefix=f".{path.name}.", dir=path.parent)
+    os.close(descriptor)
+    temporary = Path(temporary_name)
     try:
         temporary.write_text(json.dumps(aggregate, indent=2) + "\n", encoding="utf-8", newline="\n")
         try:

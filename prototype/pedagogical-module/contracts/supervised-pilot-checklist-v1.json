@@ -1,0 +1,1 @@
+{"format":"raiatea-supervised-pilot-checklist","version":1,"releaseVersion":"pilot-v1","platform":"linux","launcher":"posix","phases":{"releaseVerified":true,"runtimePreflightPassed":true,"privacyBoundaryConfirmed":true,"pilotStarted":true,"supervisionMaintained":true,"pilotStopped":true,"ownedStateCleaned":true,"temporaryCopiesRemoved":true},"status":"completed"}

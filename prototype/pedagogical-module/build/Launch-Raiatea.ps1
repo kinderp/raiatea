@@ -28,16 +28,19 @@ try {
 if (Test-Path -LiteralPath $StateFile) { Fail 'STATE_ALREADY_EXISTS' }
 
 $PythonExe = $null
-$PythonPrefix = @()
 $candidates = @(
     [pscustomobject]@{ Exe = 'py'; Prefix = @('-3') },
     [pscustomobject]@{ Exe = 'python'; Prefix = @() }
 )
 foreach ($candidate in $candidates) {
     try {
-        $exe = Get-Command $candidate.Exe -ErrorAction Stop
-        & $exe.Source @($candidate.Prefix) -c "import sys; raise SystemExit(0 if sys.version_info >= (3,10) else 1)" | Out-Null
-        if ($LASTEXITCODE -eq 0) { $PythonExe = $exe.Source; $PythonPrefix = @($candidate.Prefix); break }
+        $command = Get-Command $candidate.Exe -ErrorAction Stop
+        $prefixArgs = @($candidate.Prefix)
+        $resolved = & $command.Source @prefixArgs -c "import sys; raise SystemExit(1) if sys.version_info < (3,10) else print(sys.executable)"
+        if ($LASTEXITCODE -eq 0 -and $resolved) {
+            $candidatePath = ([string]$resolved).Trim()
+            if (Test-Path -LiteralPath $candidatePath -PathType Leaf) { $PythonExe = $candidatePath; break }
+        }
     } catch { }
 }
 if (-not $PythonExe) { Fail 'PYTHON_NOT_FOUND' }
@@ -50,7 +53,7 @@ try {
 New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 $pilot = Join-Path $ReleaseDir 'pilot'
 $quotedPilot = '"' + $pilot + '"'
-$arguments = @($PythonPrefix) + @('-m','http.server',"$Port",'--bind','127.0.0.1','--directory',$quotedPilot)
+$arguments = @('-m','http.server',"$Port",'--bind','127.0.0.1','--directory',$quotedPilot)
 try {
     $process = Start-Process -FilePath $PythonExe -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardOutput $OutLog -RedirectStandardError $ErrLog
 } catch { Fail 'SERVER_START_FAILED' }

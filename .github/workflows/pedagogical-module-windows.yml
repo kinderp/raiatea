@@ -1,0 +1,78 @@
+name: Pedagogical module Windows
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "prototype/pedagogical-module/**"
+      - ".github/workflows/pedagogical-module-windows.yml"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/pedagogical-module/**"
+      - ".github/workflows/pedagogical-module-windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-powershell-acceptance:
+    if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Build and verify desktop archive
+        shell: pwsh
+        run: |
+          $build = Join-Path $env:RUNNER_TEMP 'raiatea desktop build'
+          $verify = Join-Path $env:RUNNER_TEMP 'raiatea desktop verify'
+          New-Item -ItemType Directory -Force -Path $build | Out-Null
+          python prototype/pedagogical-module/build/build_desktop_evaluator_archive.py `
+            --output-parent $build `
+            --release-version windows-ci-v1
+          $archive = Join-Path $build 'raiatea-evaluator-windows-ci-v1.tar'
+          if (-not (Test-Path -LiteralPath $archive -PathType Leaf)) { throw 'desktop archive missing' }
+          python prototype/pedagogical-module/build/build_evaluator_archive.py `
+            --output-parent $verify `
+            --release-version windows-ci-v1 `
+            --verify $archive
+          $release = Join-Path $verify 'raiatea-evaluator-windows-ci-v1'
+          foreach ($name in @('Launch-Raiatea.ps1','Stop-Raiatea.ps1','WINDOWS-LAUNCH.md','launch-posix.sh','stop-posix.sh')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $release $name) -PathType Leaf)) { throw "missing helper: $name" }
+          }
+          "RELEASE=$release" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Launch, smoke test and stop
+        shell: pwsh
+        run: |
+          $port = 4185
+          $launch = Join-Path $env:RELEASE 'Launch-Raiatea.ps1'
+          $stop = Join-Path $env:RELEASE 'Stop-Raiatea.ps1'
+          & $launch -Port $port -NoOpen
+          if ($LASTEXITCODE -ne 0) { throw 'launch helper failed' }
+          $response = Invoke-WebRequest -UseBasicParsing -Uri "http://127.0.0.1:$port/index.html" -TimeoutSec 5
+          if ($response.StatusCode -ne 200 -or $response.Content -notmatch 'Raiatea: primo percorso pilot') { throw 'loopback smoke test failed' }
+          & $stop
+          if ($LASTEXITCODE -ne 0) { throw 'stop helper failed' }
+          if (Test-Path -LiteralPath (Join-Path $env:RELEASE '.raiatea-runtime/server-state.json')) { throw 'runtime state was not removed' }
+
+      - name: Verify failure diagnostics
+        shell: pwsh
+        run: |
+          $launch = Join-Path $env:RELEASE 'Launch-Raiatea.ps1'
+          $output = & $launch -Port 80 -NoOpen 2>&1
+          if ($LASTEXITCODE -eq 0 -or ($output -join "`n") -notmatch 'PORT_INVALID') { throw 'invalid port diagnostic missing' }

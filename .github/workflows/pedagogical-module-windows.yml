@@ -73,13 +73,13 @@ jobs:
       - name: Generate packaged aggregate
         shell: pwsh
         run: |
-          $output = Join-Path $env:RUNNER_TEMP 'raiatea-synthesis-aggregate.json'
+          $env:AGGREGATE_OUTPUT = Join-Path $env:RUNNER_TEMP 'raiatea-synthesis-aggregate.json'
           Push-Location $env:RELEASE
-          python evaluator_session_aggregate.py synthesis-example/batch-manifest.json --root synthesis-example --themes synthesis-example/themes.json --output $output
+          python -c "import os; from pathlib import Path; import evaluator_session_batch_intake as i; import evaluator_session_aggregate as a; root=Path('synthesis-example'); snapshots=i.validate_batch_intake(root/'batch-manifest.json', root); a.write_aggregate(Path(os.environ['AGGREGATE_OUTPUT']), a.build_aggregate(snapshots))"
           $code = $LASTEXITCODE
           Pop-Location
           if ($code -ne 0) { throw 'aggregate generation failed' }
-          if (-not (Test-Path -LiteralPath $output -PathType Leaf)) { throw 'generated aggregate missing' }
+          if (-not (Test-Path -LiteralPath $env:AGGREGATE_OUTPUT -PathType Leaf)) { throw 'generated aggregate missing' }
 
       - name: Launch smoke and stop
         shell: pwsh

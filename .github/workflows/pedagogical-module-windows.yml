@@ -35,20 +35,31 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build and verify field pilot archive
+      - name: Build and verify synthesis kit archive
         shell: pwsh
         run: |
-          $build = Join-Path $env:RUNNER_TEMP 'raiatea field pilot build'
-          $verify = Join-Path $env:RUNNER_TEMP 'raiatea field pilot verify'
+          $build = Join-Path $env:RUNNER_TEMP 'raiatea synthesis build'
+          $verify = Join-Path $env:RUNNER_TEMP 'raiatea synthesis verify'
           New-Item -ItemType Directory -Force -Path $build | Out-Null
-          python prototype/pedagogical-module/build/build_field_pilot_archive.py --output-parent $build --release-version windows-ci-v1
+          python prototype/pedagogical-module/build/build_synthesis_kit_archive.py --output-parent $build --release-version windows-ci-v1
           $archive = Join-Path $build 'raiatea-evaluator-windows-ci-v1.tar'
           python prototype/pedagogical-module/build/build_evaluator_archive.py --output-parent $verify --release-version windows-ci-v1 --verify $archive
           $release = Join-Path $verify 'raiatea-evaluator-windows-ci-v1'
-          foreach ($name in @('Launch-Raiatea.ps1','Stop-Raiatea.ps1','WINDOWS-LAUNCH.md','launch-posix.sh','stop-posix.sh','evaluator-session-record.py','evaluator-session-record-v1.json','desktop-acceptance-matrix-v1.json','EVALUATOR-SESSION.md')) {
-            if (-not (Test-Path -LiteralPath (Join-Path $release $name) -PathType Leaf)) { throw "missing field-pilot file: $name" }
+          foreach ($name in @('Launch-Raiatea.ps1','Stop-Raiatea.ps1','evaluator-session-record.py','evaluator_session_record.py','evaluator_session_batch_manifest.py','evaluator_session_batch_intake.py','evaluator_session_aggregate.py','SYNTHESIS-KIT.md','synthesis-example/batch-manifest.json','synthesis-example/themes.json','synthesis-example/aggregate.json')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $release $name) -PathType Leaf)) { throw "missing synthesis-kit file: $name" }
           }
           "RELEASE=$release" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Validate synthesis example
+        shell: pwsh
+        run: |
+          Push-Location $env:RELEASE
+          python evaluator_session_batch_manifest.py synthesis-example/batch-manifest.json
+          python evaluator_session_batch_intake.py synthesis-example/batch-manifest.json --root synthesis-example
+          $copy = Join-Path $env:RUNNER_TEMP 'aggregate-copy.json'
+          python evaluator_session_aggregate.py synthesis-example/batch-manifest.json --root synthesis-example --themes synthesis-example/themes.json --output $copy
+          if ((Get-FileHash $copy -Algorithm SHA256).Hash -ne (Get-FileHash 'synthesis-example/aggregate.json' -Algorithm SHA256).Hash) { throw 'aggregate mismatch' }
+          Pop-Location
 
       - name: Launch smoke and stop
         shell: pwsh

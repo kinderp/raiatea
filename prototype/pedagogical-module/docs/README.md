@@ -24,8 +24,9 @@ This directory collects the stable architecture and privacy decisions that gover
 - [`evaluator-release-notes-and-verification.md`](evaluator-release-notes-and-verification.md) — deterministic version-pinned release notes, non-developer verification/serve/cleanup workflow, unsigned-integrity wording, and stale-document detection.
 - [`evaluator-release-ci-artifact.md`](evaluator-release-ci-artifact.md) — least-privilege CI producer/consumer separation, exact one-file artifact transport, independent verification, and loopback smoke-test boundary.
 - [`cross-platform-launch-preflight.md`](cross-platform-launch-preflight.md) — verified-release input, supported Python runtime, loopback/port rules, stable diagnostics, owned process state, stop and cleanup lifecycle for future desktop helpers.
+- [`posix-launch-stop-helpers.md`](posix-launch-stop-helpers.md) — portable macOS/Linux launch and stop helpers, loopback readiness, atomic local state, process-identity protection and archive composition.
 
-The pilot contracts define the evaluator-facing local learner journey and its final acceptance path. The evaluator-release contracts wrap that unchanged pilot in a deterministic directory and archive with integrity metadata, evaluator guidance, independently verified CI transport, and a closed cross-platform launch/preflight boundary. Evidence and migration contracts remain separate and unchanged.
+The pilot contracts define the evaluator-facing local learner journey and its final acceptance path. The evaluator-release contracts wrap that unchanged pilot in a deterministic directory and archive with integrity metadata, evaluator guidance, independently verified CI transport, and desktop launch boundaries. Evidence and migration contracts remain separate and unchanged.
 
 ## Reading order for evidence, pilot, and release work
 
@@ -40,9 +41,10 @@ The pilot contracts define the evaluator-facing local learner journey and its fi
 9. Read the evaluator archive contract before adding checksums, tar packaging, or extraction verification.
 10. Read the release-notes contract before changing evaluator-facing identity, verification, serve, stop, or cleanup instructions.
 11. Read the CI artifact contract before changing workflow triggers, permissions, artifact payload, retention, verification, or smoke testing.
-12. Read the cross-platform launch/preflight contract before implementing POSIX or PowerShell helpers, process state, port handling or browser opening.
-13. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
+12. Read the cross-platform launch/preflight contract before implementing process state, port handling or browser opening.
+13. Read the POSIX helper contract before changing macOS/Linux launch, stop, diagnostics or helper packaging.
+14. Read current schemas, validators, examples, tests, and the prototype README before implementing a micro-step.
 
 ## Current implementation boundary
 
-Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The completed pilot provides a deterministic offline two-module journey, read-only route dashboard, module-scoped v1 export, evaluator guidance, and full browser acceptance. The evaluator release is a normalized reproducible POSIX tar with deterministic `SHA256SUMS`, an independent fail-closed verifier, version-pinned `RELEASE-NOTES.md`, and a CI producer/consumer path that uploads exactly one short-lived archive, downloads it into a clean workspace, verifies it independently, and smoke-tests the extracted pilot on loopback. A closed machine-readable launch/preflight contract now pins verified-release shape, Python 3.10+, loopback-only serving, port range, stable diagnostics and owned runtime-state semantics; platform launchers remain deferred to child issues #80 and #81. GitHub Releases, public hosting, accounts, analytics, LMS integration, signing, installers, registries, deployments, services and automatic updates remain deferred.
+Canonical pedagogical modules and learner-evidence v1/v2 contracts remain unchanged. The completed pilot provides a deterministic offline two-module journey, read-only route dashboard, module-scoped v1 export, evaluator guidance, and full browser acceptance. The evaluator release remains reproducible and independently verifiable; a compositional POSIX field-pilot builder now adds checksummed `launch-posix.sh`, `stop-posix.sh` and local instructions. The helpers discover Python 3.10+, bind only to loopback, use owned runtime state and refuse foreign processes. PowerShell, accounts, analytics, LMS integration, signing, installers, registries, deployments, services and automatic updates remain deferred.

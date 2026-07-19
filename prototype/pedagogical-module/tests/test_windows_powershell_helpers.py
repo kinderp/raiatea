@@ -34,7 +34,12 @@ class WindowsPowerShellHelperTests(unittest.TestCase):
             second = desktop_builder.build_desktop_evaluator_archive(root / "second", "desktop-1")
             self.assertEqual(first.read_bytes(), second.read_bytes())
             release = archive_builder.verify_evaluator_archive(first, root / "verified")
-            entries = dict(archive_builder._parse_checksums((release / "SHA256SUMS").read_text(encoding="ascii")))
+            entries = {
+                path: digest
+                for digest, path in archive_builder._parse_checksums(
+                    (release / "SHA256SUMS").read_text(encoding="ascii")
+                )
+            }
             for relative in (
                 "launch-posix.sh", "stop-posix.sh", "POSIX-LAUNCH.md",
                 "Launch-Raiatea.ps1", "Stop-Raiatea.ps1", "WINDOWS-LAUNCH.md",

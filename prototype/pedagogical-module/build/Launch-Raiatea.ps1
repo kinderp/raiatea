@@ -10,7 +10,8 @@ function Fail([string]$Code) { [Console]::Error.WriteLine($Code); exit 1 }
 $ReleaseDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $StateDir = Join-Path $ReleaseDir '.raiatea-runtime'
 $StateFile = Join-Path $StateDir 'server-state.json'
-$LogFile = Join-Path $StateDir 'server.log'
+$OutLog = Join-Path $StateDir 'server.out.log'
+$ErrLog = Join-Path $StateDir 'server.err.log'
 
 foreach ($relative in @('RELEASE-NOTES.md','SHA256SUMS','release-manifest.json','pilot/index.html')) {
     $path = Join-Path $ReleaseDir $relative
@@ -28,12 +29,15 @@ if (Test-Path -LiteralPath $StateFile) { Fail 'STATE_ALREADY_EXISTS' }
 
 $PythonExe = $null
 $PythonPrefix = @()
-foreach ($candidate in @(@('py','-3'), @('python'))) {
+$candidates = @(
+    [pscustomobject]@{ Exe = 'py'; Prefix = @('-3') },
+    [pscustomobject]@{ Exe = 'python'; Prefix = @() }
+)
+foreach ($candidate in $candidates) {
     try {
-        $exe = Get-Command $candidate[0] -ErrorAction Stop
-        $args = @(); if ($candidate.Count -gt 1) { $args = $candidate[1..($candidate.Count-1)] }
-        & $exe.Source @args -c "import sys; raise SystemExit(0 if sys.version_info >= (3,10) else 1)" | Out-Null
-        if ($LASTEXITCODE -eq 0) { $PythonExe = $exe.Source; $PythonPrefix = $args; break }
+        $exe = Get-Command $candidate.Exe -ErrorAction Stop
+        & $exe.Source @($candidate.Prefix) -c "import sys; raise SystemExit(0 if sys.version_info >= (3,10) else 1)" | Out-Null
+        if ($LASTEXITCODE -eq 0) { $PythonExe = $exe.Source; $PythonPrefix = @($candidate.Prefix); break }
     } catch { }
 }
 if (-not $PythonExe) { Fail 'PYTHON_NOT_FOUND' }
@@ -45,9 +49,10 @@ try {
 
 New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 $pilot = Join-Path $ReleaseDir 'pilot'
-$arguments = @($PythonPrefix) + @('-m','http.server',"$Port",'--bind','127.0.0.1','--directory',$pilot)
+$quotedPilot = '"' + $pilot + '"'
+$arguments = @($PythonPrefix) + @('-m','http.server',"$Port",'--bind','127.0.0.1','--directory',$quotedPilot)
 try {
-    $process = Start-Process -FilePath $PythonExe -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardOutput $LogFile -RedirectStandardError $LogFile
+    $process = Start-Process -FilePath $PythonExe -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardOutput $OutLog -RedirectStandardError $ErrLog
 } catch { Fail 'SERVER_START_FAILED' }
 
 $ready = $false
@@ -66,7 +71,9 @@ if (-not $ready) {
 
 $state = [ordered]@{ marker='raiatea-launch-state-v1'; pid=$process.Id; port=$Port; host='127.0.0.1'; entrypoint='pilot/index.html' }
 $tmp = Join-Path $StateDir ('.server-state.' + $PID + '.json')
-$state | ConvertTo-Json -Compress | Set-Content -LiteralPath $tmp -Encoding utf8NoBOM
+$json = ($state | ConvertTo-Json -Compress) + [Environment]::NewLine
+$utf8 = New-Object System.Text.UTF8Encoding($false)
+[System.IO.File]::WriteAllText($tmp, $json, $utf8)
 Move-Item -LiteralPath $tmp -Destination $StateFile
 $url = "http://127.0.0.1:$Port/index.html"
 if (-not $NoOpen) { try { Start-Process $url | Out-Null } catch { } }

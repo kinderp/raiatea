@@ -56,7 +56,7 @@ announced by `genesis/README.md`.
 | Artifact | Availability | Document maturity | Assertion status | Purpose | Primary sources |
 | --- | --- | --- | --- | --- | --- |
 | [`00-genesis-audit-and-traceability.md`](00-genesis-audit-and-traceability.md) | Present | `Accepted` | `Mixed` | Map founding ideas, gaps and implementation state | Conversation, `genesis/00`-`20`, repository and GitHub state |
-| `00-why-raiatea.md` | Not created | — | `planned` | Define the problem and reason to begin | `genesis/00`, `08`, `10`, `18` |
+| [`00-why-raiatea.md`](00-why-raiatea.md) | Present | `Accepted` | `mixed` | Define the problem and reason to begin | `genesis/00`, `08`, `10`, `18` |
 | `01-manifesto.md` | Not created | — | `planned` | State human and philosophical commitments | `genesis/00`, `03`, `09`, `16`-`18` |
 | `02-vision.md` | Not created | — | `planned` | Define users, value, scope and measurable direction | `genesis/08`, `10`, `18`-`20` |
 | `03-system-context.md` | Not created | — | `planned` | Define actors, boundaries and external systems | Vision, `genesis/04`-`07`, `11`-`12` |

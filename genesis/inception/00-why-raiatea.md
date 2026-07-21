@@ -356,6 +356,7 @@ are justified only when a validated user need requires them.
 | H4 | Immediate utility can coexist with long-term knowledge accumulation | First-session usefulness plus repeated-session value without mandatory setup | Value appears only after extensive ingestion or configuration |
 | H5 | Manual, reviewed content is the right way to discover automation requirements | Repeated authoring tasks, measured cost and stable patterns across different modules | Every module needs bespoke work, or automation lowers quality below the source |
 | H6 | The first AI-engineering beachhead exposes reusable needs without forcing a universal model | A second domain reuses the contracts with limited change | Reuse requires domain-specific exceptions that dissolve the common product thesis |
+| H7 | A reusable extraction hub can achieve useful structural fidelity and provenance by orchestrating existing engines | Per-source-class benchmarks for content, reading order, tables/assets, anchors, warnings, latency, cost and manual correction | Priority source classes require unsustainable repair, lose critical structure or cannot retain sufficient provenance under viable rights and cost constraints |
 
 ## 12. Kill criteria
 
@@ -377,7 +378,10 @@ shows that:
    by people with different backgrounds;
 7. platform infrastructure grows faster than validated user value;
 8. the project cannot maintain a meaningful advantage over a transparent set
-   of existing tools used together.
+   of existing tools used together;
+9. no extraction route for a priority source class can meet its explicit
+   quality and provenance profile without unacceptable cost, latency or manual
+   repair, in which case that class must be narrowed, delayed or rejected.
 
 Failure of the broad vision does not invalidate every artifact. The pedagogical
 renderer, provenance contracts or research methods may remain useful

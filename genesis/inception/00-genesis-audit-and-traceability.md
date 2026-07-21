@@ -246,7 +246,7 @@ prototipo corrente. Dovrebbero essere classificate prevalentemente come
 - indipendenza dai provider;
 - firewall tra missione e incentivi commerciali.
 
-### 5.7 Identita, nome e immaginario di Raiatea
+### 5.7 Identità, nome e immaginario di Raiatea
 
 La conversazione fondativa contiene un filone identitario non ancora
 formalizzato:
@@ -484,7 +484,7 @@ Proposta iniziale: descriverli come progetti correlati e possibili consumatori
 o integratori, evitando di dichiararli sottoprodotti di Raiatea prima di use
 case e confini verificati.
 
-### D4. Priorita tra pilot e nuova infrastruttura
+### D4. Priorità tra pilot e nuova infrastruttura
 
 Proposta iniziale: completare il pilot supervisionato e l'accettazione
 post-pilot prima di estendere il codice verso ingestion, graph core o AI

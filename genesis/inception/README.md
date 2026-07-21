@@ -2,7 +2,7 @@
 
 > Document maturity: In review
 >
-> Assertion status: Proposed documentation contract
+> Assertion status: `provisional-decision`
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 >
@@ -47,21 +47,22 @@ The audit is numbered separately because it observes the state preceding the
 canonical set. The final paths of the intended artifacts preserve the names
 announced by `genesis/README.md`.
 
-| Artifact | State | Purpose | Primary sources |
-| --- | --- | --- | --- |
-| [`00-genesis-audit-and-traceability.md`](00-genesis-audit-and-traceability.md) | Accepted audit | Map founding ideas, gaps and implementation state | Conversation, `genesis/00`-`20`, repository and GitHub state |
-| `00-why-raiatea.md` | Planned | Define the problem and reason to begin | `genesis/00`, `08`, `10`, `18` |
-| `01-manifesto.md` | Planned | State human and philosophical commitments | `genesis/00`, `03`, `09`, `16`-`18` |
-| `02-vision.md` | Planned | Define users, value, scope and measurable direction | `genesis/08`, `10`, `18`-`20` |
-| `03-system-context.md` | Planned | Define actors, boundaries and external systems | Vision, `genesis/04`-`07`, `11`-`12` |
-| `04-product-map.md` | Planned | Separate current vertical, candidate products and shared capabilities | Vision, `genesis/07`, `08`, `10` |
-| `05-use-case-model.md` | Planned | Capture primary goals and significant scenarios | Vision and Product Map |
-| `06-risk-list.md` | Planned | Prioritize product, legal, technical and scientific risks | `genesis/03`, `04`, `08`, `11`-`20` |
-| `07-glossary.md` | Planned | Establish the initial ubiquitous language | All accepted canonical artifacts |
-| `08-inception-review.md` | Planned | Decide whether evidence supports entering Elaboration | All preceding artifacts and pilot results |
+| Artifact | Availability | Document maturity | Assertion status | Purpose | Primary sources |
+| --- | --- | --- | --- | --- | --- |
+| [`00-genesis-audit-and-traceability.md`](00-genesis-audit-and-traceability.md) | Present | `Accepted` | `Mixed` | Map founding ideas, gaps and implementation state | Conversation, `genesis/00`-`20`, repository and GitHub state |
+| `00-why-raiatea.md` | Not created | — | `planned` | Define the problem and reason to begin | `genesis/00`, `08`, `10`, `18` |
+| `01-manifesto.md` | Not created | — | `planned` | State human and philosophical commitments | `genesis/00`, `03`, `09`, `16`-`18` |
+| `02-vision.md` | Not created | — | `planned` | Define users, value, scope and measurable direction | `genesis/08`, `10`, `18`-`20` |
+| `03-system-context.md` | Not created | — | `planned` | Define actors, boundaries and external systems | Vision, `genesis/04`-`07`, `11`-`12` |
+| `04-product-map.md` | Not created | — | `planned` | Separate current vertical, candidate products and shared capabilities | Vision, `genesis/07`, `08`, `10` |
+| `05-use-case-model.md` | Not created | — | `planned` | Capture primary goals and significant scenarios | Vision and Product Map |
+| `06-risk-list.md` | Not created | — | `planned` | Prioritize product, legal, technical and scientific risks | `genesis/03`, `04`, `08`, `11`-`20` |
+| `07-glossary.md` | Not created | — | `planned` | Establish the initial ubiquitous language | All accepted canonical artifacts |
+| `08-inception-review.md` | Not created | — | `planned` | Decide whether evidence supports entering Elaboration | All preceding artifacts and pilot results |
 
-`Planned` in this table means that the artifact is approved as a deliverable,
-not that its conclusions have already been approved.
+`planned` in this table qualifies the creation of each absent artifact. It does
+not assign document maturity to a file that does not exist and does not approve
+the future artifact's conclusions in advance.
 
 ## 4. Two separate status dimensions
 
@@ -145,8 +146,10 @@ inference; assertion status describes how the project may use a statement.
   explicit.
 - `In review` becomes `Accepted` only after required findings, review rounds,
   CI and maintainer decisions are complete.
-- `planned` becomes `current-contract` only after the relevant implementation
-  or documentation is merged and its Definition of Done is verified.
+- `planned` becomes `current-contract` only for the exact behavior or
+  deliverable whose Definition of Done has been verified and merged. Creating
+  or accepting a planned document changes that file's maturity; it does not
+  promote every assertion inside the document to `current-contract`.
 - `provisional-decision` becomes `accepted-decision` only when its rationale,
   alternatives and authority are recorded.
 - `working-hypothesis` never becomes a fact merely because work was completed;

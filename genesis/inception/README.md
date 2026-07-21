@@ -1,8 +1,14 @@
 # Canonical Inception index
 
-> Document maturity: In review
+> Document maturity: `Accepted`
 >
-> Assertion status: `provisional-decision`
+> Assertion status: `accepted-decision`
+>
+> Version: 1.0.0
+>
+> Last reviewed: 21 July 2026
+>
+> Accepted through: [PR #103](https://github.com/kinderp/raiatea/pull/103)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 >

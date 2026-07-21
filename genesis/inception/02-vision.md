@@ -113,22 +113,24 @@ and issue [#106](https://github.com/kinderp/raiatea/issues/106).
 ## 5. Required capability sequence
 
 > Assertion status: `accepted-decision` for inclusion; `provisional-decision`
-> for the order after P0; all capabilities are currently `planned`
+> for the order after P0; only P0 is currently `planned`
 
 All capability groups below belong to the intended long-term system. Their
 presence in this Vision does not mean that their final boundaries or
-architectures are known.
+architectures are known. P1-P7 are accepted parts of the destination, but they
+do not become `planned` implementation work until a milestone or issue gives
+them scope, evidence and an explicit out-of-scope boundary.
 
-| Priority | Required capability | Outcome it must eventually enable |
-| --- | --- | --- |
-| P0 | General Source Ingestion & Extraction Hub | Acquire heterogeneous sources with structure, coordinates, provenance, rights and visible failure modes |
-| P1 | Temporal provenance and canonical knowledge core | Preserve source-linked concepts, claims, events, revisions and time without overwriting history |
-| P2 | Validated adaptive Research & Learning Workspace | Build routes, explanations, exercises and recovery from sources and observed learning evidence |
-| P3 | General isolated Execution Lab | Run reproducible code, tests and experiments across languages and environments |
-| P4 | Identity, claim, position and change intelligence | Reconstruct what people and organizations stated, when and in which context |
-| P5 | Field Intelligence Maps and Reality Observatory | Orient a person in a field through people, literature, projects, debates, events and current change |
-| P6 | Forecasting and calibration | Register probabilistic forecasts, evidence, resolution criteria and retrospective calibration |
-| P7 | Federation, distributed computation and participatory governance | Make shared knowledge portable, independently verifiable and governable without one indispensable provider |
+| Priority | Required capability | Roadmap state | Outcome it must eventually enable |
+| --- | --- | --- | --- |
+| P0 | General Source Ingestion & Extraction Hub | `planned` — milestone #2 and issue #106 | Acquire heterogeneous sources with structure, coordinates, provenance, rights and visible failure modes |
+| P1 | Temporal provenance and canonical knowledge core | Accepted destination; no implementation issue | Preserve source-linked concepts, claims, events, revisions and time without overwriting history |
+| P2 | Validated adaptive Research & Learning Workspace | Accepted destination; no implementation issue | Build routes, explanations, exercises and recovery from sources and observed learning evidence |
+| P3 | General isolated Execution Lab | Accepted destination; no implementation issue | Run reproducible code, tests and experiments across languages and environments |
+| P4 | Identity, claim, position and change intelligence | Accepted destination; no implementation issue | Reconstruct what people and organizations stated, when and in which context |
+| P5 | Field Intelligence Maps and Reality Observatory | Accepted destination; no implementation issue | Orient a person in a field through people, literature, projects, debates, events and current change |
+| P6 | Forecasting and calibration | Accepted destination; no implementation issue | Register probabilistic forecasts, evidence, resolution criteria and retrospective calibration |
+| P7 | Federation, distributed computation and participatory governance | Accepted destination; no implementation issue | Make shared knowledge portable, independently verifiable and governable without one indispensable provider |
 
 Product Map and System Context must refine these groups before they become
 bounded contexts or implementation epics.

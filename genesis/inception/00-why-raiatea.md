@@ -11,6 +11,8 @@
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 >
 > Child issue: [#104](https://github.com/kinderp/raiatea/issues/104)
+>
+> Maintainer value review: [PR #105 decision](https://github.com/kinderp/raiatea/pull/105#issuecomment-5040031548)
 
 ## 1. The problem
 
@@ -42,7 +44,7 @@ it.
 
 ## 2. The first person Raiatea must help
 
-> Assertion status: `provisional-decision`
+> Assertion status: `accepted-decision`
 
 Raiatea's first target is not every learner and not every domain. It is a
 self-directed technical learner or practitioner who:
@@ -197,33 +199,93 @@ prove that it improves understanding, transfer, retention or study efficiency.
 The active pilot roadmap exists to collect that evidence before the project
 expands its infrastructure.
 
-## 8. What does not exist now
+## 8. Required long-term capabilities and priority
 
 > Assertion status: `mixed`
 
-Raiatea does not currently provide:
+Raiatea does not currently provide the general capabilities in this section.
+That absence is a `current-contract` observation. Their inclusion in the
+long-term destination is an `accepted-decision`; it must not be represented as
+present functionality.
 
-- general ingestion of arbitrary books, papers, websites, videos or social
+Priority P0 is fixed by maintainer decision. The order from P1 to P7 is a
+`provisional-decision` to refine in the Product Map and Risk List. These
+capabilities must not be started in parallel merely because they are all part
+of the destination.
+
+| Priority | Required capability | Why it follows in this order |
+| --- | --- | --- |
+| **P0** | General Source Ingestion & Extraction Hub | Raiatea cannot teach, connect or verify material that it cannot acquire and structure reliably. The hub is also independently useful and can produce reusable open-source components. |
+| **P1** | Temporal provenance and canonical knowledge core | Extracted content must become addressable evidence with identity, time, structure, transformations and reversible links to sources rather than an ungoverned pile of text. |
+| **P2** | Validated adaptive Research & Learning Workspace | The source and provenance foundation must improve routes, explanations, remediation and observed learning evidence without declaring unvalidated mastery. |
+| **P3** | General isolated Execution Lab | Code, notebooks, tests and reproducible environments must connect explanation to real execution across languages and runtimes. |
+| **P4** | Identity, claim, position and change intelligence | People, organisations, publications, claims and changes of position require explicit identity resolution, attribution, context and time. |
+| **P5** | Field Intelligence Maps and Reality Observatory | Sources, concepts, people, events and debates become navigable views of a field and of its evolution without flattening disagreement into one answer. |
+| **P6** | Forecasting and calibration | Forecasts require evidence, counter-evidence, horizons, resolution criteria and measured calibration; they cannot precede reliable temporal data. |
+| **P7** | Federation, distributed compute and participatory governance | Sovereign nodes, shared bundles, useful distributed work and governance become justified only after valuable local workflows and stable contracts exist. |
+
+### P0 — General Source Ingestion & Extraction Hub
+
+> Assertion status: `accepted-decision`
+
+The first platform capability must accept arbitrary **user-selected** sources
+through rights-aware adapters and produce high-quality, structured and
+traceable extraction. The intended source classes include, progressively:
+
+- born-digital PDF, EPUB and other book or document formats;
+- scanned books, photographed pages and image-only PDF;
+- scholarly papers containing sections, citations, formulae, tables, charts
+  and figures;
+- web articles, documentation, feeds and permitted content from selected social
   platforms;
-- a canonical temporal knowledge graph;
-- identity resolution for people and organisations;
-- automatic tracking of public claims or changes of position;
-- forecasting and calibration;
-- federation, distributed compute or participatory governance;
-- a general containerised execution laboratory;
-- validated adaptive learning driven by an LLM;
-- a public Reality Observatory or Forecast Lab.
+- audio and video with existing captions or authorised transcription;
+- source code, repositories, notebooks and technical artefacts;
+- photographs of receipts, shopping flyers, labels and other everyday printed
+  material;
+- barcodes and QR codes, retaining both decoded values and their visual/source
+  location.
 
-These ideas remain relevant research directions. They are not part of the
-current product contract and must not be used to claim present value.
+"General" means extensible across heterogeneous classes, not a claim that one
+engine can understand every possible input. Each supported class needs an
+explicit quality profile, representative test corpus, known failure modes and
+acceptance metrics.
 
-The statements about present absence are `current-contract` observations. Any
-possible implementation of the listed capabilities remains
-`deferred-research` unless a later roadmap decision changes its status.
+The hub should integrate, compare and orchestrate existing parsers, OCR
+engines, speech-to-text systems, barcode decoders and suitable models. Raiatea
+should implement adapters, routing, provenance, quality evaluation and missing
+transformations; it should not recreate mature extraction engines without
+evidence that doing so is necessary.
+
+Every extraction route should preserve, where the source permits:
+
+- the untouched source or a rights-safe reference to it;
+- document hierarchy, reading order and page or time coordinates;
+- text plus tables, formulae, figures, captions, code and embedded assets;
+- the engine, model, version, parameters and transformations used;
+- confidence, warnings and alternative interpretations where available;
+- language and normalisation decisions without silently replacing raw output;
+- ownership, licence, storage and publication policy;
+- stable fragment identifiers that later knowledge and learning artefacts can
+  cite precisely.
+
+Reusable adapters, schemas, evaluation harnesses and non-proprietary test
+fixtures should be open sourced when they can help other projects without
+exposing private corpora, credentials or restricted content. This makes the
+first foundation valuable even before the rest of Raiatea exists.
+
+### Sequencing rule
+
+> Assertion status: `accepted-decision`
+
+P0 is the first platform foundation, but it must still begin with a bounded
+vertical slice. A plausible sequence is digital PDF and EPUB, followed by
+scanned documents and scholarly layout, then web/media and everyday visual
+sources. The exact slice belongs in the Product Map and Source Ingestion
+roadmap after a current technology survey and benchmark design.
 
 ## 9. Non-goals
 
-> Assertion status: `provisional-decision`
+> Assertion status: `accepted-decision`
 
 Raiatea is not intended to be:
 
@@ -246,14 +308,14 @@ minimum commitments required to explain why the work should start.
 
 ### The person remains the navigator
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Raiatea may suggest routes, surface contradictions and explain trade-offs. The
 person retains authority over goals, private state, publication and decisions.
 
 ### No important conclusion without a route back
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 A useful synthesis must remain connected to sources, transformations,
 uncertainty and time. Verifiability is part of the product, not an optional
@@ -261,7 +323,7 @@ bibliography added at the end.
 
 ### Understanding must be demonstrated through use
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Raiatea should prefer explanation, reconstruction, application and recovery
 over the appearance of fluent completion. Observed interactions are evidence,
@@ -269,7 +331,7 @@ not proof of mastery.
 
 ### Private material is not automatically publishable material
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 The ability to process a source for personal use does not grant the right to
 redistribute it. Private corpora, citations, derived knowledge and public
@@ -277,7 +339,7 @@ artifacts require explicit boundaries.
 
 ### Architecture must follow validated value
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Federation, knowledge graphs, sensors and distributed execution are means. They
 are justified only when a validated user need requires them.
@@ -297,7 +359,7 @@ are justified only when a validated user need requires them.
 
 ## 12. Kill criteria
 
-> Assertion status: `provisional-decision`
+> Assertion status: `accepted-decision`
 
 Raiatea should narrow, pause or stop the current direction if sustained evidence
 shows that:
@@ -324,7 +386,7 @@ largest story from hiding evidence about the product.
 
 ## 13. Why the name is not yet the argument
 
-> Assertion status: `provisional-decision`
+> Assertion status: `accepted-decision`
 
 Raiatea is the current project name. The founding conversation connects it to
 navigation, long voyages, curiosity and the idea that understanding is a route
@@ -343,8 +405,10 @@ separate, source-based and culturally respectful review before public use.
   and with ordinary LLM assistance.
 - Which minimum outcome is valuable enough to justify authoring a second full
   module sequence.
-- When, if ever, a knowledge core becomes necessary rather than merely
-  attractive.
+- What minimum temporal provenance and knowledge model P1 requires after the
+  first extraction vertical, without designing the complete core in advance.
+- Which existing extraction engines should be reused for each P0 source class
+  after a current capability, licence and benchmark survey.
 - How Raiatea relates to Alfred and Learning Lab without assuming premature
   runtime or repository convergence.
 - Which elements of the navigation metaphor can be used publicly after

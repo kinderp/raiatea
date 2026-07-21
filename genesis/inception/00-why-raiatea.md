@@ -199,7 +199,7 @@ expands its infrastructure.
 
 ## 8. What does not exist now
 
-> Assertion status: `deferred-research`
+> Assertion status: `mixed`
 
 Raiatea does not currently provide:
 
@@ -217,9 +217,13 @@ Raiatea does not currently provide:
 These ideas remain relevant research directions. They are not part of the
 current product contract and must not be used to claim present value.
 
+The statements about present absence are `current-contract` observations. Any
+possible implementation of the listed capabilities remains
+`deferred-research` unless a later roadmap decision changes its status.
+
 ## 9. Non-goals
 
-> Assertion status: `accepted-decision`
+> Assertion status: `provisional-decision`
 
 Raiatea is not intended to be:
 
@@ -280,9 +284,11 @@ are justified only when a validated user need requires them.
 
 ## 11. Hypotheses and tests
 
+> Assertion status: `working-hypothesis`
+
 | ID | Working hypothesis | Evidence needed | Invalidation signal |
 | --- | --- | --- | --- |
-| H1 | A Raiatea module improves conceptual explanation and transfer compared with the source alone | Supervised comparison using equivalent time and delayed/application questions | No meaningful benefit, or benefit explained only by additional study time |
+| H1 | A Raiatea module improves conceptual explanation and transfer compared with source-only study and ordinary LLM assistance | Supervised three-condition comparison using equivalent time and delayed/application questions | No meaningful benefit, or benefit explained only by additional study time |
 | H2 | Integrated prerequisites, visuals, remediation and provenance reduce navigation effort | Observation of interruptions, recovery time, source switching and user explanation | Learners ignore the integrated route or prefer independent tools with less friction |
 | H3 | A source-linked persistent artifact is more valuable than repeated chat answers | Return use, corrections, reuse and ability to recover prior reasoning | Users consistently discard the artifact and restart in chat |
 | H4 | Immediate utility can coexist with long-term knowledge accumulation | First-session usefulness plus repeated-session value without mandatory setup | Value appears only after extensive ingestion or configuration |
@@ -291,7 +297,7 @@ are justified only when a validated user need requires them.
 
 ## 12. Kill criteria
 
-> Assertion status: `working-hypothesis`
+> Assertion status: `provisional-decision`
 
 Raiatea should narrow, pause or stop the current direction if sustained evidence
 shows that:

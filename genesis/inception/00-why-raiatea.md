@@ -1,10 +1,10 @@
 # Why Raiatea
 
-> Document maturity: `In review`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 1.0.0
 >
 > Last reviewed: 21 July 2026
 >
@@ -13,6 +13,8 @@
 > Child issue: [#104](https://github.com/kinderp/raiatea/issues/104)
 >
 > Maintainer value review: [PR #105 decision](https://github.com/kinderp/raiatea/pull/105#issuecomment-5040031548)
+>
+> Accepted through: [PR #105](https://github.com/kinderp/raiatea/pull/105)
 
 ## 1. The problem
 

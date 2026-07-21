@@ -40,6 +40,12 @@ Sono stati esaminati:
 - branch, issue, pull request e Actions visibili su GitHub alla data di
   osservazione.
 
+La conversazione cita anche un precedente documento denominato
+`learning-lab-project-plan-v2-federated-knowledge(1).md`. Il file non è presente
+in questo checkout e non è stato possibile confrontarlo con Genesis. Dovrà
+essere recuperato o dichiarato esplicitamente superato prima di considerare
+completa la tracciabilità con il progetto Learning Lab.
+
 La conversazione fondativa fornita dal maintainer è stata trattata come fonte
 di requisiti e intenzioni, non come prova fattuale. I riferimenti storici,
 culturali, sanitari o scientifici emersi nella conversazione dovranno essere
@@ -96,7 +102,7 @@ documenti Genesis. Il problema è la loro forma attuale.
 - Tutte rimangono documenti esplorativi in stato di bozza.
 - Non esiste ancora una separazione canonica tra principio, decisione,
   ipotesi, roadmap e ricerca differita.
-- `genesis/README.md` annuncia otto artefatti di Inception che non sono mai
+- `genesis/README.md` annuncia nove artefatti di Inception che non sono mai
   stati creati.
 - Le cartelle destinate a Vision, Manifesto, architettura, ontologia e ADR
   contengono soltanto placeholder.
@@ -149,6 +155,28 @@ documenti canonici e, progressivamente, nelle note che vengono revisionate.
 | AI Research Notebook come primo prodotto verticale | `genesis/08`, `10` | Nome e confini oscillano tra notebook, workspace e Study Pack | Product Map, decisione D1 |
 | Percorso personale con prerequisiti, dubbi, esperimenti e idee di ricerca | `genesis/10`, `19`; parzialmente nel prototipo | Manca il modello canonico di Expedition e profilo dell'apprendente | Use Case Model, glossario |
 
+#### Asset di studio già esistenti
+
+La conversazione fondativa non partiva da un corpus vuoto. Sono stati
+verificati come repository GitHub esistenti:
+
+- [`TheBitPoets/LLMs`](https://github.com/TheBitPoets/LLMs), derivato dal lavoro
+  personale sul libro *How Large Language Models Work*;
+- [`TheBitPoets/Llma_Chatbot`](https://github.com/TheBitPoets/Llma_Chatbot),
+  collegato al percorso applicativo con modelli locali e liveProject;
+- [`kinderp/LLMS_NOTES`](https://github.com/kinderp/LLMS_NOTES), raccolta di
+  note e collegamenti a fonti esterne.
+
+La conversazione menziona inoltre copie private, acquisite legittimamente, di
+*Build a Large Language Model (From Scratch)* e *Test Yourself*, oltre a una
+serie Manning di liveProject. Questi materiali non sono presenti nel checkout
+Raiatea e non sono stati ispezionati durante l'audit.
+
+Gli asset rappresentano input possibili del primo AI Research Notebook, non
+dipendenze del repository pubblico. Il futuro Source Inventory dovrà
+registrarne proprietà, licenza, disponibilità, versione e policy di
+trasformazione senza distribuire contenuti protetti.
+
 ### 5.2 Grafo temporale, provenienza e comprensione
 
 | Idea | Presenza attuale | Lacuna | Destinazione canonica proposta |
@@ -163,7 +191,7 @@ documenti canonici e, progressivamente, nelle note che vengono revisionate.
 
 | Idea | Presenza attuale | Lacuna | Destinazione canonica proposta |
 | --- | --- | --- | --- |
-| Mappa di un campo: persone, paper, scuole, controversie e percorso di lettura | `genesis/01`, `02`, `04`, `05`, `07`, `10` | Field Intelligence Map non e definita come prodotto o use case canonico | Product Map, Use Case Model |
+| Mappa di un campo: persone, paper, scuole, controversie e percorso di lettura | `genesis/01`, `02`, `04`, `05`, `07`, `10` | Field Intelligence Map non è definita come prodotto o use case canonico | Product Map, Use Case Model |
 | Misurare influenza scientifica, industriale, open source e discorsiva separatamente | `genesis/02`, `05` | Nessun trust/influence model approvato; rischio di falsa precisione | Risk List, ricerca differita |
 | Conservare claim pubblici e cambiamenti di posizione senza trasformarli in fatti | `genesis/01`, `02`, `03`, `05` | Mancano policy di attribuzione, contestualizzazione e rettifica | Manifesto, Risk List |
 | Timeline di paper, eventi, release, repository e dibattito | `genesis/01`, `04`, `05`, `07` | Manca il primo scenario verticale verificabile | Use Case Model |
@@ -292,7 +320,7 @@ Al 21 luglio 2026:
   consolidazione Genesis ha ora la milestone dedicata
   [Project Genesis consolidation v1](https://github.com/kinderp/raiatea/milestone/1).
 
-Il filone documentale di questo audit e indipendente dalla PR #95 e non deve
+Il filone documentale di questo audit è indipendente dalla PR #95 e non deve
 ritardare o alterare il pilot senza una scelta esplicita.
 
 ### 6.3 Stato delle verifiche locali
@@ -313,7 +341,8 @@ resa valida da Python 3.12. Questo fa emergere un'ambiguità di contratto:
 
 Non è stata modificata l'implementazione durante questo audit. Il punto va
 registrato come finding documentale/di compatibilità e risolto in un micro-step
-separato.
+separato. Il debito è tracciato nella issue
+[#101](https://github.com/kinderp/raiatea/issues/101).
 
 ## 7. Disallineamenti e rischi documentali
 

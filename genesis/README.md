@@ -48,5 +48,7 @@ The notes from `00-understanding.md` through
 links and provenance are preserved. Their complete linked legend is available
 in the [Genesis audit](inception/00-genesis-audit-and-traceability.md#21-legenda-delle-fonti-genesis).
 
-These files are created or promoted only when their questions are genuinely
-addressed. Empty documentation is not progress.
+Canonical artifacts are created only when their questions are genuinely
+addressed. Conclusions from exploratory notes are promoted into those
+artifacts only through explicit provenance and review. Empty documentation is
+not progress.

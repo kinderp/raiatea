@@ -189,7 +189,7 @@ currently demonstrates a local pedagogical module system with:
 - module- and step-level provenance;
 - two LLM-learning examples: self-attention and Query/Key/Value;
 - validation, browser tests and reproducible evaluator packaging;
-- supervised pilot records and synthesis tools.
+- supervised pilot record contracts, runbook/checklist and synthesis tools.
 
 This proves that the proposed learning experience can be built. It does not yet
 prove that it improves understanding, transfer, retention or study efficiency.
@@ -246,14 +246,14 @@ minimum commitments required to explain why the work should start.
 
 ### The person remains the navigator
 
-> Assertion status: `principle`
+> Assertion status: `provisional-decision`
 
 Raiatea may suggest routes, surface contradictions and explain trade-offs. The
 person retains authority over goals, private state, publication and decisions.
 
 ### No important conclusion without a route back
 
-> Assertion status: `principle`
+> Assertion status: `provisional-decision`
 
 A useful synthesis must remain connected to sources, transformations,
 uncertainty and time. Verifiability is part of the product, not an optional
@@ -261,7 +261,7 @@ bibliography added at the end.
 
 ### Understanding must be demonstrated through use
 
-> Assertion status: `principle`
+> Assertion status: `provisional-decision`
 
 Raiatea should prefer explanation, reconstruction, application and recovery
 over the appearance of fluent completion. Observed interactions are evidence,
@@ -269,7 +269,7 @@ not proof of mastery.
 
 ### Private material is not automatically publishable material
 
-> Assertion status: `principle`
+> Assertion status: `provisional-decision`
 
 The ability to process a source for personal use does not grant the right to
 redistribute it. Private corpora, citations, derived knowledge and public
@@ -277,7 +277,7 @@ artifacts require explicit boundaries.
 
 ### Architecture must follow validated value
 
-> Assertion status: `principle`
+> Assertion status: `provisional-decision`
 
 Federation, knowledge graphs, sensors and distributed execution are means. They
 are justified only when a validated user need requires them.

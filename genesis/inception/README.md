@@ -108,8 +108,9 @@ contract describes behavior or structure that is already authoritative now.
 ## 5. Applying assertion status
 
 A homogeneous artifact may declare one assertion status near its title. A
-mixed artifact must declare `Assertion status: Mixed` and label consequential
-sections or tables individually.
+mixed artifact must declare the aggregate marker `mixed` and label
+consequential sections or tables individually. `mixed` is not an additional
+assertion status and is not a substitute for section-level labels.
 
 Status labels are required when a reader could otherwise mistake a future idea
 for current capability. They are optional for ordinary explanatory prose whose
@@ -120,7 +121,7 @@ Preferred form:
 ```markdown
 > Document maturity: Draft
 >
-> Assertion status: Mixed
+> Assertion status: `mixed`
 >
 > Version: 0.1.0
 >
@@ -134,7 +135,7 @@ For a consequential section:
 ```markdown
 ### Candidate continuous-ingestion capability
 
-> Assertion status: Deferred research
+> Assertion status: `deferred-research`
 ```
 
 Status is not confidence. Confidence describes uncertainty in evidence or an

@@ -2,7 +2,7 @@
 
 > Document maturity: Accepted
 >
-> Assertion status: Mixed; all proposals and decisions D1-D6 remain provisional
+> Assertion status: `mixed`; all proposals and decisions D1-D6 remain provisional
 >
 > Version: 1.0.0
 >

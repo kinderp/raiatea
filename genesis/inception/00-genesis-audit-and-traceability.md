@@ -1,6 +1,12 @@
 # Audit di Project Genesis e matrice di tracciabilità
 
-> Stato: bozza di audit per la revisione del maintainer
+> Document maturity: Accepted
+>
+> Assertion status: `mixed`; all proposals and decisions D1-D6 remain provisional
+>
+> Version: 1.0.0
+>
+> Accepted through: [PR #100](https://github.com/kinderp/raiatea/pull/100)
 >
 > Issue madre: [#98](https://github.com/kinderp/raiatea/issues/98)
 >

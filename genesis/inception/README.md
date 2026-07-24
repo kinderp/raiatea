@@ -57,8 +57,8 @@ announced by `genesis/README.md`.
 | --- | --- | --- | --- | --- | --- |
 | [`00-genesis-audit-and-traceability.md`](00-genesis-audit-and-traceability.md) | Present | `Accepted` | `Mixed` | Map founding ideas, gaps and implementation state | Conversation, `genesis/00`-`20`, repository and GitHub state |
 | [`00-why-raiatea.md`](00-why-raiatea.md) | Present | `Accepted` | `mixed` | Define the problem and reason to begin | `genesis/00`, `08`, `10`, `18` |
-| `01-manifesto.md` | Not created | — | `planned` | State human and philosophical commitments | `genesis/00`, `03`, `09`, `16`-`18` |
-| `02-vision.md` | Not created | — | `planned` | Define users, value, scope and measurable direction | `genesis/08`, `10`, `18`-`20` |
+| [`01-manifesto.md`](01-manifesto.md) | Present | `Draft` | `mixed` | State human and philosophical commitments | `genesis/00`, `03`, `09`, `16`-`18` |
+| [`02-vision.md`](02-vision.md) | Present | `Draft` | `mixed` | Define users, value, scope and measurable direction | `genesis/08`, `10`, `18`-`20` |
 | `03-system-context.md` | Not created | — | `planned` | Define actors, boundaries and external systems | Vision, `genesis/04`-`07`, `11`-`12` |
 | `04-product-map.md` | Not created | — | `planned` | Separate current vertical, candidate products and shared capabilities | Vision, `genesis/07`, `08`, `10` |
 | `05-use-case-model.md` | Not created | — | `planned` | Capture primary goals and significant scenarios | Vision and Product Map |
@@ -215,7 +215,7 @@ Before acceptance, reviewers must verify:
 
 ## 10. Current next step
 
-After this index is accepted, the next canonical micro-step is to draft
-`00-why-raiatea.md`, `01-manifesto.md` and `02-vision.md` as separate reviewable
-artifacts. Product and architecture boundaries remain provisional until the
-Vision is accepted.
+`00-why-raiatea.md` is accepted. The current canonical micro-step drafts
+`01-manifesto.md` and `02-vision.md` as separate reviewable artifacts. Product
+and architecture boundaries remain provisional until the Vision is accepted;
+System Context and Product Map follow it before a domain model is attempted.

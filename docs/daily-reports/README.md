@@ -9,3 +9,4 @@ Indice cronologico dei report di fine giornata previsti dalle [regole operative]
 - [2026-07-22](2026-07-22.md) — Manifesto e Vision in draft; finding sulla distinzione tra destinazione e lavoro pianificato risolto; nessuna Action rossa.
 - [2026-07-23](2026-07-23.md) — nessun nuovo incremento funzionale; PR #110 e #95 ancora aperte; nessuna Action rossa.
 - [2026-07-24](2026-07-24.md) — stato invariato: PR #110 e #95 ancora aperte; nessuna Action rossa.
+- [2026-07-25](2026-07-25.md) — stato invariato; PR #110 e #95 ancora aperte, CI del pilot verde e nessuna Action rossa.

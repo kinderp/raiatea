@@ -302,8 +302,8 @@ Raiatea is not currently attempting to:
 - infer truth, causality, influence or competence from popularity alone;
 - merge Alfred, Learning Lab and Raiatea into one runtime without validated
   use cases and boundaries;
-- implement P1-P7 before the contracts and evidence needed by the prior
-  capability exist.
+- treat the provisional P1-P7 listing as a fixed implementation sequence before
+  Product Map, dependencies and evidence justify the order.
 
 ## 11. Relationship to existing tools
 

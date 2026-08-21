@@ -120,6 +120,7 @@ jobs:
       TIKA_VERSION: "3.3.2"
       TIKA_SHA512: "88c2032cba0d45feea361e6eebd2918bd04707614cdda5d89a1b167da5503c98e7b4cd368336f0402d559abcaf5006fcc7c825c32c749ae0417ea2f3b8423aba"
       TIKA_URL: "https://downloads.apache.org/tika/3.3.2/tika-app-3.3.2.jar"
+      EXPECTED_JAVA_SHA256: "11af352aa2c506c4123a4e4c19c187d59e06cd0dff317d54f5e6806e07c6715d"
 
     steps:
       - name: Check out exact evidence source commit
@@ -137,11 +138,17 @@ jobs:
         with:
           python-version: "3.12.14"
 
-      - name: Set up reference Java 21
+      - name: Set up exact reference Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "21.0.12+8"
+
+      - name: Verify exact Java runtime
+        run: |
+          java -version 2>&1 | head -1 | grep -F '21.0.12'
+          JAVA_BIN="$(command -v java)"
+          echo "${EXPECTED_JAVA_SHA256}  ${JAVA_BIN}" | sha256sum -c -
 
       - name: Download and verify official Tika app
         run: |

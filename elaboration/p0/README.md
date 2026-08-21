@@ -51,6 +51,9 @@ Current Draft evidence package:
   for extraction/OCR/conversion Provider candidates;
 - [`provider-evidence-snapshot.md`](provider-evidence-snapshot.md) — immutable
   release/tag/commit index for version-sensitive Provider/runtime/license claims;
+- [`provider-maintenance-snapshot.md`](provider-maintenance-snapshot.md) —
+  observable release-cadence and compatibility-surface signals plus Raiatea
+  re-benchmark implications, without subjective maturity scoring;
 - [`provider-matrix.md`](provider-matrix.md) — Provider × Source Family,
   structure/coordinates, OCR, deployment, licensing and B-01/B-02 comparison;
 - [`build-buy-reuse.md`](build-buy-reuse.md) — capability-level decisions across
@@ -59,7 +62,9 @@ Current Draft evidence package:
 E-02 does not select a production Provider. Provider-published benchmark numbers
 remain documented claims until Raiatea runs E-04 fixtures. Mutable `main`/
 `master` links in narrative text are convenience references only; the evidence
-snapshot is authoritative for the version observed by E-02.
+snapshot is authoritative for the version observed by E-02. Maintenance signals
+such as release frequency or major transitions are architecture inputs, not
+quality scores or proof of stability.
 
 ### Remote-route eligibility rule
 

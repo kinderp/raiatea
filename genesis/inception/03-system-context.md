@@ -18,6 +18,13 @@
 > [`01-manifesto.md`](01-manifesto.md), [`02-vision.md`](02-vision.md),
 > [`COMPASS.md`](../../COMPASS.md), and
 > [`genesis/04`](../04-continuous-knowledge-ingestion.md)
+>
+> Ecosystem observation date: **21 August 2026**
+>
+> Pinned evidence snapshots:
+> [Alfred `9e0e59e`](https://github.com/kinderp/alfred/tree/9e0e59e4232b8b173f1ae44a409c7d06f72f6c02),
+> [Durex `5ae87b1`](https://github.com/kinderp/durex/tree/5ae87b11917b8d1bf5e15b1f418e856f42911d92), and
+> [TheBitLab/2cornot2c `5472eef`](https://github.com/TheBitPoets/2cornot2c/tree/5472eef86568a4e7ce59ad34ba937220df27efd7)
 
 ## 1. Purpose
 
@@ -284,10 +291,11 @@ stored by Raiatea.
 
 > Assertion status: `accepted-decision`
 
-[`kinderp/alfred`](https://github.com/kinderp/alfred) is the existing
-filesystem observation engine and is the explicit reuse path for supported
-filesystem event semantics. Raiatea must not create a second general-purpose
-watcher merely for this product.
+At the ecosystem snapshot above,
+[`kinderp/alfred`](https://github.com/kinderp/alfred/tree/9e0e59e4232b8b173f1ae44a409c7d06f72f6c02)
+is the existing filesystem observation engine and is the explicit reuse path
+for supported filesystem event semantics. Raiatea must not create a second
+general-purpose watcher merely for this product.
 
 Alfred owns, within its supported platform/backend scope:
 
@@ -296,6 +304,12 @@ Alfred owns, within its supported platform/backend scope:
 - move, rename and relocation correlation;
 - watcher state, resynchronization and observation diagnostics;
 - backend-specific normalization into Alfred's structured event model.
+
+Relevant evidence in the pinned snapshot includes the
+[README](https://github.com/kinderp/alfred/blob/9e0e59e4232b8b173f1ae44a409c7d06f72f6c02/README.md),
+[scanner/resync roadmap](https://github.com/kinderp/alfred/blob/9e0e59e4232b8b173f1ae44a409c7d06f72f6c02/docs/it/21-roadmap-scanner-resync.md),
+and
+[backend-plugin roadmap](https://github.com/kinderp/alfred/blob/9e0e59e4232b8b173f1ae44a409c7d06f72f6c02/docs/it/23-roadmap-plugin-backend.md).
 
 Raiatea owns the reaction to those observations:
 
@@ -315,10 +329,11 @@ organization policy are separate responsibilities.
 
 > Assertion status: `working-hypothesis`
 
-Alfred's current mature implementation is Linux-focused while Raiatea's product
-may later need macOS and Windows. Alfred already has a multi-backend direction;
-#111 therefore treats cross-platform observation as an Alfred capability gap or
-adapter question, not as permission to fork the watcher logic inside Raiatea.
+In the pinned snapshot Alfred's implemented/reference backend is Linux-focused,
+while its roadmap describes future additional backends. Raiatea's product may
+later need macOS and Windows; #111 therefore treats cross-platform observation
+as an Alfred capability gap or adapter question, not as permission to fork the
+watcher logic inside Raiatea.
 
 A temporary platform fallback is acceptable only if it is explicitly scoped,
 replaceable and does not become a second competing event model.
@@ -327,9 +342,14 @@ replaceable and does not become a second competing event model.
 
 > Assertion status: `provisional-decision`
 
-[`kinderp/durex`](https://github.com/kinderp/durex) already contains useful
-execution patterns: persistent queueing, run lifecycle, worker ownership,
-retry/resume, cancellation, bounded live output and typed runtime events.
+At the ecosystem snapshot above,
+[`kinderp/durex`](https://github.com/kinderp/durex/tree/5ae87b11917b8d1bf5e15b1f418e856f42911d92)
+contains useful execution patterns: persistent queueing, run lifecycle, worker
+ownership, retry/resume, cancellation, bounded live output and typed runtime
+events. See the pinned
+[README](https://github.com/kinderp/durex/blob/5ae87b11917b8d1bf5e15b1f418e856f42911d92/README.md)
+and
+[`runtime_contracts.py`](https://github.com/kinderp/durex/blob/5ae87b11917b8d1bf5e15b1f418e856f42911d92/runtime_contracts.py).
 
 Durex is nevertheless currently a coding-agent orchestration product. Raiatea
 must not depend directly on its current database, Codex-specific lifecycle or
@@ -348,11 +368,17 @@ not a current dependency.
 
 > Assertion status: `accepted-decision`
 
-[`TheBitPoets/2cornot2c`](https://github.com/TheBitPoets/2cornot2c) remains an
-educational consumer, not the owner of Raiatea's general document library.
+At the ecosystem snapshot above,
+[`TheBitPoets/2cornot2c`](https://github.com/TheBitPoets/2cornot2c/tree/5472eef86568a4e7ce59ad34ba937220df27efd7)
+contains an existing provider-independent course source catalog and accepted
+Content Pack source contracts. Relevant evidence includes
+[`course_source_catalog.py`](https://github.com/TheBitPoets/2cornot2c/blob/5472eef86568a4e7ce59ad34ba937220df27efd7/scripts/course_source_catalog.py)
+and the
+[Content Pack v1 standard](https://github.com/TheBitPoets/2cornot2c/blob/5472eef86568a4e7ce59ad34ba937220df27efd7/doc/architecture/content-pack-standard-v1.md).
 
-Its existing `CourseSourceCatalog` and Content Pack source contracts are useful
-migration and compatibility evidence. The target direction is:
+TheBitLab remains an educational consumer, not the owner of Raiatea's general
+document library. Those existing source contracts are useful migration and
+compatibility evidence. The target direction is:
 
 ```text
 Raiatea Asset / Source catalog
@@ -377,8 +403,8 @@ maintain divergent canonical copies of the same general source metadata.
 > Assertion status: `accepted-decision`
 
 DNA does not own document management. It may consume shared contracts or
-Raiatea-derived assets where a real use case appears. Its existing use of
-Alfred reinforces Alfred's role as a cross-project observation plane.
+Raiatea-derived assets where a real use case appears. Its relationship to
+Alfred is context only; no DNA runtime dependency is introduced here.
 
 ### Iberna Workspace
 

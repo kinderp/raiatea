@@ -47,15 +47,19 @@ or that the first slice has been promoted.
 
 Current Draft evidence package:
 
-- [`technology-survey.md`](technology-survey.md) — current version-pinned primary
-  evidence for extraction/OCR/conversion Provider candidates;
+- [`technology-survey.md`](technology-survey.md) — current primary-source survey
+  for extraction/OCR/conversion Provider candidates;
+- [`provider-evidence-snapshot.md`](provider-evidence-snapshot.md) — immutable
+  release/tag/commit index for version-sensitive Provider/runtime/license claims;
 - [`provider-matrix.md`](provider-matrix.md) — Provider × Source Family,
   structure/coordinates, OCR, deployment, licensing and B-01/B-02 comparison;
 - [`build-buy-reuse.md`](build-buy-reuse.md) — capability-level decisions across
   reuse, compose, build-thin-layer, benchmark-first and defer.
 
 E-02 does not select a production Provider. Provider-published benchmark numbers
-remain documented claims until Raiatea runs E-04 fixtures.
+remain documented claims until Raiatea runs E-04 fixtures. Mutable `main`/
+`master` links in narrative text are convenience references only; the evidence
+snapshot is authoritative for the version observed by E-02.
 
 ### Remote-route eligibility rule
 

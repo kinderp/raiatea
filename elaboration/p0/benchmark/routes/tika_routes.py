@@ -253,7 +253,7 @@ def run_tika_pdf_xhtml(
         shutil.copyfile(source, local_input)
 
         baseline = {
-            str(candidate.relative_to(root))
+            candidate.relative_to(root).as_posix()
             for candidate in root.rglob("*")
             if candidate.is_file()
         }
@@ -271,7 +271,7 @@ def run_tika_pdf_xhtml(
             command, cwd=work, check=False, capture_output=True
         )
         current = {
-            str(candidate.relative_to(root))
+            candidate.relative_to(root).as_posix()
             for candidate in root.rglob("*")
             if candidate.is_file()
         }

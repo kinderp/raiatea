@@ -162,7 +162,12 @@ def _body_order(
     document: dict[str, Any],
     registry: dict[str, dict[str, Any]],
 ) -> tuple[list[tuple[str, dict[str, Any]]], list[dict[str, Any]]]:
-    """Resolve body/group refs while preserving authored Docling body order."""
+    """Resolve body/group refs while preserving authored Docling body order.
+
+    Docling leaf items such as text objects legitimately carry ``children: []``.
+    Only refs in the top-level ``groups`` collection are treated as containers;
+    an empty child list on a text item must never cause that leaf to disappear.
+    """
     ordered: list[tuple[str, dict[str, Any]]] = []
     warnings: list[dict[str, Any]] = []
     active: set[str] = set()
@@ -176,7 +181,7 @@ def _body_order(
             warnings.append({"code": "docling-unresolved-ref", "details": ref})
             return
         children = item.get("children")
-        if isinstance(children, list):
+        if ref.startswith("#/groups/") and isinstance(children, list):
             active.add(ref)
             for child in children:
                 if isinstance(child, dict) and isinstance(child.get("$ref"), str):
@@ -251,6 +256,12 @@ def map_docling_document(document: dict[str, Any]) -> dict[str, Any]:
             continue
         label = item.get("label")
         semantic_type, semantic_level = _semantic(label)
+        if (
+            semantic_type == "heading"
+            and semantic_level is None
+            and isinstance(item.get("level"), int)
+        ):
+            semantic_level = item["level"]
         provenance = item.get("prov") if isinstance(item.get("prov"), list) else []
         page_index: int | None = None
         bbox_points: list[float] | None = None

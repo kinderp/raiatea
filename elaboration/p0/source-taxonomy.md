@@ -453,7 +453,7 @@ These are descriptive profiles, not parser families:
 A scholarly paper, for example, may be an SF-01 born-digital paginated document
 with `scholarly`, `citation-heavy`, `formula-heavy` and `multi-column` traits.
 
-### Security/active-content traits
+### Security/active-content and access-control traits
 
 - `active-content-capable`;
 - `macro-capable`;
@@ -461,10 +461,17 @@ with `scholarly`, `citation-heavy`, `formula-heavy` and `multi-column` traits.
 - `archive-container`;
 - `external-resource-loading`;
 - `executable-or-code`;
-- `untrusted-embedded-file`.
+- `untrusted-embedded-file`;
+- `encrypted-container`;
+- `password-protected`;
+- `access-controlled-content`;
+- `drm-or-provider-bound-access`.
 
 These traits affect safe handling before extraction. They do not imply that
-active content should be executed.
+active content should be executed, that credentials should be guessed, or that
+access controls/DRM should be bypassed. If authorized access cannot be obtained
+through a supported route, P0 must preserve a visible restricted/unsupported
+state rather than manufacture extracted content.
 
 ### Data-sensitivity traits
 
@@ -501,6 +508,10 @@ Minimum profile:
 Additional subprofiles should cover tables/code/formulas only where fixture
 coverage is explicit.
 
+Password-protected/encrypted/access-controlled fixtures should not be mixed into
+the baseline average. They require an explicit access-policy subprofile or a
+visible unsupported/restricted outcome.
+
 ### B-02 — EPUB baseline
 
 Minimum profile:
@@ -510,6 +521,10 @@ Minimum profile:
 - multiple XHTML resources;
 - headings, paragraphs, lists, links, images and navigation;
 - logical/package coordinates required rather than rendered page numbers.
+
+Access-controlled/DRM-bound publications are outside the baseline unless a
+supported, authorized access route is explicitly defined. P0 must not treat
+bypass of access controls as an extraction feature.
 
 ### B-03 — Scanned PDF/OCR
 
@@ -617,7 +632,9 @@ Examples of decisions the later survey/benchmark should enable:
 - document parser versus specialized scholarly route;
 - local versus remote Provider;
 - one route versus comparison/fallback route;
-- full extraction versus metadata/reference-only treatment.
+- full extraction versus metadata/reference-only treatment;
+- supported authorized access versus visible restricted/unsupported state for
+  encrypted/password/access-controlled material.
 
 The taxonomy does not decide those choices.
 
@@ -634,9 +651,15 @@ Classification may be uncertain or multi-valued. P0 must allow:
 - incomplete source;
 - uncertain native-text usability;
 - mixed native/OCR regions;
+- encrypted/password/access-controlled source without a supported authorized
+  access route;
 - rights/sensitivity unknown;
 - Provider unsupported class;
 - degraded result rather than false complete success.
+
+Access-controlled material must not be mislabeled `malformed` merely because P0
+cannot extract it. The reason for non-processing should remain visible without
+implying or attempting circumvention.
 
 A Source is not rejected merely because every trait is not known. Missing facts
 should remain visible so routing can choose a conservative path or request
@@ -678,6 +701,8 @@ Examples:
 
 - SF-07 + `executable-or-code` increases active-content/secrets risk;
 - SF-04 + `macro-capable` requires non-executing safe inspection policy;
+- encrypted/password/access-controlled traits require a supported authorized
+  access path or a visible restricted/unsupported state, not bypass behavior;
 - SF-06 may require capture/retention/redistribution policy per remote source;
 - SF-02/SF-05 may create large image intermediates with retention implications;
 - SF-09 may intentionally remain reference-only;
@@ -718,6 +743,9 @@ must provide evidence.
   fidelity?
 - Which office formats are relevant enough for early P0 support?
 - Which active-content containers require pre-parser sandboxing or rejection?
+- Which authorized encrypted/password-protected routes, if any, belong in P0?
+- How should DRM/provider-bound access remain reference-only when no supported
+  authorized extraction route exists?
 - Which language/script profiles require separate quality benchmarks?
 - How should handwritten content be classified and deferred?
 - When is metadata-only handling preferable to full acquisition?
@@ -737,6 +765,7 @@ This taxonomy does not:
 - define user-facing topic taxonomy;
 - define legal rights conclusions;
 - authorize remote processing;
+- bypass passwords, encryption, DRM or access controls;
 - promote the PDF/EPUB first slice;
 - define P1-P7 source models.
 
@@ -746,6 +775,8 @@ Before acceptance, review must verify that:
 
 - family and trait layers are distinct;
 - scholarly/technical/legal categories do not become mistaken parser formats;
+- encrypted/access-controlled content has a visible supported/restricted state
+  and no implied bypass behavior;
 - Source Coordinates are source-class specific;
 - quality is source-class specific rather than one universal score;
 - unknown/mixed/degraded states remain visible;

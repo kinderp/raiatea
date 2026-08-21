@@ -16,7 +16,6 @@ import time
 from typing import Any, Callable
 import xml.etree.ElementTree as ET
 
-
 ROUTE_CONTRACT_VERSION = "0.1.0"
 XHTML_NS = "http://www.w3.org/1999/xhtml"
 
@@ -31,7 +30,6 @@ def _contract() -> dict[str, Any]:
 
 
 def executable_version(executable: str) -> dict[str, Any]:
-    """Capture Poppler-style executable version/path/hash without raising."""
     resolved = shutil.which(executable)
     try:
         completed = subprocess.run(
@@ -46,7 +44,6 @@ def executable_version(executable: str) -> dict[str, Any]:
             "returncode": None,
             "error": str(exc),
         }
-
     version_text = completed.stderr or completed.stdout
     first_line = version_text.splitlines()[0] if version_text else ""
     match = re.search(r"\bversion\s+([^\s]+)", first_line)
@@ -70,11 +67,10 @@ def _controlled_run(
     executable: str,
     build_args: Callable[[Path, Path], list[str]],
 ) -> tuple[Path | None, dict[str, Any]]:
-    """Run a local CLI in a controlled temporary input/work parent.
+    """Run a CLI under one temporary input/work parent.
 
-    Files created inside ``work`` are route outputs and are recorded. Any new
-    file elsewhere under the controlled parent is reported as a side effect.
-    This is observability, not an OS-level sandbox claim.
+    This records observable files under that parent; it is not an OS-level
+    sandbox or a network-isolation claim.
     """
     started = time.perf_counter()
     temp = tempfile.TemporaryDirectory(prefix="raiatea-poppler-")
@@ -85,7 +81,6 @@ def _controlled_run(
     work.mkdir()
     local_input = input_dir / source.name
     shutil.copyfile(source, local_input)
-
     baseline = {
         str(candidate.relative_to(root))
         for candidate in root.rglob("*")
@@ -109,7 +104,6 @@ def _controlled_run(
             "os_level_sandbox": False,
             "network_instrumentation": "not-measured",
         }
-
     current = {
         str(candidate.relative_to(root))
         for candidate in root.rglob("*")
@@ -121,7 +115,6 @@ def _controlled_run(
         if candidate.is_file()
     )
     expected_under_work = {f"work/{name}" for name in generated}
-    side_effects = sorted(current - baseline - expected_under_work)
     metadata = {
         "returncode": completed.returncode,
         "stdout": completed.stdout,
@@ -129,7 +122,7 @@ def _controlled_run(
         "duration_seconds": round(time.perf_counter() - started, 9),
         "command_options": command[1:],
         "generated_files": generated,
-        "side_effect_files": side_effects,
+        "side_effect_files": sorted(current - baseline - expected_under_work),
         "controlled_parent": True,
         "os_level_sandbox": False,
         "network_instrumentation": "not-measured",
@@ -157,7 +150,6 @@ def _convert_top_left_bbox(
     scale_x: float = 1.0,
     scale_y: float = 1.0,
 ) -> list[float]:
-    """Map a top-left box to PDF-style bottom-left page points."""
     return [
         x_min * scale_x,
         page_height_points - y_max * scale_y,
@@ -177,8 +169,6 @@ def _raw_metadata(path: Path) -> dict[str, Any]:
 def run_pdftotext_bbox_layout(
     source: Path, executable: str = "pdftotext"
 ) -> dict[str, Any]:
-    """Run ``pdftotext -bbox-layout`` and map its XHTML blocks."""
-
     def args(local_input: Path, work: Path) -> list[str]:
         return ["-bbox-layout", str(local_input), str(work / "bbox.html")]
 
@@ -196,9 +186,8 @@ def run_pdftotext_bbox_layout(
     if work is None:
         observation.update(metadata)
         return observation
-
     try:
-        observation.update({key: value for key, value in metadata.items() if not key.startswith("_")})
+        observation.update({k: v for k, v in metadata.items() if not k.startswith("_")})
         output = work / "bbox.html"
         if metadata["returncode"] != 0 or not output.is_file():
             observation["status"] = "failed"
@@ -206,7 +195,6 @@ def run_pdftotext_bbox_layout(
                 {"code": "pdftotext-failure", "details": metadata["stderr"].strip()}
             )
             return observation
-
         observation.update(_raw_metadata(output))
         try:
             root = ET.parse(output).getroot()
@@ -216,7 +204,6 @@ def run_pdftotext_bbox_layout(
                 {"code": "invalid-bbox-xhtml", "details": str(exc)}
             )
             return observation
-
         for page_index, page in enumerate(root.iter(_xhtml("page"))):
             width = float(page.attrib["width"])
             height = float(page.attrib["height"])
@@ -230,11 +217,14 @@ def run_pdftotext_bbox_layout(
                 }
             )
             for block in page.iter(_xhtml("block")):
-                words = [
-                    "".join(word.itertext()).strip()
-                    for word in block.iter(_xhtml("word"))
-                ]
-                text = " ".join(word for word in words if word)
+                text = " ".join(
+                    word
+                    for word in (
+                        "".join(node.itertext()).strip()
+                        for node in block.iter(_xhtml("word"))
+                    )
+                    if word
+                )
                 if not text:
                     continue
                 native = [
@@ -247,9 +237,7 @@ def run_pdftotext_bbox_layout(
                         "text": text,
                         "page_index": page_index,
                         "native_bbox": native,
-                        "bbox_points_bottom_left": _convert_top_left_bbox(
-                            *native, height
-                        ),
+                        "bbox_points_bottom_left": _convert_top_left_bbox(*native, height),
                     }
                 )
         observation["status"] = "success"
@@ -258,12 +246,14 @@ def run_pdftotext_bbox_layout(
         _cleanup(metadata)
 
 
-def _pdfinfo_page_sizes(source: Path, executable: str = "pdfinfo") -> dict[int, tuple[float, float]]:
-    """Read physical page sizes in points using Poppler pdfinfo.
+def _pdfinfo_page_sizes(
+    source: Path, executable: str = "pdfinfo"
+) -> dict[int, tuple[float, float]]:
+    """Read physical page sizes without assuming all pages share one size.
 
-    The function requests all pages in one call. Current E-04c fixtures are
-    one-page documents, but parsing supports both ``Page size`` and per-page
-    ``Page N size`` forms.
+    A generic ``Page size`` is accepted only for a one-page PDF. If a multi-page
+    source does not expose per-page sizes in the requested output, this bounded
+    mapper fails closed rather than reusing the first page size for every page.
     """
     try:
         completed = subprocess.run(
@@ -279,15 +269,6 @@ def _pdfinfo_page_sizes(source: Path, executable: str = "pdfinfo") -> dict[int, 
         raise ValueError("pdfinfo output has no page count")
     page_count = int(page_count_match.group(1))
 
-    generic = re.search(
-        r"^Page size:\s+([0-9.]+)\s+x\s+([0-9.]+)\s+pts",
-        completed.stdout,
-        re.MULTILINE,
-    )
-    if generic:
-        size = (float(generic.group(1)), float(generic.group(2)))
-        return {index: size for index in range(page_count)}
-
     sizes: dict[int, tuple[float, float]] = {}
     for match in re.finditer(
         r"^Page\s+(\d+)\s+size:\s+([0-9.]+)\s+x\s+([0-9.]+)\s+pts",
@@ -295,9 +276,22 @@ def _pdfinfo_page_sizes(source: Path, executable: str = "pdfinfo") -> dict[int, 
         re.MULTILINE,
     ):
         sizes[int(match.group(1)) - 1] = (float(match.group(2)), float(match.group(3)))
-    if len(sizes) != page_count:
-        raise ValueError("pdfinfo page-size evidence is incomplete")
-    return sizes
+    if len(sizes) == page_count:
+        return sizes
+
+    generic = re.search(
+        r"^Page size:\s+([0-9.]+)\s+x\s+([0-9.]+)\s+pts",
+        completed.stdout,
+        re.MULTILINE,
+    )
+    if generic and page_count == 1:
+        return {0: (float(generic.group(1)), float(generic.group(2)))}
+    if generic and page_count > 1:
+        raise ValueError(
+            "pdfinfo reported only one generic page size for a multi-page source; "
+            "the current mapper refuses to assume equal page dimensions"
+        )
+    raise ValueError("pdfinfo page-size evidence is incomplete")
 
 
 def run_pdftohtml_xml(
@@ -308,8 +302,7 @@ def run_pdftohtml_xml(
     """Run ``pdftohtml -xml -hidden`` and map text boxes to PDF points.
 
     The route deliberately does not use Poppler's ``-nodrm`` option: benchmark
-    tooling must respect the source document's access/copy restrictions and must
-    never weaken E-01 rights/access-control boundaries for convenience.
+    tooling must respect document access/copy restrictions.
     """
 
     def args(local_input: Path, work: Path) -> list[str]:
@@ -329,9 +322,8 @@ def run_pdftohtml_xml(
     if work is None:
         observation.update(metadata)
         return observation
-
     try:
-        observation.update({key: value for key, value in metadata.items() if not key.startswith("_")})
+        observation.update({k: v for k, v in metadata.items() if not k.startswith("_")})
         output = work / "out.xml"
         if metadata["returncode"] != 0 or not output.is_file():
             observation["status"] = "failed"
@@ -339,7 +331,6 @@ def run_pdftohtml_xml(
                 {"code": "pdftohtml-failure", "details": metadata["stderr"].strip()}
             )
             return observation
-
         observation.update(_raw_metadata(output))
         try:
             root = ET.parse(output).getroot()
@@ -350,9 +341,6 @@ def run_pdftohtml_xml(
             )
             return observation
 
-        # Query the copied input inside the controlled parent, not the caller's
-        # path. pdftohtml native canvas dimensions are scaled relative to the
-        # physical PDF page size; pdfinfo supplies the conversion target.
         local_input = Path(metadata["command_options"][-2])
         try:
             physical_sizes = _pdfinfo_page_sizes(local_input, pdfinfo_executable)
@@ -387,14 +375,14 @@ def run_pdftohtml_xml(
                     "scale_to_points_y": scale_y,
                 }
             )
-            for text_node in page.findall("text"):
-                text = " ".join("".join(text_node.itertext()).split())
+            for node in page.findall("text"):
+                text = " ".join("".join(node.itertext()).split())
                 if not text:
                     continue
-                left = float(text_node.attrib["left"])
-                top = float(text_node.attrib["top"])
-                width = float(text_node.attrib["width"])
-                height = float(text_node.attrib["height"])
+                left = float(node.attrib["left"])
+                top = float(node.attrib["top"])
+                width = float(node.attrib["width"])
+                height = float(node.attrib["height"])
                 native = [left, top, left + width, top + height]
                 observation["blocks"].append(
                     {
@@ -403,10 +391,7 @@ def run_pdftohtml_xml(
                         "page_index": page_index,
                         "native_bbox": native,
                         "bbox_points_bottom_left": _convert_top_left_bbox(
-                            *native,
-                            height_points,
-                            scale_x,
-                            scale_y,
+                            *native, height_points, scale_x, scale_y
                         ),
                     }
                 )

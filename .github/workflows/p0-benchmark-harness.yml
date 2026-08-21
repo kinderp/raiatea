@@ -181,3 +181,98 @@ jobs:
             ${{ runner.temp }}/raiatea-tika/tika-version.txt
           if-no-files-found: error
           retention-days: 7
+
+  b01-docling-exploratory:
+    name: B-01 Docling 2.118.0 exploratory / Ubuntu 24.04
+    needs: test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      DOCLING_VERSION: "2.118.0"
+      DOCLING_WHEEL_SHA256: "fd4962c9a54229bae1eb9b49f7fadb7e7b8affabf7e4fba1aac8cb335f558c8f"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+    steps:
+      - name: Check out exact exploratory source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SOURCE_COMMIT }}
+
+      - name: Verify source checkout
+        run: |
+          test "$(git rev-parse HEAD)" = "${EVIDENCE_SOURCE_COMMIT}"
+          echo "Exploratory source commit: ${EVIDENCE_SOURCE_COMMIT}"
+
+      - name: Set up reference Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+
+      - name: Create isolated Docling environment
+        run: |
+          python -m venv "${RUNNER_TEMP}/docling-venv"
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip --version | tee "${RUNNER_TEMP}/docling-pip-version.txt"
+
+      - name: Download and verify Docling wheel
+        run: |
+          mkdir -p "${RUNNER_TEMP}/docling-wheel"
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip download \
+            --no-deps \
+            --only-binary=:all: \
+            --dest "${RUNNER_TEMP}/docling-wheel" \
+            "docling==${DOCLING_VERSION}"
+          WHEEL="$(find "${RUNNER_TEMP}/docling-wheel" -maxdepth 1 -type f -name 'docling-*.whl' -print -quit)"
+          test -n "${WHEEL}"
+          echo "${DOCLING_WHEEL_SHA256}  ${WHEEL}" | sha256sum -c -
+          echo "DOCLING_WHEEL=${WHEEL}" >> "${GITHUB_ENV}"
+
+      - name: Install exploratory Docling environment
+        run: |
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip install "${DOCLING_WHEEL}"
+          "${RUNNER_TEMP}/docling-venv/bin/python" -c 'import importlib.metadata as m; assert m.version("docling") == "2.118.0"; print(m.version("docling"))'
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip freeze --all | sort > "${RUNNER_TEMP}/docling-freeze.txt"
+          sha256sum "${RUNNER_TEMP}/docling-freeze.txt" | tee "${RUNNER_TEMP}/docling-freeze.sha256"
+
+      - name: Prefetch only the layout model
+        run: |
+          mkdir -p "${RUNNER_TEMP}/docling-models"
+          "${RUNNER_TEMP}/docling-venv/bin/docling-tools" models download \
+            --quiet \
+            --output-dir "${RUNNER_TEMP}/docling-models" \
+            layout \
+            | tee "${RUNNER_TEMP}/docling-model-download.txt"
+          test -n "$(find "${RUNNER_TEMP}/docling-models" -type f -print -quit)"
+
+      - name: Run measured Docling phase offline
+        env:
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+          HF_HUB_DISABLE_TELEMETRY: "1"
+          DO_NOT_TRACK: "1"
+        run: |
+          mkdir -p "${RUNNER_TEMP}/raiatea-docling-reference" "${RUNNER_TEMP}/docling-measured-cache"
+          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/measure_docling_b01.py \
+            --output "${RUNNER_TEMP}/raiatea-docling-reference" \
+            --artifacts-path "${RUNNER_TEMP}/docling-models" \
+            --cache-root "${RUNNER_TEMP}/docling-measured-cache" \
+            --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
+            > "${RUNNER_TEMP}/raiatea-docling-reference/stdout-report.json"
+          test -s "${RUNNER_TEMP}/raiatea-docling-reference/docling-b01-results.json"
+          test -s "${RUNNER_TEMP}/raiatea-docling-reference/docling-b01-summary.md"
+          test -s "${RUNNER_TEMP}/raiatea-docling-reference/docling-model-manifest.json"
+          test -s "${RUNNER_TEMP}/raiatea-docling-reference/python-environment-freeze.txt"
+
+      - name: Upload exploratory Docling evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-b01-docling-exploratory-${{ env.EVIDENCE_SOURCE_COMMIT }}
+          path: |
+            ${{ runner.temp }}/raiatea-docling-reference
+            ${{ runner.temp }}/docling-freeze.txt
+            ${{ runner.temp }}/docling-freeze.sha256
+            ${{ runner.temp }}/docling-pip-version.txt
+            ${{ runner.temp }}/docling-model-download.txt
+          if-no-files-found: warn
+          retention-days: 7

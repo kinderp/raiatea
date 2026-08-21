@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 from pathlib import Path
 import subprocess
 import tempfile
 import unittest
 from unittest import mock
-
 
 BENCH_DIR = Path(__file__).resolve().parents[1]
 ROUTES_DIR = BENCH_DIR / "routes"
@@ -23,7 +21,6 @@ def _load(name: str, path: Path):
 
 ROUTES = _load("p0_pdf_routes", ROUTES_DIR / "pdf_routes.py")
 SCORE = _load("p0_score_b01", ROUTES_DIR / "score_b01.py")
-
 
 BBOX_XHTML = b'''<!DOCTYPE html><html xmlns="http://www.w3.org/1999/xhtml"><body><doc>
 <page width="612.000000" height="792.000000"><flow>
@@ -52,7 +49,7 @@ def _gold_b01_002():
             {"id": "l1", "type": "paragraph", "text": "Left one.", "page_index": 0, "region": [72, 650, 250, 680]},
             {"id": "l2", "type": "paragraph", "text": "Left two.", "page_index": 0, "region": [72, 610, 250, 640]},
             {"id": "r1", "type": "paragraph", "text": "Right one.", "page_index": 0, "region": [330, 650, 520, 680]},
-            {"id": "r2", "type": "paragraph", "text": "Right two.", "page_index": 0, "region": [330, 610, 520, 640]}
+            {"id": "r2", "type": "paragraph", "text": "Right two.", "page_index": 0, "region": [330, 610, 520, 640]},
         ],
         "reading_order": [["title", "l1"], ["l1", "l2"], ["l2", "r1"], ["r1", "r2"]],
     }
@@ -96,14 +93,16 @@ class PopplerMappingTests(unittest.TestCase):
             [block["text"] for block in observation["blocks"]],
             ["Raiatea B01 PDF 002", "Left one.", "Right one.", "Left two.", "Right two."],
         )
-        left_one = observation["blocks"][1]
-        self.assertAlmostEqual(left_one["bbox_points_bottom_left"][1], 662.516)
+        self.assertAlmostEqual(observation["blocks"][1]["bbox_points_bottom_left"][1], 662.516)
         self.assertEqual(observation["native_coordinate_system"], "top-left-points")
 
     def test_pdftohtml_mapping_uses_physical_page_size_for_scale(self):
         work, metadata = _controlled_output("out.xml", PDF2XML)
-        # Simulate the copied input path carried in the command metadata.
-        metadata["command_options"] = ["-xml", "-hidden", "-nodrm", "-q", str(work.parent / "input" / "fixture.pdf"), str(work / "out")]
+        metadata["command_options"] = [
+            "-xml", "-hidden", "-q",
+            str(work.parent / "input" / "fixture.pdf"),
+            str(work / "out"),
+        ]
         with mock.patch.object(ROUTES, "_controlled_run", return_value=(work, metadata)), mock.patch.object(
             ROUTES, "_pdfinfo_page_sizes", return_value={0: (612.0, 792.0)}
         ):
@@ -119,21 +118,31 @@ class PopplerMappingTests(unittest.TestCase):
         self.assertAlmostEqual(observation["blocks"][1]["bbox_points_bottom_left"][0], 72.0)
         self.assertAlmostEqual(observation["blocks"][1]["bbox_points_bottom_left"][1], 662.0)
 
-    def test_pdfinfo_parses_generic_page_size(self):
+    def test_pdfinfo_accepts_generic_page_size_for_one_page_only(self):
         completed = subprocess.CompletedProcess(
-            ["pdfinfo"],
-            0,
+            ["pdfinfo"], 0,
+            stdout="Pages:          1\nPage size:       612 x 792 pts (letter)\n",
+            stderr="",
+        )
+        with mock.patch.object(ROUTES.subprocess, "run", return_value=completed):
+            self.assertEqual(
+                ROUTES._pdfinfo_page_sizes(Path("fixture.pdf")),
+                {0: (612.0, 792.0)},
+            )
+
+    def test_pdfinfo_rejects_ambiguous_generic_size_for_multi_page_source(self):
+        completed = subprocess.CompletedProcess(
+            ["pdfinfo"], 0,
             stdout="Pages:          2\nPage size:       612 x 792 pts (letter)\n",
             stderr="",
         )
         with mock.patch.object(ROUTES.subprocess, "run", return_value=completed):
-            sizes = ROUTES._pdfinfo_page_sizes(Path("fixture.pdf"))
-        self.assertEqual(sizes, {0: (612.0, 792.0), 1: (612.0, 792.0)})
+            with self.assertRaisesRegex(ValueError, "refuses to assume equal page dimensions"):
+                ROUTES._pdfinfo_page_sizes(Path("fixture.pdf"))
 
-    def test_pdfinfo_parses_per_page_sizes(self):
+    def test_pdfinfo_parses_explicit_per_page_sizes(self):
         completed = subprocess.CompletedProcess(
-            ["pdfinfo"],
-            0,
+            ["pdfinfo"], 0,
             stdout=(
                 "Pages:          2\n"
                 "Page    1 size:  612 x 792 pts (letter)\n"

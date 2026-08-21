@@ -1,0 +1,177 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b02-reference-baseline",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "evidence_source_commit": "1fabcd1e435860a20035f2751655ab92ff95a8b1",
+  "harness_fingerprints": {
+    "generator": "dc741f877c4b082602dc016103180f882b4e3bd429ac91f404122fc56714ddd1",
+    "fixture_manifest": "bec05d05dcd9b6b9f404777baace03636a02060305a43c756958605cbab21400",
+    "gold": "338abda74cfea35f591d3a047ec96bf1a05abd1535dbfd9ff56b58d3a0278401",
+    "epub_routes": "61dd5ef4f40d120ac828b0abe78211c035cb35c1f53a93c853aff8747704cd91",
+    "score_b02": "30313df49444415c259ddea8e494e6bcbab85170f5aab9967c9528be463567a9",
+    "measure_b02": "9c201f21e587cfac7ac8270a5f24d34fc69d5baada44912a7c14fb1e9d22f082"
+  },
+  "measured_at_context": "2026-08-21 reference environment",
+  "environment": {
+    "scope": "single-reference-environment",
+    "platform_system": "Linux",
+    "platform_release": "6.18.35",
+    "machine": "x86_64",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "logical_cpu_count": 5,
+    "memory_total_observed": "6219544 kB",
+    "python_version": "3.13.5",
+    "python_implementation": "CPython",
+    "gpu": "not-instrumented",
+    "portability_claim": false
+  },
+  "rights_state": {
+    "redistribution": "not-established",
+    "decision_issue": 131,
+    "public_rights_safe": false,
+    "remote_provider": "denied"
+  },
+  "routes": {
+    "direct-epub-stdlib": {
+      "availability": "available",
+      "implementation": "Python standard library zipfile + ElementTree"
+    },
+    "pandoc-epub": {
+      "availability": "available",
+      "resolved_executable": "/usr/bin/pandoc",
+      "version": "3.1.11.1",
+      "executable_sha256": "0336f5db0c5db91d3b7e29e3adc226bebd76d074bf28a907e50fc148bded3e8b",
+      "surveyed_version": "3.10.2",
+      "surveyed_version_match": false,
+      "command_options": ["--sandbox", "--from=epub", "--to=json"],
+      "network_instrumentation": "not-measured",
+      "selection_blocker": "Measured Pandoc version differs from the E-02 surveyed baseline; rerun on an accepted current version before route selection."
+    }
+  },
+  "normal_results": {
+    "B02-EPUB-001": {
+      "fixture_sha256": "8a013c2e95ec99e07a29a09072872abe0c7e2fc0ba92378db9088817230be933",
+      "direct-epub-stdlib": {
+        "route_status": "success",
+        "spine_order_exact": true,
+        "content_text": "4/4",
+        "heading_structure": "2/2",
+        "source_coordinates_full_exact": "4/4",
+        "source_coordinates_traceable": "4/4",
+        "reading_order_edges": "3/3"
+      },
+      "pandoc-epub": {
+        "route_status": "success",
+        "spine_order_exact": true,
+        "content_text": "4/4",
+        "heading_structure": "2/2",
+        "source_coordinates_full_exact": "0/4",
+        "source_coordinates_traceable": "2/4",
+        "reading_order_edges": "3/3",
+        "observed_degradation": "Heading resource/fragment anchors remain traceable; authored paragraph fragment IDs are not preserved by the measured Pandoc mapping.",
+        "raw_output_sha256": "28f174c209a091081f10b8d67f53021a7edf91520858bc9b834f505456322488",
+        "raw_output_bytes": 1205
+      }
+    },
+    "B02-EPUB-002": {
+      "fixture_sha256": "6771b7b8a6b0f2d61808bcaf7543dd3f0484856fb99d1cbee5cd4f9a7c064e8f",
+      "direct-epub-stdlib": {
+        "route_status": "success",
+        "spine_order_exact": true,
+        "navigation_exact": "2/2",
+        "semantic_link_matches": "1/1",
+        "authored_link_target_exact": "1/1",
+        "from_fragment_preserved": true
+      },
+      "pandoc-epub": {
+        "route_status": "success",
+        "spine_order_exact": true,
+        "navigation_exact": "0/2",
+        "semantic_link_matches": "1/1",
+        "authored_link_target_exact": "0/1",
+        "from_fragment_preserved": false,
+        "observed_target": "#ch2.xhtml#details",
+        "observed_degradation": "The measured Pandoc AST mapping does not expose the EPUB nav tree and normalizes the cross-resource link target rather than preserving its authored form.",
+        "raw_output_sha256": "81ea611a9b91af6914002dcaefeb3b5a0f130ca7becfb5ffdbef6b336e14f248",
+        "raw_output_bytes": 1200
+      }
+    }
+  },
+  "negative_results": {
+    "B02-EPUB-NEG-001": {
+      "fixture_sha256": "3fbe0de1de6bfac623617ae2532b68815dd789f7e7ed3fd663ef395d39010dd4",
+      "direct-epub-stdlib": {
+        "route_status": "degraded",
+        "expected_state": "degraded-with-warning-or-safe-success",
+        "expected_state_satisfied": true,
+        "script-not-executed": {"status": "measured", "satisfied": true},
+        "no-network-required": {"status": "fixture-property", "satisfied": true}
+      },
+      "pandoc-epub": {
+        "route_status": "success",
+        "expected_state": "degraded-with-warning-or-safe-success",
+        "expected_state_satisfied": true,
+        "script-not-executed": {"status": "not-measured", "satisfied": null},
+        "no-network-required": {"status": "fixture-property", "satisfied": true},
+        "side_effect_files": [],
+        "sandbox_enabled": true,
+        "network_instrumentation": "not-measured",
+        "raw_output_sha256": "ccb6ed75de08b87c9b9ae22911a3004db88467e6e8785308f8f8a4477ef79129",
+        "raw_output_bytes": 1424
+      }
+    },
+    "B02-EPUB-NEG-002": {
+      "fixture_sha256": "cdad1a5bc6970a64ce8b423c0519990a58ccd63b101f0ed1577bebc9652f7bc8",
+      "direct-epub-stdlib": {
+        "route_status": "rejected",
+        "expected_state": "rejected-or-degraded-with-warning",
+        "expected_state_satisfied": true,
+        "no-path-escape": {"status": "measured", "satisfied": true},
+        "no-extractall": {"status": "measured", "satisfied": true}
+      },
+      "pandoc-epub": {
+        "route_status": "success",
+        "expected_state": "rejected-or-degraded-with-warning",
+        "expected_state_satisfied": false,
+        "no-path-escape": {
+          "status": "partial",
+          "satisfied": true,
+          "limit": "No file side effects were observed inside the controlled temporary parent; OS-level writes outside that parent were not instrumented."
+        },
+        "no-extractall": {"status": "not-measured", "satisfied": null},
+        "side_effect_files": [],
+        "sandbox_enabled": true,
+        "network_instrumentation": "not-measured",
+        "raw_output_sha256": "28f174c209a091081f10b8d67f53021a7edf91520858bc9b834f505456322488",
+        "raw_output_bytes": 1205
+      }
+    }
+  },
+  "coverage": {
+    "benchmark_class": "B-02",
+    "full_b02_coverage": false,
+    "remaining_gaps": [
+      "images/captions/alt",
+      "footnotes/endnotes",
+      "tables/code/MathML",
+      "realistic integrated multi-chapter fixture beyond current navigation case",
+      "malformed/missing resource negative fixture"
+    ]
+  },
+  "measurement_limits": [
+    "Timing observations from the source run are intentionally not promoted as performance claims in this compact record.",
+    "Provider network traffic was not instrumented.",
+    "Pandoc process isolation used --sandbox plus a controlled temporary input/work parent; OS-level write/network isolation is not claimed.",
+    "Results apply only to this route/version/environment and minimal fixture subset."
+  ],
+  "decision_boundary": {
+    "provider_selected": false,
+    "first_slice_promoted": false,
+    "g04_satisfied": false,
+    "g05_satisfied": false
+  }
+}

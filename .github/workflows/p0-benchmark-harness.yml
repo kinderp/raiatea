@@ -52,3 +52,42 @@ jobs:
           python elaboration/p0/benchmark/generate_fixtures.py \
             --output "${RUNNER_TEMP}/raiatea-p0-fixtures" > "${RUNNER_TEMP}/raiatea-p0-generated-manifest.txt"
           test -s "${RUNNER_TEMP}/raiatea-p0-fixtures/generated-manifest.json"
+
+  b01-poppler-reference:
+    name: B-01 Poppler reference / Ubuntu
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Poppler controls
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          pdftotext -v 2>&1 | head -1
+          pdftohtml -v 2>&1 | head -1
+          pdfinfo -v 2>&1 | head -1
+
+      - name: Run B-01 reference baseline
+        run: |
+          python elaboration/p0/benchmark/routes/measure_b01.py \
+            --output "${RUNNER_TEMP}/raiatea-b01-reference" \
+            --evidence-source-commit "${GITHUB_SHA}" \
+            > "${RUNNER_TEMP}/raiatea-b01-reference/stdout-report.json"
+          test -s "${RUNNER_TEMP}/raiatea-b01-reference/b01-results.json"
+          test -s "${RUNNER_TEMP}/raiatea-b01-reference/b01-summary.md"
+
+      - name: Upload B-01 reference evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-b01-poppler-reference-${{ github.sha }}
+          path: ${{ runner.temp }}/raiatea-b01-reference
+          if-no-files-found: error
+          retention-days: 7

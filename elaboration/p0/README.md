@@ -57,6 +57,20 @@ Current Draft evidence package:
 E-02 does not select a production Provider. Provider-published benchmark numbers
 remain documented claims until Raiatea runs E-04 fixtures.
 
+### Remote-route eligibility rule
+
+The survey may record that a hosted/API/external service exists, but **existence
+is not route eligibility**. E-02 admits only local/self-hosted routes to the
+candidate E-04 benchmark set. An externally hosted Provider route remains
+blocked until a separate, current evidence record covers the Provider data-policy
+attributes required by E-01 — retention, training/improvement use, logging,
+region/data residency, subprocessors and deletion controls as applicable — and
+the rights/sensitivity policy explicitly makes that route eligible.
+
+A self-hosted HTTP/service process inside the user's controlled environment is
+not treated as an external remote Provider merely because it uses a network
+protocol locally.
+
 ## Current survey candidates
 
 The Draft survey includes current primary-source evidence for:
@@ -99,6 +113,9 @@ The accepted Inception Review authorizes a bounded sequence:
   distinct.
 - No Provider, database, vector store, graph store or public schema is selected
   by the E-01/E-02 evidence packages.
+- Externally hosted Provider routes mentioned by E-02 are existence evidence
+  only and remain ineligible for E-04 until the remote-route rule above is
+  satisfied.
 - Provider-native representations such as DoclingDocument, Marker JSON, MinerU
   middle JSON, Unstructured Elements or GROBID TEI do not become Raiatea's
   public/core contract merely because an Adapter consumes them.

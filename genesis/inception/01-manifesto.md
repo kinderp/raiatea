@@ -1,12 +1,14 @@
 # Raiatea Manifesto
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 1.0.0
 >
-> Last reviewed: 21 July 2026
+> Last reviewed: 21 August 2026
+>
+> Accepted through: [PR #110](https://github.com/kinderp/raiatea/pull/110)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 >
@@ -28,9 +30,9 @@ changes its products, models, storage and interfaces. It is shorter and less
 prescriptive than a constitution. It does not decide a legal structure,
 governance mechanism, ontology or technical architecture.
 
-Acceptance of this document would accept only the statements labelled
-`principle` or `accepted-decision`. Candidate commitments remain provisional
-until they receive explicit maintainer review.
+The maintainer accepted the principles in sections 3 and 4 on 21 August 2026.
+They are intended to guide later Product Map, architecture and implementation
+work without freezing any particular technology, provider or storage model.
 
 ## 2. Founding declaration
 
@@ -93,15 +95,15 @@ They are justified when they improve a validated user outcome or protect a
 required property. Raiatea must not hide the absence of value behind the size
 of its architecture.
 
-## 4. Candidate enduring commitments
+## 4. Accepted enduring commitments
 
-The following statements derive from the exploratory Genesis notes. They are
-strong candidates for the future Manifesto but remain provisional in this
-draft.
+The following principles derive from the exploratory Genesis notes and were
+accepted by the maintainer on 21 August 2026. They constrain future product and
+architecture choices while leaving implementations replaceable.
 
 ### 4.1 Preserve evidence before interpretation
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Source material, extracted content, normalization, translation, adaptation,
 derived values, inference and hypothesis should remain distinguishable. A
@@ -113,7 +115,7 @@ rather than manufacture a complete route.
 
 ### 4.2 Preserve change instead of overwriting history
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Claims, sources, explanations, learner routes and forecasts can change. A
 correction should add a visible revision, not erase the state needed to
@@ -124,7 +126,7 @@ questions and must not be collapsed into one trust label.
 
 ### 4.3 Add pedagogical value or remain close to the source
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Translation, animation and generated exercises are justified only when they
 reduce avoidable effort or improve accurate explanation, application,
@@ -136,7 +138,7 @@ permit. Raiatea's explanation must declare its simplifications and limits.
 
 ### 4.4 Prefer open, portable and replaceable foundations
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Users should be able to export durable artifacts and continue their work when
 a model, provider or application changes. Shared schemas, adapters, benchmark
@@ -149,7 +151,7 @@ evidence supports that choice.
 
 ### 4.5 Keep disagreement and uncertainty visible
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Raiatea should not convert repetition into corroboration or disagreement into
 a misleading average. Competing explanations, counter-evidence, missing
@@ -160,7 +162,7 @@ metric or single global reputation score to determine truth.
 
 ### 4.6 Protect attention and autonomy
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Raiatea should optimize for useful orientation, understanding, time saved and
 deliberate return. It should be allowed to report that nothing important
@@ -169,7 +171,7 @@ metrics by themselves.
 
 ### 4.7 Resist capture without freezing implementation
 
-> Assertion status: `provisional-decision`
+> Assertion status: `principle`
 
 Money, institutional status, compute, popularity or ownership of a hosted
 service must not purchase hidden epistemic privilege. At the same time, no
@@ -230,8 +232,7 @@ methods may retain value independently.
 
 ## 8. Open decisions
 
-- Which candidate commitments in section 4 should become accepted principles?
-- Which commitments belong in a future legal constitution rather than this
+- Which commitments belong in a future legal constitution in addition to this
   product Manifesto?
 - How should public-interest access and emergency access be reviewed before
   becoming durable obligations?

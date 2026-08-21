@@ -1,12 +1,14 @@
 # P0 Build / Buy / Reuse Decisions
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 1.0.0
 >
 > Last reviewed: 21 August 2026
+>
+> Accepted through: [PR #126](https://github.com/kinderp/raiatea/pull/126)
 >
 > Parent issue: [#125](https://github.com/kinderp/raiatea/issues/125)
 >

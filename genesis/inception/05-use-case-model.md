@@ -4,7 +4,7 @@
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 0.1.1
 >
 > Last reviewed: 21 August 2026
 >
@@ -20,7 +20,7 @@
 
 ## 1. Purpose
 
-This document defines the significant user goals and system interactions that
+This document defines the significant user goals and external interactions that
 must guide Raiatea before detailed domain schemas, APIs or implementation
 technology are selected.
 
@@ -29,9 +29,9 @@ when things go wrong**. It deliberately does not define database tables,
 classes, REST endpoints, event schemas, UI routes, parser choices or worker
 implementations.
 
-Use-case identifiers such as `UC-01` are stable editorial references for
-planning, review and risk traceability. They are not API identifiers and do not
-freeze future package or service boundaries.
+Use-case identifiers such as `UC-01` are editorial references for planning,
+review and risk traceability. They are not API identifiers and do not freeze
+future package or service boundaries.
 
 ## 2. Status rules
 
@@ -50,13 +50,23 @@ This model preserves the status taxonomy already accepted by Inception:
   current roadmap.
 
 P0 Source Ingestion & Extraction is the only platform foundation currently
-`planned` through #106. The Universal Document & Asset Library product outcomes
-below are accepted direction unless a use case says otherwise; accepted does
-not mean implemented.
+`planned` through #106. The Universal Document & Asset Library outcomes below
+are accepted direction unless a use case says otherwise; accepted does not mean
+implemented.
 
 ## 3. System boundary and actors
 
-### 3.1 Primary actor — Person / Library owner
+### 3.1 Actor-model rule
+
+> Assertion status: `accepted-decision`
+
+An **actor** is a human role or external system that interacts with Raiatea from
+outside the Raiatea boundary. Filesystem events, Processing Recipes, internal
+jobs, timers and pipeline stages are **triggers or internal mechanisms**, not
+actors. This distinction prevents the use-case model from accidentally fixing a
+future internal architecture.
+
+### 3.2 Primary actor — Person / Library owner
 
 > Assertion status: `accepted-decision`
 
@@ -68,7 +78,7 @@ The first validation domain remains a self-directed technical learner working
 with AI-engineering material, but the use cases must not encode AI-specific
 assumptions.
 
-### 3.2 Supporting system — Alfred
+### 3.3 Supporting external system — Alfred
 
 > Assertion status: `accepted-decision`
 
@@ -77,7 +87,7 @@ scope. It may report create, ready/change, move/rename, delete and resync facts.
 It does not decide document identity, classification, search membership,
 organization policy or transformations.
 
-### 3.3 Supporting system — Filesystem / storage
+### 3.4 Supporting external system — Filesystem / storage
 
 > Assertion status: `accepted-decision`
 
@@ -85,15 +95,15 @@ Digital representations may live in local, mounted, removable, NAS or future
 compatible storage locations. A storage path is a mutable location, not the
 canonical identity of the logical asset/source.
 
-### 3.4 Supporting providers — extraction, translation, rendering and metadata
+### 3.5 Supporting external providers
 
 > Assertion status: `accepted-decision`
 
 Parsers, OCR/VLM engines, translation providers, renderers/converters and
-metadata resolvers are replaceable providers behind Raiatea-owned contracts.
-Named products are not selected by this model.
+metadata resolvers are replaceable external providers behind Raiatea-owned
+contracts. Named products are not selected by this model.
 
-### 3.5 External consumer — TheBitLab
+### 3.6 External consumer — TheBitLab
 
 > Assertion status: `accepted-decision`
 
@@ -101,7 +111,7 @@ TheBitLab consumes course-scoped source/provenance projections. It owns
 course-specific selection and educational semantics, not Raiatea's universal
 source-of-truth library.
 
-### 3.6 Durex is not a required actor yet
+### 3.7 Durex is not a required actor yet
 
 > Assertion status: `provisional-decision`
 
@@ -156,7 +166,7 @@ Every applicable use case must preserve these invariants:
 | UC-10 | Apply an authorized managed organization operation | `accepted-decision` capability; absent | Organization |
 | UC-11 | Extract a source through P0 | `planned` through #106 | P0 Source Ingestion & Extraction |
 | UC-12 | Translate a source without replacing the original | `accepted-decision` capability; absent | Processing Recipes |
-| UC-13 | Run a multi-output Processing Recipe | `accepted-decision` capability; absent | Processing Recipes |
+| UC-13 | Run a Processing Recipe, including multi-output DAGs | `accepted-decision` capability; absent | Processing Recipes |
 | UC-14 | Select and evaluate a visual fidelity objective | `accepted-decision` capability; absent | Processing Recipes |
 | UC-15 | Inspect derivative lineage | `accepted-decision` capability; absent | Provenance / document detail |
 | UC-16 | Relate physical and digital representations | `accepted-decision` capability; absent | Registry |
@@ -175,7 +185,7 @@ reorganizing it by default.
 **Primary actor.** Person.
 
 **Supporting systems.** Filesystem/storage; Alfred where supported; optional
-metadata providers; later P0 when content extraction is requested.
+metadata providers; P0 when content extraction is requested.
 
 **Preconditions.** The person selects a location they are authorized to read
 and declares an authority mode such as observed, managed, inbox or frozen.
@@ -184,8 +194,8 @@ and declares an authority mode such as observed, managed, inbox or frozen.
 
 **Main success path.**
 
-1. Raiatea discovers candidate files directly or through the supported
-   observation/scanning boundary.
+1. Raiatea initiates a bounded inventory using the supported scanning/
+   observation boundary without introducing a second general-purpose watcher.
 2. It records stable logical identities or candidate identities separately from
    path locations.
 3. It records basic observable metadata, fingerprints and current locations.
@@ -245,7 +255,7 @@ its full text exists digitally.
 is not unquestionable identity evidence.
 
 **Risk handoff.** Edition conflation, metadata authority, privacy of physical
-location, incorrect work/manifestation merge.
+location, incorrect work/representation merge.
 
 ### UC-03 — Preserve identity across rename or move
 
@@ -254,15 +264,15 @@ location, incorrect work/manifestation merge.
 **Goal.** Keep one logical asset/source identity when its digital file is moved
 or renamed.
 
-**Primary actor.** Person, directly or through an authorized organization
-operation.
+**Primary actor.** Person.
 
 **Supporting systems.** Alfred; filesystem/storage.
 
 **Preconditions.** A digital representation is already known to Raiatea and its
 old location is observable or otherwise reconcilable.
 
-**Trigger.** The file is renamed or moved.
+**Trigger.** The person moves/renames the file, or an authorized organization
+operation causes the filesystem transition.
 
 **Main success path.**
 
@@ -292,18 +302,18 @@ watcher overflow/resync, concurrent changes.
 
 > Assertion status: `accepted-decision` for the outcome; implementation absent
 
-**Goal.** Represent that a known digital location is unavailable or deleted
-without silently erasing history and valid derivatives.
+**Goal.** Let the person understand that a known digital location is unavailable
+or deleted without silently erasing history and valid derivatives.
 
-**Primary actor.** Person or filesystem event.
+**Primary actor.** Person.
 
 **Supporting systems.** Alfred; filesystem/storage.
 
 **Preconditions.** Raiatea knows the logical item and at least one prior
 location.
 
-**Trigger.** A delete/missing event, resync difference or unavailable storage
-location is detected.
+**Trigger.** Alfred or a reconciliation process reports a delete/missing fact,
+or a storage location becomes unavailable.
 
 **Main success path.**
 
@@ -338,8 +348,6 @@ repeatable.
 
 **Primary actor.** Person.
 
-**Supporting systems.** Search/index implementation remains a future choice.
-
 **Preconditions.** Relevant catalog metadata or extracted content exists.
 
 **Trigger.** The person enters filters or a query.
@@ -349,8 +357,7 @@ repeatable.
 1. The person chooses criteria such as type, format, language, location, author,
    date, processing state, topic or full-text terms.
 2. Raiatea executes the criteria against known catalog/index state.
-3. Results expose the matching logical items rather than opaque generated
-   answers.
+3. Results expose matching logical items rather than opaque generated answers.
 4. Active criteria remain visible and editable.
 5. The query can be refined or saved.
 
@@ -390,8 +397,7 @@ RAG after 2023 that do not yet have an Italian translation.”
 2. The interpreter proposes structured criteria.
 3. Raiatea displays the interpreted criteria before or with results.
 4. The person may edit the criteria.
-5. The deterministic/semantic search engine executes the final structured
-   query.
+5. The search engine executes the final structured query.
 6. The structured query, not the model prose, may be saved as a Smart
    Collection.
 
@@ -527,8 +533,8 @@ reconciliation.
 an equivalent safe decision has been made, and destinations have passed
 applicable checks.
 
-**Trigger.** The person approves the organization operation or an explicitly
-authorized policy executes under defined controls.
+**Trigger.** The person approves the organization operation, or a previously
+explicitly authorized policy reaches its defined execution condition.
 
 **Main success path.**
 
@@ -558,17 +564,18 @@ loops, user/manual conflict, permissions and path safety.
 
 > Assertion status: `planned` through #106
 
-**Goal.** Produce structured, source-linked extraction from a supported source
-without making one parser or model the Raiatea core.
+**Goal.** Let the person obtain structured, source-linked extraction from a
+supported source without making one parser or model the Raiatea core.
 
-**Primary actor.** Person or an authorized Processing Recipe.
+**Primary actor.** Person.
 
-**Supporting systems.** P0 routing; replaceable parser/OCR/VLM providers.
+**Supporting systems.** Replaceable parser/OCR/VLM providers.
 
 **Preconditions.** The source is lawfully available for the requested processing
 and a supported/benchmarkable route exists or can fail visibly.
 
-**Trigger.** The person requests extraction or a dependent recipe requires it.
+**Trigger.** The person requests extraction, or an already-authorized internal
+Processing Recipe reaches an extraction stage on the person's behalf.
 
 **Main success path.**
 
@@ -609,8 +616,8 @@ technical terminology policy and transformation provenance.
 provider; optional glossary/translation-memory capability.
 
 **Preconditions.** The source or reusable structured intermediate is available,
-rights permit the requested private processing, and source/target languages are
-known or reviewable.
+rights permit the requested processing, and source/target languages are known
+or reviewable.
 
 **Trigger.** The person chooses an extract+translate or translate recipe.
 
@@ -639,12 +646,12 @@ corrections do not rewrite historical lineage.
 **Risk handoff.** Hallucinated translation, terminology inconsistency, code or
 citation corruption, remote-provider privacy, partial translation presentation.
 
-### UC-13 — Run a multi-output Processing Recipe
+### UC-13 — Run a Processing Recipe, including multi-output DAGs
 
 > Assertion status: `accepted-decision` for the outcome; implementation absent
 
-**Goal.** Request several derived outputs while computing each valid
-intermediate only once when reuse is safe.
+**Goal.** Let the person request one or more derived outputs while computing each
+valid intermediate only once when reuse is safe.
 
 **Primary actor.** Person.
 
@@ -654,13 +661,13 @@ providers; execution plane remains unresolved.
 **Preconditions.** The selected source and desired operations are supported or
 can report unsupported stages explicitly.
 
-**Trigger.** The person chooses or creates a recipe with multiple dependent
-outputs.
+**Trigger.** The person chooses or creates a Processing Recipe.
 
 **Main success path.**
 
 1. Raiatea validates requested stages, inputs, rights and provider capability.
-2. It constructs an inspectable dependency DAG.
+2. It constructs an inspectable dependency DAG, including the trivial
+   single-output case.
 3. Existing intermediates are reused only when their source version, operation,
    parameters and validity match the request.
 4. Shared extraction/translation stages execute once when reusable.
@@ -712,8 +719,8 @@ exist.
 5. The output remains linked to source and transformation history.
 
 **Alternatives and failures.** If the target cannot be met within acceptable
-quality, the user may choose another fidelity mode, repair manually or keep the
-result explicitly degraded.
+quality, the person may choose another fidelity mode, repair manually or keep
+the result explicitly degraded.
 
 **Postconditions.** The derivative has a declared fidelity goal and visible
 quality limits.
@@ -730,7 +737,7 @@ complex tables/formulas, expensive manual repair.
 
 **Goal.** Reconstruct where a derivative came from and how it was produced.
 
-**Primary actor.** Person; later consumers may use the same capability.
+**Primary actor.** Person.
 
 **Preconditions.** A derivative or processed representation exists.
 
@@ -804,14 +811,15 @@ collapse, reversible merge/split semantics.
 **Goal.** Let an educational course select and reference Raiatea sources without
 creating a second universal library.
 
-**Primary actor.** Course author/teacher acting through TheBitLab.
+**Primary actor.** Course author/teacher.
 
-**Supporting systems.** TheBitLab.
+**Supporting external system.** TheBitLab.
 
 **Preconditions.** Raiatea has relevant source identities/provenance and the
 consumer is authorized to see the requested projection.
 
-**Trigger.** TheBitLab requests or receives a course-scoped selection.
+**Trigger.** The course author asks TheBitLab to use a Raiatea-backed source
+selection, or TheBitLab requests an already-defined projection.
 
 **Main success path.**
 
@@ -842,20 +850,20 @@ bundles, stale projections and source deletion.
 > Assertion status: `accepted-decision` for the safety outcome;
 > implementation absent
 
-**Goal.** Return the system to a known, explainable state after a partial or
-failed transformation or filesystem organization operation.
+**Goal.** Let the person return the system to a known, explainable state after a
+partial or failed transformation or filesystem organization operation.
 
-**Primary actor.** Person; automatic recovery may support but must remain
-auditable.
+**Primary actor.** Person.
 
-**Supporting systems.** Filesystem/storage, Alfred, processing providers and
-future execution plane as applicable.
+**Supporting systems.** Filesystem/storage, Alfred and processing providers as
+applicable.
 
 **Preconditions.** A consequential operation has started and enough intent/state
 was recorded to distinguish completed, failed and unknown stages.
 
-**Trigger.** Provider failure, process crash, partial batch mutation, storage
-error, cancellation or detected reconciliation mismatch.
+**Trigger.** Raiatea detects provider failure, process crash, partial batch
+mutation, storage error, cancellation or a reconciliation mismatch and exposes
+recovery to the person.
 
 **Main success path.**
 
@@ -905,12 +913,13 @@ UC-09 Preview organization policy
 
 UC-12 Translate source
   -> may depend on UC-11 Extraction
-  -> may participate in UC-13 Multi-output recipe
+  -> may participate in UC-13 Processing Recipe
   -> may use UC-14 Visual fidelity
   -> all derivatives require UC-15 Lineage
 
-UC-13 Multi-output recipe
+UC-13 Processing Recipe
   -> reuses UC-11/UC-12 intermediates when valid
+  -> may branch to multiple outputs
   -> failures route to UC-18 Recovery
 
 UC-16 Relate physical/digital representations
@@ -939,13 +948,13 @@ subset:
 | Find content and metadata | UC-05 | Produces immediate personal value |
 | Show more than one logical organization | UC-07 | Proves views are independent from folders |
 | Save one self-updating selection | UC-08 | Proves dynamic query state |
-| Produce one traced derivative | UC-13 + UC-15 | Proves transformation DAG/lineage with minimal breadth |
+| Produce one traced derivative | UC-13 single-output subset + UC-15 | Proves recipe/lineage without requiring multi-output branching |
 
 The first proof **does not require** automatic managed-file organization,
-physical holdings, natural-language query interpretation, layout-faithful
-translation or TheBitLab integration. Those remain accepted destination use
-cases but can be excluded from the first experiment to reduce destructive and
-integration risk.
+physical holdings, natural-language query interpretation, multi-output
+branching, layout-faithful translation or TheBitLab integration. Those remain
+accepted destination use cases but can be excluded from the first experiment to
+reduce destructive and integration risk.
 
 No row in this section promotes the candidate slice to `planned`. Promotion
 requires the evidence gates described by #106 and the upcoming Risk List.
@@ -956,22 +965,25 @@ requires the evidence gates described by #106 and the upcoming Risk List.
 | --- | --- | --- | --- | --- | --- |
 | UC-01 Inventory digital collection | primary | supporting where available | supporting | optional | — |
 | UC-02 Register physical holding | primary | — | — | optional metadata | — |
-| UC-03 Preserve identity after move | primary/initiator | supporting | supporting | — | — |
-| UC-04 Missing/deleted location | reviewer | supporting | supporting | — | — |
-| UC-05 Deterministic search | primary | — | — | search implementation internal/replaceable | — |
+| UC-03 Preserve identity after move | primary | supporting | supporting | — | — |
+| UC-04 Missing/deleted location | primary/reviewer | triggering/supporting | supporting | — | — |
+| UC-05 Deterministic search | primary | — | — | implementation remains replaceable | — |
 | UC-06 Natural-language search | primary | — | — | optional model interpreter | — |
 | UC-07 Logical views | primary | — | — | — | — |
 | UC-08 Smart Collection | primary | — | — | optional model only during query interpretation | — |
 | UC-09 Organization preview | primary | — | supporting | optional classification provider | — |
 | UC-10 Managed organization | primary/authorizer | observing | supporting | optional classification provider | — |
-| UC-11 P0 extraction | primary/requester | — | source access | parser/OCR/VLM | — |
+| UC-11 P0 extraction | primary | — | source access | parser/OCR/VLM | — |
 | UC-12 Translation | primary | — | — | translation provider | — |
-| UC-13 Multi-output recipe | primary | — | output storage | extraction/translation/rendering | — |
+| UC-13 Processing Recipe | primary | — | output storage | extraction/translation/rendering | — |
 | UC-14 Fidelity objective | primary | — | — | renderer/layout provider | — |
 | UC-15 Inspect lineage | primary | — | — | provider metadata is evidence | possible later consumer |
 | UC-16 Relate representations | primary/reviewer | — | — | optional metadata resolver | — |
-| UC-17 Course projection | teacher via consumer | — | — | — | primary external consumer |
+| UC-17 Course projection | course author/teacher | — | — | — | supporting external consumer/system |
 | UC-18 Recovery | primary/reviewer | supporting for filesystem truth | supporting | failed provider may participate | — |
+
+Internal triggers such as a Processing Recipe reaching a stage or a recovery
+condition becoming true are intentionally absent from the actor columns.
 
 ## 10. Inputs to the Risk List
 

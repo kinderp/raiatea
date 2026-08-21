@@ -77,6 +77,7 @@ jobs:
 
       - name: Run B-01 reference baseline
         run: |
+          mkdir -p "${RUNNER_TEMP}/raiatea-b01-reference"
           python elaboration/p0/benchmark/routes/measure_b01.py \
             --output "${RUNNER_TEMP}/raiatea-b01-reference" \
             --evidence-source-commit "${GITHUB_SHA}" \

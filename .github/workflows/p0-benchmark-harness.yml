@@ -1,0 +1,54 @@
+name: P0 benchmark harness
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/benchmark/**"
+      - ".github/workflows/p0-benchmark-harness.yml"
+  push:
+    branches:
+      - main
+    paths:
+      - "elaboration/p0/benchmark/**"
+      - ".github/workflows/p0-benchmark-harness.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python ${{ matrix.python-version }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+        python-version:
+          - "3.10"
+          - "3.12"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Compile benchmark tooling
+        shell: bash
+        run: python -m compileall -q elaboration/p0/benchmark
+
+      - name: Run benchmark harness tests
+        shell: bash
+        run: python -m unittest discover -s elaboration/p0/benchmark/tests -v
+
+      - name: Generate deterministic fixture set
+        shell: bash
+        run: |
+          python elaboration/p0/benchmark/generate_fixtures.py \
+            --output "${RUNNER_TEMP}/raiatea-p0-fixtures" > "${RUNNER_TEMP}/raiatea-p0-generated-manifest.txt"
+          test -s "${RUNNER_TEMP}/raiatea-p0-fixtures/generated-manifest.json"

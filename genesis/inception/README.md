@@ -4,7 +4,7 @@
 >
 > Assertion status: `accepted-decision`
 >
-> Version: 1.3.0
+> Version: 1.4.0
 >
 > Last reviewed: 21 August 2026
 >
@@ -59,8 +59,8 @@ announced by `genesis/README.md`.
 | [`02-vision.md`](02-vision.md) | Present | `Accepted` | `mixed` | Define users, value, product hierarchy, scope and measurable direction | `genesis/08`, `10`, `18`-`20`; maintainer approval 21 August 2026 |
 | [`03-system-context.md`](03-system-context.md) | Present | `Accepted` | `mixed` | Define actors, system boundaries, ownership and external systems | Vision, `genesis/04`, COMPASS, #111, pinned ecosystem evidence |
 | [`04-product-map.md`](04-product-map.md) | Present | `Accepted` | `mixed` | Separate document foundation, research/learning products, experiences and shared capabilities | Vision, System Context, #111 |
-| `05-use-case-model.md` | Not created | — | `planned` | Capture primary goals and significant scenarios | Vision and Product Map |
-| `06-risk-list.md` | Not created | — | `planned` | Prioritize product, legal, technical and scientific risks | `genesis/03`, `04`, `08`, `11`-`20` |
+| [`05-use-case-model.md`](05-use-case-model.md) | Present | `Draft` | `mixed` | Capture primary actors, significant scenarios, alternatives/failures and invariants | System Context, Product Map, #113 |
+| `06-risk-list.md` | Not created | — | `planned` | Prioritize product, legal, technical and scientific risks | `genesis/03`, `04`, `08`, `11`-`20`; Use Case Model |
 | `07-glossary.md` | Not created | — | `planned` | Establish the initial ubiquitous language | All accepted canonical artifacts |
 | `08-inception-review.md` | Not created | — | `planned` | Decide whether evidence supports entering Elaboration | All preceding artifacts and pilot results |
 
@@ -218,8 +218,10 @@ Before acceptance, reviewers must verify:
 ## 10. Current next step
 
 `00-why-raiatea.md` through `04-product-map.md` are accepted canonical artifacts
-in the proposed PR #112 state; `main` becomes authoritative after merge. The
-next sequential Inception step is the Use Case Model, followed by Risk List,
-Glossary and the final Inception Review. P0 implementation work remains tracked
-separately in [#106](https://github.com/kinderp/raiatea/issues/106) and must use
-the accepted System Context and Product Map as boundary input.
+on `main`. Issue [#113](https://github.com/kinderp/raiatea/issues/113) is the
+current sequential micro-step: `05-use-case-model.md` is Draft and must be
+reviewed before its scenario boundaries become canonical. The following
+Inception steps remain Risk List, Glossary and the final Inception Review. P0
+implementation work remains tracked separately in
+[#106](https://github.com/kinderp/raiatea/issues/106) and must use the accepted
+System Context, Product Map and later accepted use cases as boundary input.

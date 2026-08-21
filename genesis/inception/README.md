@@ -4,11 +4,11 @@
 >
 > Assertion status: `accepted-decision`
 >
-> Version: 1.2.0
+> Version: 1.3.0
 >
 > Last reviewed: 21 August 2026
 >
-> Accepted through: [PR #103](https://github.com/kinderp/raiatea/pull/103), updated through [PR #110](https://github.com/kinderp/raiatea/pull/110)
+> Accepted through: [PR #103](https://github.com/kinderp/raiatea/pull/103), updated through [PR #112](https://github.com/kinderp/raiatea/pull/112)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 
@@ -57,8 +57,8 @@ announced by `genesis/README.md`.
 | [`00-why-raiatea.md`](00-why-raiatea.md) | Present | `Accepted` | `mixed` | Define the problem and reason to begin | `genesis/00`, `08`, `10`, `18` |
 | [`01-manifesto.md`](01-manifesto.md) | Present | `Accepted` | `mixed` | State human and philosophical commitments | `genesis/00`, `03`, `09`, `16`-`18`; maintainer approval 21 August 2026 |
 | [`02-vision.md`](02-vision.md) | Present | `Accepted` | `mixed` | Define users, value, product hierarchy, scope and measurable direction | `genesis/08`, `10`, `18`-`20`; maintainer approval 21 August 2026 |
-| [`03-system-context.md`](03-system-context.md) | Present | `Draft` | `mixed` | Define actors, system boundaries, ownership and external systems | Vision, `genesis/04`, COMPASS, #111, ecosystem contract audit |
-| [`04-product-map.md`](04-product-map.md) | Present | `Draft` | `mixed` | Separate document foundation, research/learning products, experiences and shared capabilities | Vision, System Context, #111 |
+| [`03-system-context.md`](03-system-context.md) | Present | `Accepted` | `mixed` | Define actors, system boundaries, ownership and external systems | Vision, `genesis/04`, COMPASS, #111, pinned ecosystem evidence |
+| [`04-product-map.md`](04-product-map.md) | Present | `Accepted` | `mixed` | Separate document foundation, research/learning products, experiences and shared capabilities | Vision, System Context, #111 |
 | `05-use-case-model.md` | Not created | — | `planned` | Capture primary goals and significant scenarios | Vision and Product Map |
 | `06-risk-list.md` | Not created | — | `planned` | Prioritize product, legal, technical and scientific risks | `genesis/03`, `04`, `08`, `11`-`20` |
 | `07-glossary.md` | Not created | — | `planned` | Establish the initial ubiquitous language | All accepted canonical artifacts |
@@ -217,9 +217,9 @@ Before acceptance, reviewers must verify:
 
 ## 10. Current next step
 
-`00-why-raiatea.md`, `01-manifesto.md` and `02-vision.md` are accepted canonical
-artifacts on `main` through PR #110. Issue
-[#111](https://github.com/kinderp/raiatea/issues/111) is the current sequential
-micro-step: `03-system-context.md` and `04-product-map.md` are now Draft and must
-be reviewed before their boundaries become canonical. The following Inception
-steps remain Use Case Model, Risk List, Glossary and the final Inception Review.
+`00-why-raiatea.md` through `04-product-map.md` are accepted canonical artifacts
+in the proposed PR #112 state; `main` becomes authoritative after merge. The
+next sequential Inception step is the Use Case Model, followed by Risk List,
+Glossary and the final Inception Review. P0 implementation work remains tracked
+separately in [#106](https://github.com/kinderp/raiatea/issues/106) and must use
+the accepted System Context and Product Map as boundary input.

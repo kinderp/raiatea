@@ -57,10 +57,19 @@ jobs:
     name: B-01 Poppler reference / Ubuntu
     needs: test
     runs-on: ubuntu-latest
+    env:
+      EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
-      - name: Check out repository
+      - name: Check out exact evidence source commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SOURCE_COMMIT }}
+
+      - name: Verify evidence source checkout
+        run: |
+          test "$(git rev-parse HEAD)" = "${EVIDENCE_SOURCE_COMMIT}"
+          echo "Evidence source commit: ${EVIDENCE_SOURCE_COMMIT}"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -80,7 +89,7 @@ jobs:
           mkdir -p "${RUNNER_TEMP}/raiatea-b01-reference"
           python elaboration/p0/benchmark/routes/measure_b01.py \
             --output "${RUNNER_TEMP}/raiatea-b01-reference" \
-            --evidence-source-commit "${GITHUB_SHA}" \
+            --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
             > "${RUNNER_TEMP}/raiatea-b01-reference/stdout-report.json"
           test -s "${RUNNER_TEMP}/raiatea-b01-reference/b01-results.json"
           test -s "${RUNNER_TEMP}/raiatea-b01-reference/b01-summary.md"
@@ -88,7 +97,7 @@ jobs:
       - name: Upload B-01 reference evidence
         uses: actions/upload-artifact@v4
         with:
-          name: p0-b01-poppler-reference-${{ github.sha }}
+          name: p0-b01-poppler-reference-${{ env.EVIDENCE_SOURCE_COMMIT }}
           path: ${{ runner.temp }}/raiatea-b01-reference
           if-no-files-found: error
           retention-days: 7

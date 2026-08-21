@@ -1,14 +1,16 @@
 # P0 Elaboration
 
-> Document maturity: `Accepted`
+> Document maturity: `Draft`
 >
 > Assertion status: `mixed`
 >
-> Version: 1.0.0
+> Version: 1.1.0
 >
 > Last reviewed: 21 August 2026
 >
-> Accepted through: [PR #124](https://github.com/kinderp/raiatea/pull/124)
+> Accepted baseline through: [PR #124](https://github.com/kinderp/raiatea/pull/124)
+>
+> Current review issue: [#125](https://github.com/kinderp/raiatea/issues/125)
 >
 > Phase: **Elaboration — P0 risk reduction and architecture**
 >
@@ -22,14 +24,13 @@ is to reduce risk before a first product slice is promoted to `planned` work.
 The current PDF/EPUB first slice remains a **working hypothesis**. Nothing in
 this directory makes it implemented or planned by itself.
 
-## Completed boundary micro-step — #123
+## E-01 — accepted source/rights/threat boundary
 
-The first Elaboration child defines the boundary needed before Provider survey
-and benchmark design:
+Accepted through #123 / PR #124 / `c1be73d`:
 
 - [`source-taxonomy.md`](source-taxonomy.md) — Source Families, non-exclusive
-  traits/profiles, candidate benchmark classes, coordinate and quality-profile
-  expectations;
+  traits/profiles, candidate Benchmark Classes, Source Coordinate and
+  quality-profile expectations;
 - [`rights-data-boundary.md`](rights-data-boundary.md) — Processing Authority,
   Processing Rights, Redistribution Rights, sensitivity, retention and
   local/remote Provider data flows;
@@ -37,19 +38,51 @@ and benchmark design:
   boundary, filesystem/path/provider threats and evidence required by G-02/G-03/
   G-04/G-05/G-07.
 
-All three are Accepted through PR #124. Acceptance records the evidence boundary;
-it does not claim that any risk gate is satisfied or that the first slice has
-been promoted.
+Acceptance records the boundary; it does not claim that a risk gate is satisfied
+or that the first slice has been promoted.
+
+## E-02 — technology survey / build-buy-reuse — #125
+
+> Assertion status: `working-hypothesis` until #125 is accepted
+
+Current Draft evidence package:
+
+- [`technology-survey.md`](technology-survey.md) — current version-pinned primary
+  evidence for extraction/OCR/conversion Provider candidates;
+- [`provider-matrix.md`](provider-matrix.md) — Provider × Source Family,
+  structure/coordinates, OCR, deployment, licensing and B-01/B-02 comparison;
+- [`build-buy-reuse.md`](build-buy-reuse.md) — capability-level decisions across
+  reuse, compose, build-thin-layer, benchmark-first and defer.
+
+E-02 does not select a production Provider. Provider-published benchmark numbers
+remain documented claims until Raiatea runs E-04 fixtures.
+
+## Current survey candidates
+
+The Draft survey includes current primary-source evidence for:
+
+- Docling;
+- Marker;
+- MinerU;
+- Unstructured;
+- Apache Tika;
+- GROBID;
+- OCRmyPDF + Tesseract;
+- PaddleOCR / document-VL routes;
+- Pandoc;
+- EPUB-specific parsing options.
+
+The list is not a product endorsement and may be narrowed or extended by review.
 
 ## Elaboration sequence
 
 The accepted Inception Review authorizes a bounded sequence:
 
-1. source taxonomy + rights/threat boundary — **completed**;
-2. current technology survey/build-buy-reuse — **next**;
-3. rights-safe benchmark corpus/fixture design;
+1. source taxonomy + rights/threat boundary — **completed** (#123/#124);
+2. current technology survey/build-buy-reuse — **in review** (#125);
+3. rights-safe benchmark corpus/fixture design — next after E-02 acceptance;
 4. source-class benchmark contract and baseline measurements;
-5. provider-neutral P0 contract exploration;
+5. Provider-neutral P0 contract exploration;
 6. Alfred reconciliation/integration evidence;
 7. evidence packages for G-01..G-07;
 8. separate first-slice promotion decision.
@@ -64,8 +97,11 @@ The accepted Inception Review authorizes a bounded sequence:
 - Raw Extraction and Normalized Representation are distinct.
 - Processing Authority, Processing Rights and Redistribution Rights are
   distinct.
-- No Provider, database, vector store, graph store or schema is selected by this
-  evidence package.
+- No Provider, database, vector store, graph store or public schema is selected
+  by the E-01/E-02 evidence packages.
+- Provider-native representations such as DoclingDocument, Marker JSON, MinerU
+  middle JSON, Unstructured Elements or GROBID TEI do not become Raiatea's
+  public/core contract merely because an Adapter consumes them.
 - Automatic organization, NL search, translation/layout, multi-output DAG,
   Durex integration, physical-holding linking, TheBitLab projection and P1-P7
   remain behind their accepted gates.

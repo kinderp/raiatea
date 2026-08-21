@@ -4,22 +4,23 @@
 >
 > Assertion status: `accepted-decision`
 >
-> Version: 1.9.0
+> Version: 2.1.0
 >
 > Last reviewed: 21 August 2026
 >
-> Accepted through: [PR #103](https://github.com/kinderp/raiatea/pull/103), updated through [PR #118](https://github.com/kinderp/raiatea/pull/118)
+> Accepted through: [PR #103](https://github.com/kinderp/raiatea/pull/103), updated through [PR #122](https://github.com/kinderp/raiatea/pull/122)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 
 ## 1. Purpose
 
-This directory contains the concise, canonical artifacts used to orient
-Raiatea's Inception. It does not replace the exploratory notes in `genesis/`.
-Instead, it derives current guidance from them while preserving links to the
-reasoning, alternatives and uncertainties that produced each conclusion.
+This directory contains the concise, canonical artifacts produced by Raiatea's
+Project Genesis / Inception phase. It does not replace the exploratory notes in
+`genesis/`. Instead, it derives current guidance from them while preserving
+links to the reasoning, alternatives and uncertainties that produced each
+conclusion.
 
-A canonical artifact must make it possible to distinguish:
+The package makes it possible to distinguish:
 
 - what Raiatea currently does;
 - what has been deliberately decided;
@@ -48,8 +49,8 @@ must be recorded and resolved explicitly.
 ## 3. Document map
 
 The audit is numbered separately because it observes the state preceding the
-canonical set. The final paths of the intended artifacts preserve the names
-announced by `genesis/README.md`.
+canonical set. The final paths preserve the names announced by
+`genesis/README.md`.
 
 | Artifact | Availability | Document maturity | Assertion status | Purpose | Primary sources |
 | --- | --- | --- | --- | --- | --- |
@@ -62,17 +63,13 @@ announced by `genesis/README.md`.
 | [`05-use-case-model.md`](05-use-case-model.md) | Present | `Accepted` | `mixed` | Capture primary actors, significant scenarios, alternatives/failures and invariants | System Context, Product Map, #113 |
 | [`06-risk-list.md`](06-risk-list.md) | Present | `Accepted` | `mixed` | Prioritize failure modes and define evidence, promotion and invalidation gates | Why, Manifesto, Vision, Use Case Model, #115; complete register in [`06-risk-register.md`](06-risk-register.md) |
 | [`07-glossary.md`](07-glossary.md) | Present | `Accepted` | `mixed` | Establish the initial ubiquitous language without freezing schema/API | Accepted Inception artifacts 01-06, #117 |
-| `08-inception-review.md` | Not created | — | `planned` | Decide whether evidence supports entering Elaboration | All preceding artifacts and pilot results |
+| [`08-inception-review.md`](08-inception-review.md) | Present | `Accepted` | `mixed` | Decide entry into Elaboration and bound the work it authorizes | All preceding artifacts, #106, pilot state and #121 |
 
 Supporting terminology reconciliation for the Glossary is documented in
 [`07-terminology-compatibility.md`](07-terminology-compatibility.md). It is an
-Accepted supporting artifact in the proposed PR #118 state and maps accepted
-pre-Glossary shorthand to the preferred vocabulary without rewriting historical
-canonical documents or implying schema migrations.
-
-`planned` in this table qualifies the creation of each absent artifact. It does
-not assign document maturity to a file that does not exist and does not approve
-the future artifact's conclusions in advance.
+Accepted supporting artifact and maps accepted pre-Glossary shorthand to the
+preferred vocabulary without rewriting historical canonical documents or
+implying schema migrations.
 
 ## 4. Two separate status dimensions
 
@@ -221,11 +218,26 @@ Before acceptance, reviewers must verify:
 - no placeholder text creates the appearance of progress;
 - finding log, clean review rounds and required CI satisfy operational rules.
 
-## 10. Current next step
+## 10. Phase transition
 
-`00-why-raiatea.md` through `07-glossary.md` are Accepted canonical artifacts in
-the proposed PR #118 state; `main` becomes authoritative after merge. The final
-sequential Inception step is `08-inception-review.md`, which must decide whether
-the evidence, boundaries, risks and vocabulary are sufficient to enter
-Elaboration and to authorize the next P0 planning work. P0 implementation work
-remains tracked separately in [#106](https://github.com/kinderp/raiatea/issues/106).
+The accepted Inception package concludes Project Genesis and records a **bounded
+GO to Elaboration for P0 risk reduction and architecture** through
+[`08-inception-review.md`](08-inception-review.md).
+
+After PR #122 is merged:
+
+- Project Genesis / Inception is complete;
+- [#106](https://github.com/kinderp/raiatea/issues/106) is the primary platform
+  Elaboration roadmap;
+- the candidate PDF/EPUB first slice remains a `working-hypothesis` until
+  G-01..G-07 receive sufficient evidence and a separate roadmap decision
+  promotes it;
+- P0 is still planned, not implemented;
+- automatic organization, NL search, translation/layout, multi-output DAG,
+  Durex integration, physical-holding linking, TheBitLab projection and P1-P7
+  remain behind their accepted feature/evidence gates;
+- the supervised pedagogical pilot remains an independent evidence stream and
+  is not validated by the phase transition.
+
+The canonical next work is therefore evidence generation, not broad feature
+implementation.

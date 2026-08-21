@@ -55,7 +55,7 @@ def digest_file(path: Path, algorithm: str = "sha256") -> str:
 
 
 def artifact_manifest(root: Path) -> dict[str, Any]:
-    """Return a deterministic manifest of all files under a model-artifact root."""
+    """Return a deterministic manifest of all files under a model/cache root."""
     resolved = root.resolve()
     files: list[dict[str, Any]] = []
     if not resolved.is_dir():
@@ -99,7 +99,10 @@ def installed_environment() -> dict[str, Any]:
             "installed": False,
         }
     distributions = []
-    for dist in sorted(importlib.metadata.distributions(), key=lambda d: (d.metadata.get("Name") or "").lower()):
+    for dist in sorted(
+        importlib.metadata.distributions(),
+        key=lambda d: (d.metadata.get("Name") or "").lower(),
+    ):
         name = dist.metadata.get("Name")
         if name:
             distributions.append(f"{name}=={dist.version}")
@@ -116,7 +119,13 @@ def installed_environment() -> dict[str, Any]:
 def _page_sizes(document: dict[str, Any]) -> dict[int, tuple[float, float]]:
     sizes: dict[int, tuple[float, float]] = {}
     pages = document.get("pages", {})
-    iterable = pages.values() if isinstance(pages, dict) else pages if isinstance(pages, list) else []
+    iterable = (
+        pages.values()
+        if isinstance(pages, dict)
+        else pages
+        if isinstance(pages, list)
+        else []
+    )
     for page in iterable:
         if not isinstance(page, dict):
             continue
@@ -132,7 +141,14 @@ def _page_sizes(document: dict[str, Any]) -> dict[int, tuple[float, float]]:
 
 def _ref_registry(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
     registry: dict[str, dict[str, Any]] = {}
-    for collection in ("texts", "groups", "tables", "pictures", "key_value_items", "form_items"):
+    for collection in (
+        "texts",
+        "groups",
+        "tables",
+        "pictures",
+        "key_value_items",
+        "form_items",
+    ):
         values = document.get(collection, [])
         if not isinstance(values, list):
             continue
@@ -142,7 +158,10 @@ def _ref_registry(document: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return registry
 
 
-def _body_order(document: dict[str, Any], registry: dict[str, dict[str, Any]]) -> tuple[list[tuple[str, dict[str, Any]]], list[dict[str, Any]]]:
+def _body_order(
+    document: dict[str, Any],
+    registry: dict[str, dict[str, Any]],
+) -> tuple[list[tuple[str, dict[str, Any]]], list[dict[str, Any]]]:
     """Resolve body/group refs while preserving authored Docling body order."""
     ordered: list[tuple[str, dict[str, Any]]] = []
     warnings: list[dict[str, Any]] = []
@@ -176,10 +195,14 @@ def _body_order(document: dict[str, Any], registry: dict[str, dict[str, Any]]) -
         warnings.append(
             {
                 "code": "docling-body-order-unavailable",
-                "details": "Document JSON has no body.children reference sequence; texts array order is used only as a fallback observation.",
+                "details": (
+                    "Document JSON has no body.children reference sequence; "
+                    "texts array order is used only as a fallback observation."
+                ),
             }
         )
-        for index, item in enumerate(document.get("texts", []) if isinstance(document.get("texts"), list) else []):
+        values = document.get("texts", [])
+        for index, item in enumerate(values if isinstance(values, list) else []):
             if isinstance(item, dict):
                 ordered.append((f"#/texts/{index}", item))
     return ordered, warnings
@@ -241,7 +264,9 @@ def map_docling_document(document: dict[str, Any]) -> dict[str, Any]:
                     page_index = page_no - 1
                     bbox = first.get("bbox")
                     if isinstance(bbox, dict):
-                        coordinate_origin = str(bbox.get("coord_origin", "TOPLEFT")).upper()
+                        coordinate_origin = str(
+                            bbox.get("coord_origin", "TOPLEFT")
+                        ).upper()
                         bbox_points, provenance_warning = _bbox_bottom_left(
                             bbox, page_no, page_sizes
                         )
@@ -286,6 +311,10 @@ def map_docling_document(document: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
+    fallback = any(
+        warning.get("code") == "docling-body-order-unavailable"
+        for warning in warnings
+    )
     return {
         "contract": _contract(),
         "route": "docling-2.118.0-standard-pdf-native-no-ocr",
@@ -297,20 +326,29 @@ def map_docling_document(document: dict[str, Any]) -> dict[str, Any]:
         "bbox_structure_observed": any(
             block.get("bbox_points_bottom_left") is not None for block in blocks
         ),
-        "body_order_source": "body.children" if not any(w.get("code") == "docling-body-order-unavailable" for w in warnings) else "texts-fallback",
+        "body_order_source": "texts-fallback" if fallback else "body.children",
     }
 
 
 @contextmanager
-def _offline_environment(artifacts_path: Path, cache_root: Path) -> Iterator[None]:
+def _offline_environment(
+    artifacts_path: Path,
+    cache_root: Path,
+) -> Iterator[None]:
     """Apply fail-closed cache/offline environment for measured conversion."""
+    cache_root = cache_root.resolve()
     values = {
         "DOCLING_ARTIFACTS_PATH": str(artifacts_path.resolve()),
-        "HF_HOME": str((cache_root / "huggingface").resolve()),
-        "HUGGINGFACE_HUB_CACHE": str((cache_root / "huggingface" / "hub").resolve()),
-        "TRANSFORMERS_CACHE": str((cache_root / "transformers").resolve()),
+        "HF_HOME": str(cache_root / "huggingface"),
+        "HUGGINGFACE_HUB_CACHE": str(cache_root / "huggingface" / "hub"),
+        "TRANSFORMERS_CACHE": str(cache_root / "transformers"),
+        "XDG_CACHE_HOME": str(cache_root / "xdg"),
+        "TORCH_HOME": str(cache_root / "torch"),
+        "MPLCONFIGDIR": str(cache_root / "matplotlib"),
         "HF_HUB_OFFLINE": "1",
         "TRANSFORMERS_OFFLINE": "1",
+        "HF_HUB_DISABLE_TELEMETRY": "1",
+        "DO_NOT_TRACK": "1",
         "DOCLING_DEVICE": "cpu",
         "DOCLING_NUM_THREADS": "4",
     }
@@ -395,7 +433,9 @@ def run_docling_pdf_json(
                     AcceleratorOptions,
                 )
                 from docling.datamodel.base_models import InputFormat  # type: ignore[import-not-found]
-                from docling.datamodel.pipeline_options import PdfPipelineOptions  # type: ignore[import-not-found]
+                from docling.datamodel.pipeline_options import (  # type: ignore[import-not-found]
+                    PdfPipelineOptions,
+                )
                 from docling.document_converter import (  # type: ignore[import-not-found]
                     DocumentConverter,
                     PdfFormatOption,
@@ -431,6 +471,7 @@ def run_docling_pdf_json(
                     },
                 )
                 result = converter.convert(local_input)
+                provider_status = str(result.status)
                 exported = result.document.export_to_dict()
         except Exception as exc:  # runtime/provider failures are benchmark evidence
             observation["status"] = "failed"
@@ -444,9 +485,24 @@ def run_docling_pdf_json(
             observation["duration_seconds"] = round(time.perf_counter() - started, 9)
             return observation
 
-    raw = json.dumps(exported, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    raw = json.dumps(
+        exported,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
     mapped = map_docling_document(exported)
     observation.update(mapped)
+    observation["provider_conversion_status"] = provider_status
+    if "success" not in provider_status.lower():
+        observation["status"] = "degraded"
+        observation["warnings"].append(
+            {
+                "code": "docling-provider-status-not-success",
+                "details": provider_status,
+            }
+        )
+    observation["raw_document"] = exported
     observation["raw_output_sha256"] = hashlib.sha256(raw).hexdigest()
     observation["raw_output_bytes"] = len(raw)
     observation["model_artifacts"] = artifacts
@@ -468,6 +524,7 @@ def run_docling_pdf_json(
         "accelerator_threads": 4,
         "hf_hub_offline": True,
         "transformers_offline": True,
+        "controlled_cache_root": True,
     }
     observation["duration_seconds"] = round(time.perf_counter() - started, 9)
     return observation

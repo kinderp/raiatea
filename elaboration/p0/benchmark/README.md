@@ -94,9 +94,71 @@ regions, but they differ in observed reading order: `pdftotext-bbox-layout`
 satisfies 3/4 gold edges whereas `pdftohtml-xml` satisfies 4/4. Hierarchy remains
 `not-measured`; font/layout cues are not promoted to semantic structure.
 
-Tika and Docling remain structured Provider candidates from E-02, but they are
-`not-measured` in this reference run. Absence/setup state is never treated as an
-extraction-quality result.
+## B-01 Apache Tika structured route
+
+E-04d adds a local, hash-verified **Apache Tika 3.3.2 XHTML route** for the same
+born-digital fixtures. It is measured as a structured candidate, not selected as
+a production Provider.
+
+The route:
+
+- uses the official `tika-app-3.3.2.jar` and verifies the pinned SHA-512 before
+  execution;
+- uses Temurin `21.0.12+8` with a pinned Java executable SHA-256 in the reference
+  job;
+- runs with `tika-pdf-native-no-ocr.xml`, where `PDFParser.ocrStrategy=no_ocr`,
+  inline-image extraction is disabled and `TesseractOCRParser` is excluded;
+- redirects both `java.io.tmpdir` and PDFBox's `pdfbox.fontcache` under the
+  controlled benchmark temporary parent;
+- accepts local fixture files only and uses no hosted/API Provider route;
+- maps only explicit Tika XHTML semantics/page containers and never fabricates
+  source geometry.
+
+Run it locally with a verified Tika jar:
+
+```bash
+python elaboration/p0/benchmark/routes/measure_tika_b01.py \
+  --output /tmp/raiatea-tika-b01 \
+  --tika-jar /path/to/tika-app-3.3.2.jar \
+  --config elaboration/p0/benchmark/config/tika-pdf-native-no-ocr.xml \
+  --evidence-source-commit <exact-code-commit>
+```
+
+The canonical source run is commit `14acf44`; compact evidence is stored under:
+
+```text
+elaboration/p0/benchmark/evidence/
+  b01-reference-ubuntu-tika-3.3.2/
+    tika-baseline.json
+    tika-summary.md
+```
+
+The source run is GitHub Actions run `32528505169`, artifact `9463033920`,
+digest `sha256:4155813b13c67fd3d0334929ebcc81d831fff119de3741dce1dbf2cba99d9d44`.
+It measured Tika 3.3.2 on Ubuntu 24.04 / Python 3.12.14 / Temurin 21.0.12+8.
+
+Measured behavior on the current minimal fixtures:
+
+- exact text: `3/3` on B01-PDF-001 and `5/5` on B01-PDF-002;
+- reading order: `2/2` and `4/4` respectively;
+- explicit `div.page` preserves page identity;
+- no bbox/source geometry is exposed by the measured XHTML, so coordinates are
+  `not-measured`, not scored as failure or success;
+- the visual title is emitted as `<p>`, yielding explicit hierarchy mismatches
+  (`2/3` and `4/5` exact semantic types) rather than a typography-based guess;
+- 20 metadata keys are visible in each current fixture;
+- PDFBox creates `.pdfbox.cache`, but it is redirected to the controlled
+  `pdfbox-font-cache/` root; no unexpected files were observed under the
+  controlled parent.
+
+Compared with the current Poppler controls, Tika adds explicit page containers,
+metadata and explicit paragraph semantics, while Poppler remains stronger for
+source geometry. On B01-PDF-002, Tika's current reading order is `4/4`, matching
+`pdftohtml-xml` and differing from `pdftotext-bbox-layout` (`3/4`). This is a
+per-dimension observation, **not** a total Provider ranking.
+
+Docling and the other structured candidates remain unmeasured by this evidence
+step; absence/setup state must not be converted into extraction-quality evidence.
 
 ## B-02 baseline routes
 
@@ -159,6 +221,10 @@ Tests cover:
 - fail-closed multi-page page-size handling;
 - no Poppler DRM/access-control override;
 - B-01 text/reading-order/coordinate scoring and ambiguous duplicate-text handling;
+- structured B-01 scoring where missing geometry remains `not-measured`/`partial`;
+- Tika no-OCR configuration, jar verification and conservative XHTML mapping;
+- Tika Java/PDFBox runtime filesystem confinement across Linux/Windows path semantics;
+- Tika summary/evidence retention of Java hash, controlled cache and semantic limits;
 - EPUB `mimetype`/container/OPF/nav structure;
 - EPUB no-canonical-page gold invariant;
 - cross-resource anchors;

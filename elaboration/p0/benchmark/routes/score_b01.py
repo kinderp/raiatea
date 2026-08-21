@@ -33,6 +33,147 @@ def _bbox_inside(inner: list[float], outer: list[float]) -> bool:
     )
 
 
+def _measure_coordinates(
+    reference_units: list[dict[str, Any]],
+    matched_blocks: dict[str, dict[str, Any]],
+    match_states: dict[str, str],
+) -> dict[str, Any]:
+    rows: list[dict[str, Any]] = []
+    evidence_count = 0
+    for unit in reference_units:
+        expected_page = unit.get("page_index")
+        expected_region = unit.get("region")
+        if expected_page is None or expected_region is None:
+            continue
+        block = matched_blocks.get(unit["id"])
+        observed_bbox = block.get("bbox_points_bottom_left") if block else None
+        observed_page = block.get("page_index") if block else None
+        has_geometry = observed_bbox is not None
+        has_page = observed_page is not None
+        if has_geometry:
+            evidence_count += 1
+        page_exact = has_page and observed_page == expected_page
+        contained = (
+            has_geometry
+            and page_exact
+            and _bbox_inside(observed_bbox, expected_region)
+        )
+        rows.append(
+            {
+                "reference_unit": unit.get("id"),
+                "match_state": match_states.get(unit["id"], "missing"),
+                "geometry_available": has_geometry,
+                "page_available": has_page,
+                "page_exact": page_exact if has_page else None,
+                "bbox_inside_gold_region": contained if has_geometry and has_page else None,
+                "expected_page_index": expected_page,
+                "observed_page_index": observed_page,
+                "gold_region_points_bottom_left": expected_region,
+                "observed_bbox_points_bottom_left": observed_bbox,
+            }
+        )
+
+    if not rows:
+        return {
+            "status": "not-applicable",
+            "reason": "Gold contains no coordinate-bearing reference units for this fixture.",
+            "units": [],
+        }
+    if evidence_count == 0:
+        return {
+            "status": "not-measured",
+            "reason": (
+                "The measured route exposes no source geometry for matched "
+                "coordinate-bearing reference units; absence is not scored as zero fidelity."
+            ),
+            "geometry_evidence_count": 0,
+            "expected_count": len(rows),
+            "units": rows,
+        }
+
+    contained_count = sum(row["bbox_inside_gold_region"] is True for row in rows)
+    status = "measured" if evidence_count == len(rows) else "partial"
+    result = {
+        "status": status,
+        "comparison": (
+            "page-exact plus strict containment of observed text bbox inside broad "
+            "gold reference region; no universal IoU threshold"
+        ),
+        "geometry_evidence_count": evidence_count,
+        "contained_count": contained_count,
+        "expected_count": len(rows),
+        "units": rows,
+    }
+    if status == "partial":
+        result["reason"] = (
+            "Only part of the matched reference set exposes source geometry; "
+            "missing geometry remains unmeasured rather than being counted as failure."
+        )
+    return result
+
+
+def _measure_hierarchy(
+    reference_units: list[dict[str, Any]],
+    matched_blocks: dict[str, dict[str, Any]],
+    match_states: dict[str, str],
+) -> dict[str, Any]:
+    comparable = [
+        unit for unit in reference_units if unit.get("type") in {"heading", "paragraph", "code", "list-item"}
+    ]
+    semantic_evidence = [
+        unit
+        for unit in comparable
+        if matched_blocks.get(unit.get("id")) is not None
+        and matched_blocks[unit["id"]].get("semantic_type") is not None
+    ]
+    if not semantic_evidence:
+        return {
+            "status": "not-measured",
+            "reason": (
+                "The measured route exposes no explicit Provider-neutral semantic "
+                "type for matched reference units. Visual/font cues are never used "
+                "as implicit hierarchy evidence."
+            ),
+            "semantic_evidence_count": 0,
+            "expected_count": len(comparable),
+            "units": [],
+        }
+
+    rows: list[dict[str, Any]] = []
+    for unit in comparable:
+        block = matched_blocks.get(unit.get("id"))
+        observed_type = block.get("semantic_type") if block else None
+        has_semantics = observed_type is not None
+        expected_type = unit.get("type")
+        type_exact = has_semantics and observed_type == expected_type
+        rows.append(
+            {
+                "reference_unit": unit.get("id"),
+                "match_state": match_states.get(unit.get("id"), "missing"),
+                "semantic_evidence_available": has_semantics,
+                "expected_type": expected_type,
+                "observed_type": observed_type,
+                "type_exact": type_exact if has_semantics else None,
+                "observed_level": block.get("semantic_level") if block else None,
+            }
+        )
+
+    status = "measured" if len(semantic_evidence) == len(comparable) else "partial"
+    result = {
+        "status": status,
+        "semantic_evidence_count": len(semantic_evidence),
+        "expected_count": len(comparable),
+        "type_exact_count": sum(row["type_exact"] is True for row in rows),
+        "units": rows,
+    }
+    if status == "partial":
+        result["reason"] = (
+            "Only part of the matched reference set exposes explicit semantic types; "
+            "missing semantics remain unmeasured."
+        )
+    return result
+
+
 def measure_b01_fixture(
     fixture_id: str,
     observation: dict[str, Any],
@@ -43,10 +184,11 @@ def measure_b01_fixture(
     dimensions: dict[str, Any] = {}
 
     text_rows: list[dict[str, Any]] = []
-    coordinate_rows: list[dict[str, Any]] = []
     matched_blocks: dict[str, dict[str, Any]] = {}
+    match_states: dict[str, str] = {}
     for unit in reference_units:
         block, match_state = _find_unique_block(observation, unit.get("text", ""))
+        match_states[unit["id"]] = match_state
         if block is not None:
             matched_blocks[unit["id"]] = block
         text_rows.append(
@@ -57,45 +199,15 @@ def measure_b01_fixture(
             }
         )
 
-        expected_page = unit.get("page_index")
-        expected_region = unit.get("region")
-        if expected_page is None or expected_region is None:
-            continue
-        observed_bbox = block.get("bbox_points_bottom_left") if block else None
-        observed_page = block.get("page_index") if block else None
-        page_exact = block is not None and observed_page == expected_page
-        contained = (
-            bool(block)
-            and page_exact
-            and observed_bbox is not None
-            and _bbox_inside(observed_bbox, expected_region)
-        )
-        coordinate_rows.append(
-            {
-                "reference_unit": unit.get("id"),
-                "match_state": match_state,
-                "page_exact": page_exact,
-                "bbox_inside_gold_region": contained,
-                "expected_page_index": expected_page,
-                "observed_page_index": observed_page,
-                "gold_region_points_bottom_left": expected_region,
-                "observed_bbox_points_bottom_left": observed_bbox,
-            }
-        )
-
     dimensions["content_text"] = {
         "status": "measured",
         "matched_units": sum(row["exact_text"] for row in text_rows),
         "expected_units": len(text_rows),
         "units": text_rows,
     }
-    dimensions["source_coordinates"] = {
-        "status": "measured",
-        "comparison": "page-exact plus strict containment of observed text bbox inside broad gold reference region; no universal IoU threshold",
-        "contained_count": sum(row["bbox_inside_gold_region"] for row in coordinate_rows),
-        "expected_count": len(coordinate_rows),
-        "units": coordinate_rows,
-    }
+    dimensions["source_coordinates"] = _measure_coordinates(
+        reference_units, matched_blocks, match_states
+    )
 
     text_by_id = {
         unit["id"]: unit.get("text")
@@ -145,14 +257,9 @@ def measure_b01_fixture(
         "edges": edge_rows,
     }
 
-    dimensions["hierarchy"] = {
-        "status": "not-measured",
-        "reason": (
-            "The Poppler control outputs used in this child expose text/layout "
-            "but not Provider-neutral heading/paragraph semantics. Font-size or "
-            "visual cues are not promoted to hierarchy gold."
-        ),
-    }
+    dimensions["hierarchy"] = _measure_hierarchy(
+        reference_units, matched_blocks, match_states
+    )
 
     return {
         "fixture_id": fixture_id,

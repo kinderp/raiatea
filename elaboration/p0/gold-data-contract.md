@@ -236,10 +236,10 @@ containment, centroid distance or another justified measure per fixture class.
 
 ## 9. B-02 Source Coordinate gold
 
-> Assertion status: `accepted-decision` for semantics; concrete serialization
-> remains provisional
+> Assertion status: `provisional-decision`; the accepted invariant is only that
+> reflowable EPUB must not be assigned canonical rendered page numbers
 
-EPUB reference coordinates use package/logical semantics:
+Candidate EPUB reference coordinates use package/logical semantics such as:
 
 - package/fixture version;
 - resource identifier/href;
@@ -247,11 +247,13 @@ EPUB reference coordinates use package/logical semantics:
 - reference-unit anchor within the resource;
 - optionally a stable structural path defined by the fixture.
 
-Canonical rendered page numbers are forbidden as B-02 gold.
+Canonical rendered page numbers are forbidden as B-02 gold. The exact package/
+anchor representation remains subject to E-03/E-04 evidence and must not be
+promoted to a public contract by this benchmark design.
 
-If a Provider normalizes or merges resources, its Adapter must still demonstrate
-a traceable mapping back to the reference resource/anchor or expose coordinate
-degradation.
+If a Provider normalizes or merges resources, its benchmark mapper/Adapter must
+still demonstrate a traceable mapping back to the accepted reference semantics
+or expose coordinate degradation.
 
 ## 10. Link/reference gold
 
@@ -479,7 +481,8 @@ Before acceptance, review must verify:
 - gold is Provider-neutral;
 - dimensions are independent;
 - assertion modes distinguish exact/tolerance/relation/order/human/ambiguous;
-- B-01 and B-02 coordinates use different correct semantics;
+- B-01 and B-02 coordinates use different correct semantics without freezing the
+  concrete EPUB anchor representation;
 - segmentation mismatch is supported;
 - negative fixtures have expected state behavior rather than bogus quality gold;
 - table/formula/code gold does not privilege one Provider serialization;

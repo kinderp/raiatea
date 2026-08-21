@@ -4,7 +4,7 @@
 >
 > Assertion status: `accepted-decision`
 >
-> Version: 1.7.0
+> Version: 1.8.0
 >
 > Last reviewed: 21 August 2026
 >
@@ -61,7 +61,7 @@ announced by `genesis/README.md`.
 | [`04-product-map.md`](04-product-map.md) | Present | `Accepted` | `mixed` | Separate document foundation, research/learning products, experiences and shared capabilities | Vision, System Context, #111 |
 | [`05-use-case-model.md`](05-use-case-model.md) | Present | `Accepted` | `mixed` | Capture primary actors, significant scenarios, alternatives/failures and invariants | System Context, Product Map, #113 |
 | [`06-risk-list.md`](06-risk-list.md) | Present | `Accepted` | `mixed` | Prioritize failure modes and define evidence, promotion and invalidation gates | Why, Manifesto, Vision, Use Case Model, #115; complete register in [`06-risk-register.md`](06-risk-register.md) |
-| `07-glossary.md` | Not created | — | `planned` | Establish the initial ubiquitous language | All accepted canonical artifacts |
+| [`07-glossary.md`](07-glossary.md) | Present | `Draft` | `mixed` | Establish the initial ubiquitous language without freezing schema/API | Accepted Inception artifacts 01-06, #117 |
 | `08-inception-review.md` | Not created | — | `planned` | Decide whether evidence supports entering Elaboration | All preceding artifacts and pilot results |
 
 `planned` in this table qualifies the creation of each absent artifact. It does
@@ -217,9 +217,9 @@ Before acceptance, reviewers must verify:
 
 ## 10. Current next step
 
-`00-why-raiatea.md` through `06-risk-list.md` are accepted canonical artifacts in
-the proposed PR #116 state; `main` becomes authoritative after merge. The next
-sequential Inception step is the Glossary, followed by the final Inception
-Review. P0 implementation work remains tracked separately in
-[#106](https://github.com/kinderp/raiatea/issues/106) and must use the accepted
-boundaries, use cases and Risk List evidence gates as input.
+`00-why-raiatea.md` through `06-risk-list.md` are accepted canonical artifacts
+on `main`. Issue [#117](https://github.com/kinderp/raiatea/issues/117) is the
+current sequential micro-step: `07-glossary.md` is Draft and must be reviewed
+before its preferred terms become canonical. The final Inception step after the
+Glossary is `08-inception-review.md`. P0 #106 must align future survey/contracts
+with accepted vocabulary while preserving schema/implementation freedom.

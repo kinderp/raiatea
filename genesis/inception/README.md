@@ -81,11 +81,13 @@ Document maturity describes the editorial lifecycle of a file.
 | --- | --- | --- | --- |
 | `Draft` | Work is incomplete and can change substantially | Issue and scope exist | Author requests a complete review |
 | `In review` | Scope is complete enough for finding-based review | Draft PR or equivalent review surface exists | Findings resolved and required clean rounds complete |
-| `Accepted` | Document is the current canonical version | Required review and CI are complete; maintainer accepts material decisions | A replacement is accepted or the document is withdrawn |
+| `Accepted` | Document is the current canonical version | Maintainer accepts material decisions and the proposed canonical text has completed required review and CI; merge makes it authoritative on `main` | A replacement is accepted or the document is withdrawn |
 | `Superseded` | A newer canonical artifact replaces the document | Replacement links back to this file | Normally terminal; history is preserved |
 | `Archived` | File remains for provenance but no longer guides work | Maintainer records why it is inactive | Normally terminal; reactivation requires a new review |
 
-Acceptance applies to the document as an accurate record. It does not
+Acceptance in a PR describes the intended canonical state after merge. Until
+that PR is merged, `main` remains the authoritative repository state.
+Acceptance applies to the document as an accurate record; it does not
 automatically accept every hypothesis or future capability mentioned inside it.
 
 ### 4.2 Assertion status
@@ -149,8 +151,9 @@ inference; assertion status describes how the project may use a statement.
 
 - `Draft` becomes `In review` only when scope, sources and open questions are
   explicit.
-- `In review` becomes `Accepted` only after required findings, review rounds,
-  CI and maintainer decisions are complete.
+- `In review` becomes proposed `Accepted` text only after the maintainer has
+  accepted the material decisions and required findings, review rounds and CI
+  are complete; merge then makes that accepted text authoritative on `main`.
 - `planned` becomes `current-contract` only for the exact behavior or
   deliverable whose Definition of Done has been verified and merged. Creating
   or accepting a planned document changes that file's maturity; it does not
@@ -214,7 +217,8 @@ Before acceptance, reviewers must verify:
 ## 10. Current next step
 
 `00-why-raiatea.md`, `01-manifesto.md` and `02-vision.md` are accepted canonical
-artifacts. The next sequential micro-step is issue
+artifacts in the proposed PR #110 state; `main` becomes authoritative after
+merge. The next sequential micro-step is issue
 [#111](https://github.com/kinderp/raiatea/issues/111), which creates
 `03-system-context.md` and `04-product-map.md` and formalizes the Universal
 Document & Asset Library, product hierarchy and reuse boundaries with Alfred,

@@ -4,11 +4,11 @@
 >
 > Assertion status: `accepted-decision`
 >
-> Version: 1.8.0
+> Version: 1.9.0
 >
 > Last reviewed: 21 August 2026
 >
-> Accepted through: [PR #103](https://github.com/kinderp/raiatea/pull/103), updated through [PR #116](https://github.com/kinderp/raiatea/pull/116)
+> Accepted through: [PR #103](https://github.com/kinderp/raiatea/pull/103), updated through [PR #118](https://github.com/kinderp/raiatea/pull/118)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 
@@ -61,13 +61,14 @@ announced by `genesis/README.md`.
 | [`04-product-map.md`](04-product-map.md) | Present | `Accepted` | `mixed` | Separate document foundation, research/learning products, experiences and shared capabilities | Vision, System Context, #111 |
 | [`05-use-case-model.md`](05-use-case-model.md) | Present | `Accepted` | `mixed` | Capture primary actors, significant scenarios, alternatives/failures and invariants | System Context, Product Map, #113 |
 | [`06-risk-list.md`](06-risk-list.md) | Present | `Accepted` | `mixed` | Prioritize failure modes and define evidence, promotion and invalidation gates | Why, Manifesto, Vision, Use Case Model, #115; complete register in [`06-risk-register.md`](06-risk-register.md) |
-| [`07-glossary.md`](07-glossary.md) | Present | `Draft` | `mixed` | Establish the initial ubiquitous language without freezing schema/API | Accepted Inception artifacts 01-06, #117 |
+| [`07-glossary.md`](07-glossary.md) | Present | `Accepted` | `mixed` | Establish the initial ubiquitous language without freezing schema/API | Accepted Inception artifacts 01-06, #117 |
 | `08-inception-review.md` | Not created | — | `planned` | Decide whether evidence supports entering Elaboration | All preceding artifacts and pilot results |
 
 Supporting terminology reconciliation for the Glossary is documented in
-[`07-terminology-compatibility.md`](07-terminology-compatibility.md). It maps
-accepted pre-Glossary shorthand to the preferred vocabulary without rewriting
-historical canonical documents or implying schema migrations.
+[`07-terminology-compatibility.md`](07-terminology-compatibility.md). It is an
+Accepted supporting artifact in the proposed PR #118 state and maps accepted
+pre-Glossary shorthand to the preferred vocabulary without rewriting historical
+canonical documents or implying schema migrations.
 
 `planned` in this table qualifies the creation of each absent artifact. It does
 not assign document maturity to a file that does not exist and does not approve
@@ -222,9 +223,9 @@ Before acceptance, reviewers must verify:
 
 ## 10. Current next step
 
-`00-why-raiatea.md` through `06-risk-list.md` are accepted canonical artifacts
-on `main`. Issue [#117](https://github.com/kinderp/raiatea/issues/117) is the
-current sequential micro-step: `07-glossary.md` is Draft and must be reviewed
-before its preferred terms become canonical. The final Inception step after the
-Glossary is `08-inception-review.md`. P0 #106 must align future survey/contracts
-with accepted vocabulary while preserving schema/implementation freedom.
+`00-why-raiatea.md` through `07-glossary.md` are Accepted canonical artifacts in
+the proposed PR #118 state; `main` becomes authoritative after merge. The final
+sequential Inception step is `08-inception-review.md`, which must decide whether
+the evidence, boundaries, risks and vocabulary are sufficient to enter
+Elaboration and to authorize the next P0 planning work. P0 implementation work
+remains tracked separately in [#106](https://github.com/kinderp/raiatea/issues/106).

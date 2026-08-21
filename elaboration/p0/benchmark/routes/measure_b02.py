@@ -158,13 +158,17 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
                 f"- `{fixture_id}` / `{route}`: route status `{result.get('route_status')}`, "
                 f"expected-state satisfied `{satisfied}`; security checks retain partial/not-measured states where the harness cannot prove a property."
             )
+    lines.extend(["", "## Decision boundary", "", "- No weighted/universal score is produced."])
+    if pandoc_route.get("selection_blocker"):
+        lines.append(f"- Pandoc route selection blocker: {pandoc_route['selection_blocker']}")
+    elif pandoc_route.get("availability") == "available":
+        lines.append(
+            f"- Pandoc measured version `{pandoc_route.get('version')}` matches the E-02 surveyed baseline; this removes only the version-mismatch blocker and does not select the route."
+        )
+    else:
+        lines.append("- Pandoc was not measured in this environment and cannot be selected from this evidence.")
     lines.extend(
         [
-            "",
-            "## Decision boundary",
-            "",
-            "- No weighted/universal score is produced.",
-            "- Pandoc is **not selectable** from this evidence because the measured `3.1.11.1` differs from E-02's surveyed `3.10.2`.",
             "- B-02 coverage is incomplete; images/captions, notes, tables/code/MathML and malformed-resource coverage remain open.",
             "- G-04 and G-05 remain open; this baseline only advances evidence.",
             "",

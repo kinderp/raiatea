@@ -86,10 +86,10 @@ Document maturity describes the editorial lifecycle of a file.
 | `Archived` | File remains for provenance but no longer guides work | Maintainer records why it is inactive | Normally terminal; reactivation requires a new review |
 
 An `Accepted` document on an unmerged review branch records the intended
-canonical state. Until that PR is merged, `main` remains the authoritative
-repository state. Acceptance applies to the document as an accurate record; it
-does not automatically accept every hypothesis or future capability mentioned
-inside it.
+canonical state after its acceptance criteria have been met in that PR. Until
+that PR is merged, `main` remains the authoritative repository state.
+Acceptance applies to the document as an accurate record; it does not
+automatically accept every hypothesis or future capability mentioned inside it.
 
 ### 4.2 Assertion status
 

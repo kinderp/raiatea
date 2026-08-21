@@ -4,7 +4,7 @@
 >
 > Assertion status: `accepted-decision`
 >
-> Version: 1.9.0
+> Version: 2.0.0
 >
 > Last reviewed: 21 August 2026
 >
@@ -62,13 +62,13 @@ announced by `genesis/README.md`.
 | [`05-use-case-model.md`](05-use-case-model.md) | Present | `Accepted` | `mixed` | Capture primary actors, significant scenarios, alternatives/failures and invariants | System Context, Product Map, #113 |
 | [`06-risk-list.md`](06-risk-list.md) | Present | `Accepted` | `mixed` | Prioritize failure modes and define evidence, promotion and invalidation gates | Why, Manifesto, Vision, Use Case Model, #115; complete register in [`06-risk-register.md`](06-risk-register.md) |
 | [`07-glossary.md`](07-glossary.md) | Present | `Accepted` | `mixed` | Establish the initial ubiquitous language without freezing schema/API | Accepted Inception artifacts 01-06, #117 |
-| `08-inception-review.md` | Not created | — | `planned` | Decide whether evidence supports entering Elaboration | All preceding artifacts and pilot results |
+| [`08-inception-review.md`](08-inception-review.md) | Present | `Draft` | `mixed` | Decide whether the reviewed evidence supports leaving Genesis for bounded P0 Elaboration | All preceding artifacts, #106 and current pilot state, #121 |
 
 Supporting terminology reconciliation for the Glossary is documented in
 [`07-terminology-compatibility.md`](07-terminology-compatibility.md). It is an
-Accepted supporting artifact in the proposed PR #118 state and maps accepted
-pre-Glossary shorthand to the preferred vocabulary without rewriting historical
-canonical documents or implying schema migrations.
+Accepted supporting artifact on `main` and maps accepted pre-Glossary shorthand
+to the preferred vocabulary without rewriting historical canonical documents
+or implying schema migrations.
 
 `planned` in this table qualifies the creation of each absent artifact. It does
 not assign document maturity to a file that does not exist and does not approve
@@ -223,9 +223,11 @@ Before acceptance, reviewers must verify:
 
 ## 10. Current next step
 
-`00-why-raiatea.md` through `07-glossary.md` are Accepted canonical artifacts in
-the proposed PR #118 state; `main` becomes authoritative after merge. The final
-sequential Inception step is `08-inception-review.md`, which must decide whether
-the evidence, boundaries, risks and vocabulary are sufficient to enter
-Elaboration and to authorize the next P0 planning work. P0 implementation work
-remains tracked separately in [#106](https://github.com/kinderp/raiatea/issues/106).
+`00-why-raiatea.md` through `07-glossary.md` are Accepted canonical artifacts on
+`main`. Issue [#121](https://github.com/kinderp/raiatea/issues/121) and draft PR
+[#122](https://github.com/kinderp/raiatea/pull/122) contain the final sequential
+Inception step: `08-inception-review.md`. The review proposes a bounded GO to
+Elaboration for P0 risk reduction while keeping the first slice a working
+hypothesis, carrying G-01..G-07 forward and leaving the pedagogical pilot as an
+independent evidence stream. Until #122 is accepted and merged, Project Genesis
+remains the authoritative current phase.

@@ -1,12 +1,14 @@
 # Raiatea Glossary and Initial Ubiquitous Language
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 1.0.0
 >
 > Last reviewed: 21 August 2026
+>
+> Accepted through: [PR #118](https://github.com/kinderp/raiatea/pull/118)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 >

@@ -1,12 +1,14 @@
 # Raiatea Vision
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 1.0.0
 >
-> Last reviewed: 21 July 2026
+> Last reviewed: 21 August 2026
+>
+> Accepted through: [PR #110](https://github.com/kinderp/raiatea/pull/110)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 >
@@ -121,6 +123,10 @@ architectures are known. P1-P7 are accepted parts of the destination, but they
 do not become `planned` implementation work until a milestone or issue gives
 them scope, evidence and an explicit out-of-scope boundary.
 
+P0 remains the accepted first priority. The order and dependency structure of
+P1-P7 remain provisional and may be refined by the Product Map, risks and
+validated user value without reopening P0's priority.
+
 | Priority | Required capability | Roadmap state | Outcome it must eventually enable |
 | --- | --- | --- | --- |
 | P0 | General Source Ingestion & Extraction Hub | `planned` — milestone #2 and issue #106 | Acquire heterogeneous sources with structure, coordinates, provenance, rights and visible failure modes |
@@ -135,16 +141,58 @@ them scope, evidence and an explicit out-of-scope boundary.
 Product Map and System Context must refine these groups before they become
 bounded contexts or implementation epics.
 
-## 6. First product hypothesis
+## 6. Product hierarchy and first document surface
 
-> Assertion status: `working-hypothesis`
+> Assertion status: `accepted-decision` for hierarchy; `working-hypothesis` for final public naming
 
-The first coherent product category is a **private Research & Learning
-Workspace**. **AI Research Notebook** remains the candidate name for its first
-visible AI-engineering experience.
+Raiatea must not treat one learning experience as the whole product. The first
+product hierarchy accepted on 21 August 2026 separates the document foundation
+from the research and learning experiences built on top of it.
 
-Given a real goal and a lawful private corpus, the workspace should eventually
-produce a staged set of durable outcomes:
+### 6.1 Universal Document & Asset Library
+
+The **Universal Document & Asset Library** is the first fundamental document
+surface to define in the Product Map. It is intended to let a person inventory,
+locate, search, organize, inspect and transform books, physical holdings and
+digital assets without making the filesystem path the canonical identity of a
+source.
+
+Its target experience includes, progressively:
+
+- an Asset/Source Registry with stable identity, locations, manifestations,
+  versions and derivatives;
+- physical and digital holdings represented in one navigable inventory;
+- deterministic filters and full-text or semantic search;
+- logical views and Smart Collections independent of physical folders;
+- policy-driven organization of explicitly managed filesystem areas;
+- natural-language queries translated into inspectable structured queries;
+- selectable processing recipes for extraction, translation, conversion and
+  multi-output transformation;
+- provenance-preserving relationships between originals, extracted content,
+  translations and generated derivatives.
+
+This surface is not yet implemented. Its system boundaries, naming and MVP are
+the subject of issue [#111](https://github.com/kinderp/raiatea/issues/111).
+
+### 6.2 Research & Learning Workspace
+
+The **Research & Learning Workspace** is a higher-level product surface that
+consumes the same source, provenance and document foundations to construct
+reading routes, explanations, practice, experiments and durable research
+artifacts.
+
+It must not own a second independent document library. The Product Map should
+make document assets reusable across research, learning and future products.
+
+### 6.3 AI Research Notebook
+
+**AI Research Notebook** remains the candidate name for the first
+AI-engineering experience or vertical built inside the Research & Learning
+Workspace. It is not Raiatea itself and is not the canonical name for the
+underlying document platform.
+
+Given a real goal and a lawful private corpus, that experience should
+eventually produce a staged set of durable outcomes:
 
 1. a source inventory with duplicates, quality limits and coverage gaps;
 2. a prerequisite and concept map;
@@ -156,9 +204,8 @@ produce a staged set of durable outcomes:
 8. later updates expressed as changes to the existing route, not a generic
    feed.
 
-This product hypothesis must be tested against the original sources and a
-well-prompted general-purpose LLM workflow. Naming remains open until the
-Product Map distinguishes product, experience, deliverable and capability.
+The exact public names remain reviewable until Product Map and user validation
+show that they communicate the boundaries clearly.
 
 ## 7. Value timeline
 
@@ -168,8 +215,9 @@ Product Map distinguishes product, experience, deliverable and capability.
 
 The user should receive an immediately usable and exportable artifact before
 being asked to configure an ontology or wait for a mature community network.
-Candidate early results include a corpus inventory, missing-prerequisite map,
-provisional route or one complete source-linked learning module.
+Candidate early results include a document inventory, a provisional source
+organization, a missing-prerequisite map, a reading route or one complete
+source-linked learning module.
 
 ### Repeated use
 
@@ -218,8 +266,7 @@ failure modes.
 
 > Assertion status: `mixed`
 
-The following constraints are already accepted through the Why and its
-principles:
+The following constraints are already accepted through the Why and Manifesto:
 
 - No output may imply rights to redistribute a source merely because private
   processing was lawful.
@@ -229,13 +276,13 @@ principles:
 - User data, private corpora and observed learning evidence are private by
   default.
 - No feature should optimize primarily for engagement or notification volume.
+- Durable artifacts and user work must remain portable across replaceable
+  providers and tools where feasible.
 
 The following remain `working-hypothesis` or `provisional-decision` constraints
 to test and refine in Product Map and Risk List:
 
 - Raiatea must create useful private value before network effects exist.
-- LLM, extraction and execution providers must remain replaceable behind
-  explicit contracts where feasible.
 - Advanced models and graphs should use progressive disclosure rather than
   overwhelm the first workflow.
 - High-stakes domains require separate controls and cannot inherit confidence
@@ -272,30 +319,39 @@ outside Raiatea should be published independently when it is safe and lawful
 to do so. Open source is a means of reuse, verification and continuity, not a
 claim that private corpora or every hosted service must be public.
 
+The next System Context and Product Map must make reuse explicit before new
+cross-cutting capabilities are implemented. Alfred is the current candidate
+owner of filesystem observation; Durex and TheBitLab require bounded reuse
+decisions rather than duplicated implementations or hidden coupling. These
+boundaries are tracked in issue [#111](https://github.com/kinderp/raiatea/issues/111).
+
 ## 12. Decisions updated from the Genesis audit
 
 > Assertion status: `mixed`
 
-| Audit decision | Vision status on 21 July 2026 |
+| Audit decision | Vision status on 21 August 2026 |
 | --- | --- |
-| D1 — first product name and boundary | Still open: Research & Learning Workspace is the product category; AI Research Notebook is a candidate experience name |
+| D1 — first product name and boundary | Updated: Universal Document & Asset Library is the first fundamental document surface; Research & Learning Workspace is a higher-level product surface; AI Research Notebook is the candidate first AI-engineering experience/vertical |
 | D2 — long-term core name | Provisional: use Raiatea for the project and descriptive capability names until System Context defines a real core boundary |
-| D3 — Alfred and Learning Lab | Still open: related projects and possible consumers or integrations, not declared subproducts or shared runtimes |
+| D3 — Alfred and Learning Lab | Narrowed: related projects and consumers/integrations must have explicit ownership boundaries; #111 defines the next canonical split |
 | D4 — pilot versus new infrastructure | Updated by maintainer priority: P0 design may proceed through Genesis, survey and benchmark work; new pedagogical hardening should still follow pilot evidence |
 | D5 — federation, governance and forecasting | Updated by maintainer decision: required long-term capability groups P6-P7, absent today; their order and design remain provisional |
 | D6 — navigation and cultural references | Navigation may guide internal language; external historical and cultural claims remain outside canonical branding until dedicated research |
 
 ## 13. Next decisions
 
-System Context and Product Map must decide or narrow:
+System Context and Product Map in
+[#111](https://github.com/kinderp/raiatea/issues/111) must now formalize rather
+than reopen the accepted product hierarchy. They must decide or narrow:
 
-1. the exact boundary between the P0 hub and consumers of extracted content;
-2. which P0 artifact is useful as a standalone open-source product;
-3. whether AI Research Notebook names a product, experience or curated
-   expedition;
+1. the exact boundary between the Universal Document & Asset Library, P0 hub
+   and consumers of extracted content;
+2. which P0 artifact is useful as a standalone open-source component;
+3. the ownership boundaries among Raiatea, Alfred, Durex and TheBitLab;
 4. the smallest workflow that joins P0 sources to the current pedagogical
    vertical without creating the complete P1 core;
-5. ownership boundaries among Raiatea, Alfred and Learning Lab;
+5. the first verifiable user slice for document inventory, search, views,
+   organization and on-demand transformations;
 6. which measures gate entry from Inception into Elaboration for P0.
 
 ## 14. Vision exit criteria

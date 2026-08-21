@@ -326,12 +326,20 @@ reconciliation, provenance or recovery.
 
 > Assertion status: `accepted-decision`
 
-**Definition.** Two stored/digital instances determined to contain the same
-exact content under the project's chosen exact-content criterion, typically a
-cryptographic content fingerprint plus relevant safeguards.
+**Definition.** Two compared digital artifact versions are Exact Duplicates only
+when their complete byte sequences are identical. Two Stored Instances may
+therefore be Exact Duplicates while remaining distinct storage occurrences.
 
-**Not.** The same as “same book”, “same meaning”, “same edition” or “related
-representation”.
+A collision-resistant cryptographic hash over the exact bytes may be used to
+detect or verify this condition efficiently, together with the hash algorithm,
+content size and any safeguards required by the implementation. Hash equality
+is evidence for byte identity under that verification procedure; the semantic
+definition remains **identical bytes**.
+
+If the bytes differ, the artifacts are not Exact Duplicates even when they are
+the same book, edition, text after normalization, meaning or intellectual work.
+Those relationships belong under `Related Representation` or another explicitly
+non-exact relationship.
 
 ### Related Representation
 

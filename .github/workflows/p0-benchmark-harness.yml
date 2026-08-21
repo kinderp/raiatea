@@ -110,3 +110,67 @@ jobs:
           path: ${{ runner.temp }}/raiatea-b01-reference
           if-no-files-found: error
           retention-days: 7
+
+  b01-tika-reference:
+    name: B-01 Tika 3.3.2 reference / Ubuntu 24.04
+    needs: test
+    runs-on: ubuntu-24.04
+    env:
+      EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      TIKA_VERSION: "3.3.2"
+      TIKA_SHA512: "88c2032cba0d45feea361e6eebd2918bd04707614cdda5d89a1b167da5503c98e7b4cd368336f0402d559abcaf5006fcc7c825c32c749ae0417ea2f3b8423aba"
+      TIKA_URL: "https://downloads.apache.org/tika/3.3.2/tika-app-3.3.2.jar"
+
+    steps:
+      - name: Check out exact evidence source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SOURCE_COMMIT }}
+
+      - name: Verify evidence source checkout
+        run: |
+          test "$(git rev-parse HEAD)" = "${EVIDENCE_SOURCE_COMMIT}"
+          echo "Evidence source commit: ${EVIDENCE_SOURCE_COMMIT}"
+
+      - name: Set up reference Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+
+      - name: Set up reference Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Download and verify official Tika app
+        run: |
+          mkdir -p "${RUNNER_TEMP}/raiatea-tika"
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "${TIKA_URL}" \
+            --output "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar"
+          echo "${TIKA_SHA512}  ${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" | sha512sum -c -
+          java -jar "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" -V 2>&1 | tee "${RUNNER_TEMP}/raiatea-tika/tika-version.txt"
+          grep -F "${TIKA_VERSION}" "${RUNNER_TEMP}/raiatea-tika/tika-version.txt"
+
+      - name: Run Tika B-01 reference baseline
+        run: |
+          mkdir -p "${RUNNER_TEMP}/raiatea-tika-reference"
+          python elaboration/p0/benchmark/routes/measure_tika_b01.py \
+            --output "${RUNNER_TEMP}/raiatea-tika-reference" \
+            --tika-jar "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" \
+            --config elaboration/p0/benchmark/config/tika-pdf-native-no-ocr.xml \
+            --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
+            > "${RUNNER_TEMP}/raiatea-tika-reference/stdout-report.json"
+          test -s "${RUNNER_TEMP}/raiatea-tika-reference/tika-b01-results.json"
+          test -s "${RUNNER_TEMP}/raiatea-tika-reference/tika-b01-summary.md"
+
+      - name: Upload Tika B-01 reference evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-b01-tika-${{ env.TIKA_VERSION }}-${{ env.EVIDENCE_SOURCE_COMMIT }}
+          path: |
+            ${{ runner.temp }}/raiatea-tika-reference
+            ${{ runner.temp }}/raiatea-tika/tika-version.txt
+          if-no-files-found: error
+          retention-days: 7

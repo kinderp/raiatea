@@ -93,6 +93,16 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
         return result.get("dimensions", {}).get(name, {})
 
     route = report["route"]
+    unexpected_side_effects = sum(
+        len(result.get("side_effect_files", [])) for result in report["results"]
+    )
+    controlled_runtime_files = sorted(
+        {
+            item
+            for result in report["results"]
+            for item in result.get("controlled_runtime_files", [])
+        }
+    )
     lines = [
         "# B-01 Apache Tika 3.3.2 XHTML reference baseline",
         "",
@@ -107,8 +117,12 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
         f"- Tika jar SHA-256: `{route['jar']['sha256']}`",
         f"- Tika jar SHA-512 verified: `{route['jar']['verified']}`",
         f"- Java: `{route['java'].get('version_line')}`",
+        f"- Java executable SHA-256: `{route['java'].get('executable_sha256')}`",
         f"- OCR policy: `{route['ocr_policy']}`",
         f"- Config SHA-256: `{route['config_sha256']}`",
+        "- Java temp files and PDFBox font cache are confined under the benchmark temporary parent.",
+        f"- Controlled runtime files observed: `{controlled_runtime_files}`",
+        f"- Unexpected files observed under the controlled parent: `{unexpected_side_effects}`.",
         "- Local file input only; no hosted/API route.",
         "- OS-level sandboxing/network isolation are not claimed.",
         "",
@@ -128,6 +142,11 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
                 f"- reading-order edges: `{order.get('satisfied_edges')}/{order.get('expected_edges')}`",
                 f"- source coordinates: `{coords.get('status')}`",
                 f"- hierarchy: `{hierarchy.get('status')}`; exact semantic types `{hierarchy.get('type_exact_count')}/{hierarchy.get('expected_count')}` when measurable",
+                f"- page structure observed: `{result.get('page_structure_observed')}`",
+                f"- bbox structure observed: `{result.get('bbox_structure_observed')}`",
+                f"- metadata keys observed: `{result.get('metadata_key_count')}`",
+                f"- controlled runtime files: `{result.get('controlled_runtime_files', [])}`",
+                f"- unexpected side-effect files: `{result.get('side_effect_files', [])}`",
                 f"- raw XHTML SHA-256: `{result.get('raw_output_sha256')}`",
                 "",
             ]
@@ -136,8 +155,10 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
         [
             "## Interpretation boundary",
             "",
-            "- Missing page/bbox evidence is reported as `not-measured`/`partial`, never as successful geometry and never as an invented zero score.",
+            "- Missing bbox evidence is reported as `not-measured`/`partial`, never as successful geometry and never as an invented zero score.",
+            "- Explicit page containers are retained as page identity; they do not imply source geometry.",
             "- Explicit XHTML tags may provide hierarchy evidence; visual/font cues are not promoted to semantic structure.",
+            "- The current fixture title is emitted by Tika as a paragraph, so heading recovery is correctly reported as a semantic mismatch rather than inferred from typography.",
             "- No weighted/universal score is produced.",
             "- Comparison with Poppler controls is limited to dimensions measured by both routes.",
             "- B-01 coverage remains incomplete and #131/G-02/G-04/G-05/first-slice promotion remain open.",
@@ -191,6 +212,8 @@ def run_baseline(
         result["page_structure_observed"] = observation.get("page_structure_observed")
         result["bbox_structure_observed"] = observation.get("bbox_structure_observed")
         result["metadata_key_count"] = len(observation.get("metadata", {}))
+        result["controlled_runtime_files"] = observation.get("controlled_runtime_files", [])
+        result["command_options"] = observation.get("command_options", [])
         results.append(result)
 
     report = {
@@ -221,12 +244,18 @@ def run_baseline(
             "command_semantics": [
                 "java",
                 "-Djava.io.tmpdir=<controlled>",
+                "-Dpdfbox.fontcache=<controlled>",
                 "-jar",
                 "<verified-tika-app-3.3.2.jar>",
                 "--config=<pinned-no-ocr-config>",
                 "-x",
                 "<local-fixture.pdf>",
             ],
+            "runtime_filesystem_policy": {
+                "java_tmp": "controlled",
+                "pdfbox_fontcache": "controlled",
+                "unexpected_files_under_controlled_parent": "recorded-per-fixture",
+            },
             "hosted_or_remote": False,
             "access_control_override": False,
             "network_instrumentation": "not-measured",
@@ -255,10 +284,12 @@ def run_baseline(
             ],
         },
         "measurement_limits": [
-            "Tika XHTML is mapped conservatively; absent page/geometry semantics are not fabricated.",
+            "Tika XHTML is mapped conservatively; absent geometry semantics are not fabricated.",
+            "Explicit Tika page containers provide page identity only; they are not promoted to source geometry.",
             "OCR is explicitly disabled for this born-digital route through the pinned Tika config and Tesseract parser exclusion.",
+            "Java temporary files and the PDFBox font cache are redirected under the controlled benchmark parent and recorded separately from unexpected side effects.",
             "Timing values are single-run observations and are not performance claims.",
-            "Java runs in a controlled temporary input/work/tmp parent; OS-level filesystem/network isolation is not claimed.",
+            "OS-level filesystem/network isolation is not claimed.",
             "Results apply only to the recorded jar/config/runtime/environment and current minimal fixtures.",
         ],
         "decision_boundary": {

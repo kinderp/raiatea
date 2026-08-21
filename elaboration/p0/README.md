@@ -1,6 +1,12 @@
 # P0 Elaboration
 
-> Status: `Draft evidence index`
+> Document maturity: `Draft`
+>
+> Assertion status: `mixed`
+>
+> Version: 0.1.0
+>
+> Last reviewed: 21 August 2026
 >
 > Phase: **Elaboration — P0 risk reduction and architecture**
 >

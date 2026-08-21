@@ -305,10 +305,15 @@ def run_pdftohtml_xml(
     executable: str = "pdftohtml",
     pdfinfo_executable: str = "pdfinfo",
 ) -> dict[str, Any]:
-    """Run ``pdftohtml -xml -hidden`` and map text boxes to PDF points."""
+    """Run ``pdftohtml -xml -hidden`` and map text boxes to PDF points.
+
+    The route deliberately does not use Poppler's ``-nodrm`` option: benchmark
+    tooling must respect the source document's access/copy restrictions and must
+    never weaken E-01 rights/access-control boundaries for convenience.
+    """
 
     def args(local_input: Path, work: Path) -> list[str]:
-        return ["-xml", "-hidden", "-nodrm", "-q", str(local_input), str(work / "out")]
+        return ["-xml", "-hidden", "-q", str(local_input), str(work / "out")]
 
     work, metadata = _controlled_run(source, executable, args)
     observation: dict[str, Any] = {

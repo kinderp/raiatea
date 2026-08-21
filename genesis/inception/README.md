@@ -81,14 +81,15 @@ Document maturity describes the editorial lifecycle of a file.
 | --- | --- | --- | --- |
 | `Draft` | Work is incomplete and can change substantially | Issue and scope exist | Author requests a complete review |
 | `In review` | Scope is complete enough for finding-based review | Draft PR or equivalent review surface exists | Findings resolved and required clean rounds complete |
-| `Accepted` | Document is the current canonical version | Maintainer accepts material decisions and the proposed canonical text has completed required review and CI; merge makes it authoritative on `main` | A replacement is accepted or the document is withdrawn |
+| `Accepted` | Document is the intended canonical version | Maintainer accepts material decisions and the proposed text completes required review and CI; merge makes it authoritative on `main` | A replacement is accepted or the document is withdrawn |
 | `Superseded` | A newer canonical artifact replaces the document | Replacement links back to this file | Normally terminal; history is preserved |
 | `Archived` | File remains for provenance but no longer guides work | Maintainer records why it is inactive | Normally terminal; reactivation requires a new review |
 
-Acceptance in a PR describes the intended canonical state after merge. Until
-that PR is merged, `main` remains the authoritative repository state.
-Acceptance applies to the document as an accurate record; it does not
-automatically accept every hypothesis or future capability mentioned inside it.
+An `Accepted` document on an unmerged review branch records the intended
+canonical state. Until that PR is merged, `main` remains the authoritative
+repository state. Acceptance applies to the document as an accurate record; it
+does not automatically accept every hypothesis or future capability mentioned
+inside it.
 
 ### 4.2 Assertion status
 

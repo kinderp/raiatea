@@ -244,9 +244,11 @@ def run_tika_pdf_xhtml(
         input_dir = root / "input"
         work = root / "work"
         java_tmp = root / "java-tmp"
+        pdfbox_fontcache = root / "pdfbox-font-cache"
         input_dir.mkdir()
         work.mkdir()
         java_tmp.mkdir()
+        pdfbox_fontcache.mkdir()
         local_input = input_dir / source.name
         shutil.copyfile(source, local_input)
 
@@ -258,6 +260,7 @@ def run_tika_pdf_xhtml(
         command = [
             java_executable,
             f"-Djava.io.tmpdir={java_tmp}",
+            f"-Dpdfbox.fontcache={pdfbox_fontcache}",
             "-jar",
             str(jar_path.resolve()),
             f"--config={config_path.resolve()}",
@@ -272,9 +275,17 @@ def run_tika_pdf_xhtml(
             for candidate in root.rglob("*")
             if candidate.is_file()
         }
-        observation["side_effect_files"] = sorted(current - baseline)
+        created = current - baseline
+        controlled_runtime_files = sorted(
+            name
+            for name in created
+            if name.startswith("java-tmp/") or name.startswith("pdfbox-font-cache/")
+        )
+        observation["controlled_runtime_files"] = controlled_runtime_files
+        observation["side_effect_files"] = sorted(created - set(controlled_runtime_files))
         observation["command_options"] = [
             "-Djava.io.tmpdir=<controlled>",
+            "-Dpdfbox.fontcache=<controlled>",
             "-jar",
             "<verified-tika-app-3.3.2.jar>",
             "--config=<pinned-no-ocr-config>",

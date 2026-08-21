@@ -1,12 +1,14 @@
 # P0 Rights and Data Boundary
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 1.0.0
 >
 > Last reviewed: 21 August 2026
+>
+> Accepted through: [PR #124](https://github.com/kinderp/raiatea/pull/124)
 >
 > Parent issue: [#123](https://github.com/kinderp/raiatea/issues/123)
 >

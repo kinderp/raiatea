@@ -1,0 +1,269 @@
+#!/usr/bin/env python3
+"""Generate deterministic, rights-pending P0 benchmark fixtures.
+
+This is benchmark-only evidence tooling. It is not a production document engine
+and does not define Raiatea's public P0 schema.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import zipfile
+
+HERE = Path(__file__).resolve().parent
+MANIFEST_PATH = HERE / "manifests" / "fixtures.json"
+GENERATOR_VERSION = "0.1.0"
+ZIP_DATE = (1980, 1, 1, 0, 0, 0)
+
+
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _pdf_escape(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+
+
+def _text_cmd(text: str, x: int, y: int, size: int = 12) -> str:
+    return f"BT /F1 {size} Tf 1 0 0 1 {x} {y} Tm ({_pdf_escape(text)}) Tj ET\n"
+
+
+def _build_pdf(lines: list[tuple[str, int, int, int]]) -> bytes:
+    stream = "".join(_text_cmd(text, x, y, size) for text, x, y, size in lines).encode("ascii")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"endstream",
+    ]
+
+    out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out.extend(f"{index} 0 obj\n".encode("ascii"))
+        out.extend(obj)
+        out.extend(b"\nendobj\n")
+
+    xref_offset = len(out)
+    out.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    out.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        out.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+    out.extend(
+        (
+            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"startxref\n{xref_offset}\n%%EOF\n"
+        ).encode("ascii")
+    )
+    return bytes(out)
+
+
+def generate_pdf_single_column(path: Path) -> None:
+    path.write_bytes(
+        _build_pdf(
+            [
+                ("Raiatea B01 PDF 001", 72, 720, 18),
+                ("Alpha paragraph preserves exact benchmark text.", 72, 665, 12),
+                ("Beta paragraph follows alpha in reading order.", 72, 625, 12),
+            ]
+        )
+    )
+
+
+def generate_pdf_two_column(path: Path) -> None:
+    path.write_bytes(
+        _build_pdf(
+            [
+                ("Raiatea B01 PDF 002", 72, 720, 18),
+                ("Left one.", 72, 665, 12),
+                ("Left two.", 72, 625, 12),
+                ("Right one.", 330, 665, 12),
+                ("Right two.", 330, 625, 12),
+            ]
+        )
+    )
+
+
+def _zip_write_text(zf: zipfile.ZipFile, name: str, text: str, compress: bool = True) -> None:
+    info = zipfile.ZipInfo(name, ZIP_DATE)
+    info.compress_type = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
+    info.external_attr = 0o644 << 16
+    zf.writestr(info, text.encode("utf-8"))
+
+
+def _epub_base_documents(kind: str) -> dict[str, str]:
+    if kind == "spine":
+        ch1 = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Introduction</title></head>
+<body><h1 id="intro">Introduction</h1><p id="intro-text">The first chapter establishes the package order.</p></body></html>"""
+        ch2 = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Next Chapter</title></head>
+<body><h1 id="next">Next Chapter</h1><p id="next-text">The second chapter follows the first in the spine.</p></body></html>"""
+        nav = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head><title>Contents</title></head><body><nav epub:type="toc"><ol>
+<li><a href="ch1.xhtml#intro">Introduction</a></li>
+<li><a href="ch2.xhtml#next">Next Chapter</a></li>
+</ol></nav></body></html>"""
+    elif kind == "navigation":
+        ch1 = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Start</title></head>
+<body><h1 id="start">Start</h1><p>Navigation begins here.</p>
+<p id="to-details"><a href="ch2.xhtml#details">Go to details</a></p></body></html>"""
+        ch2 = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Details</title></head>
+<body><h1 id="details">Details</h1><h2 id="nested">Nested Section</h2><p>Details are in the second resource.</p></body></html>"""
+        nav = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head><title>Contents</title></head><body><nav epub:type="toc"><ol>
+<li><a href="ch1.xhtml#start">Start</a>
+  <ol><li><a href="ch2.xhtml#details">Details</a></li></ol>
+</li></ol></nav></body></html>"""
+    elif kind == "active":
+        ch1 = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Inert Active Content</title></head>
+<body><h1 id="active">Inert Active Content</h1>
+<script type="text/javascript">window.__raiatea_inert_fixture = true;</script>
+<p>The script is benchmark data and must not be executed by the harness.</p></body></html>"""
+        ch2 = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Second</title></head>
+<body><h1 id="second">Second</h1><p>No network resource is required.</p></body></html>"""
+        nav = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head><title>Contents</title></head><body><nav epub:type="toc"><ol>
+<li><a href="ch1.xhtml#active">Inert Active Content</a></li>
+<li><a href="ch2.xhtml#second">Second</a></li>
+</ol></nav></body></html>"""
+    else:
+        raise ValueError(f"Unsupported EPUB kind: {kind}")
+
+    container = """<?xml version="1.0" encoding="utf-8"?>
+<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">
+<rootfiles><rootfile full-path="OEBPS/package.opf" media-type="application/oebps-package+xml"/></rootfiles>
+</container>"""
+    package = f"""<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id">
+<metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
+<dc:identifier id="book-id">urn:uuid:raiatea-{kind}</dc:identifier>
+<dc:title>Raiatea Benchmark {kind}</dc:title><dc:language>en</dc:language>
+<meta property="dcterms:modified">2026-08-21T00:00:00Z</meta>
+</metadata>
+<manifest>
+<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>
+<item id="ch1" href="ch1.xhtml" media-type="application/xhtml+xml"/>
+<item id="ch2" href="ch2.xhtml" media-type="application/xhtml+xml"/>
+</manifest>
+<spine><itemref idref="ch1"/><itemref idref="ch2"/></spine>
+</package>"""
+    return {
+        "META-INF/container.xml": container,
+        "OEBPS/package.opf": package,
+        "OEBPS/nav.xhtml": nav,
+        "OEBPS/ch1.xhtml": ch1,
+        "OEBPS/ch2.xhtml": ch2,
+    }
+
+
+def _write_epub(path: Path, kind: str, unsafe_member: bool = False) -> None:
+    docs = _epub_base_documents("spine" if unsafe_member else kind)
+    with zipfile.ZipFile(path, "w") as zf:
+        _zip_write_text(zf, "mimetype", "application/epub+zip", compress=False)
+        for name in sorted(docs):
+            _zip_write_text(zf, name, docs[name])
+        if unsafe_member:
+            _zip_write_text(
+                zf,
+                "../outside.txt",
+                "INERT BENCHMARK MEMBER: never extract this path outside the benchmark workspace.",
+            )
+
+
+def generate_epub_spine(path: Path) -> None:
+    _write_epub(path, "spine")
+
+
+def generate_epub_navigation(path: Path) -> None:
+    _write_epub(path, "navigation")
+
+
+def generate_epub_inert_active_content(path: Path) -> None:
+    _write_epub(path, "active")
+
+
+def generate_epub_unsafe_path(path: Path) -> None:
+    _write_epub(path, "spine", unsafe_member=True)
+
+
+GENERATORS = {
+    "pdf_single_column": generate_pdf_single_column,
+    "pdf_two_column": generate_pdf_two_column,
+    "epub_spine": generate_epub_spine,
+    "epub_navigation": generate_epub_navigation,
+    "epub_inert_active_content": generate_epub_inert_active_content,
+    "epub_unsafe_path": generate_epub_unsafe_path,
+}
+
+
+def load_manifest() -> dict:
+    return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def generate_all(output_dir: Path) -> dict:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    manifest = load_manifest()
+    generated = []
+    for fixture in manifest["fixtures"]:
+        output_path = output_dir / fixture["output"]
+        generator_name = fixture["generator"]
+        GENERATORS[generator_name](output_path)
+        generated.append(
+            {
+                "id": fixture["id"],
+                "version": fixture["version"],
+                "output": fixture["output"],
+                "sha256": sha256_file(output_path),
+                "bytes": output_path.stat().st_size,
+                "generator": generator_name,
+                "generator_version": GENERATOR_VERSION,
+                "rights": fixture["rights"],
+            }
+        )
+
+    result = {
+        "contract": {
+            "name": "raiatea-p0-benchmark-generated-manifest",
+            "version": "0.1.0",
+            "scope": "benchmark-evidence-only",
+            "public_p0_schema": False,
+        },
+        "generated": generated,
+    }
+    (output_dir / "generated-manifest.json").write_text(
+        json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    return result
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args()
+    result = generate_all(args.output.resolve())
+    print(json.dumps(result, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

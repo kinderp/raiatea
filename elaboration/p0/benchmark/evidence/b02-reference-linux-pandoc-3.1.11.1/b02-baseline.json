@@ -7,6 +7,14 @@
     "no_universal_total_score": true
   },
   "evidence_source_commit": "1fabcd1e435860a20035f2751655ab92ff95a8b1",
+  "harness_fingerprints": {
+    "generator": "dc741f877c4b082602dc016103180f882b4e3bd429ac91f404122fc56714ddd1",
+    "fixture_manifest": "bec05d05dcd9b6b9f404777baace03636a02060305a43c756958605cbab21400",
+    "gold": "338abda74cfea35f591d3a047ec96bf1a05abd1535dbfd9ff56b58d3a0278401",
+    "epub_routes": "61dd5ef4f40d120ac828b0abe78211c035cb35c1f53a93c853aff8747704cd91",
+    "score_b02": "30313df49444415c259ddea8e494e6bcbab85170f5aab9967c9528be463567a9",
+    "measure_b02": "9c201f21e587cfac7ac8270a5f24d34fc69d5baada44912a7c14fb1e9d22f082"
+  },
   "measured_at_context": "2026-08-21 reference environment",
   "environment": {
     "scope": "single-reference-environment",

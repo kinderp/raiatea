@@ -1,10 +1,12 @@
 # P0 Provider Maintenance and Compatibility Snapshot
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 1.0.0
+>
+> Accepted through: [PR #126](https://github.com/kinderp/raiatea/pull/126)
 >
 > Observation date: **21 August 2026**
 >

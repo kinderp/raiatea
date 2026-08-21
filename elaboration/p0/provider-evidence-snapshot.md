@@ -1,14 +1,12 @@
 # P0 Provider Evidence Snapshot
 
-> Document maturity: `Accepted`
+> Document maturity: `Draft`
 >
 > Assertion status: `mixed`
 >
-> Version: 1.0.0
+> Version: 0.1.0
 >
 > Last reviewed: 21 August 2026
->
-> Accepted through: [PR #126](https://github.com/kinderp/raiatea/pull/126)
 >
 > Observation date: **21 August 2026**
 >

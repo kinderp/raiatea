@@ -4,7 +4,7 @@
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 0.2.0
 >
 > Last reviewed: 21 August 2026
 >
@@ -12,7 +12,13 @@
 >
 > Child issue: [#121](https://github.com/kinderp/raiatea/issues/121)
 >
+> Review PR: [#122](https://github.com/kinderp/raiatea/pull/122)
+>
 > P0 roadmap: [#106](https://github.com/kinderp/raiatea/issues/106)
+>
+> Repository observation baseline: `main` at
+> [`839fa22`](https://github.com/kinderp/raiatea/commit/839fa229614dc3590957488380d76c150e33a948),
+> observed 21 August 2026
 >
 > Independent supervised pilot: [#93](https://github.com/kinderp/raiatea/issues/93)
 > and [PR #95](https://github.com/kinderp/raiatea/pull/95)
@@ -91,26 +97,27 @@ The immediate Elaboration question becomes:
 
 ## 3. Inception completeness review
 
-> Assertion status: `current-contract` for repository/document state observed on
-> 21 August 2026; conclusions are `provisional-decision` until this review is
-> accepted
+> Assertion status: `current-contract` for repository/document state observed at
+> the pinned `main` baseline above; conclusions are `provisional-decision` until
+> this review is accepted
 
 ### 3.1 Canonical artifact status
 
-| Artifact | Current maturity on `main` | Review conclusion |
+| Artifact | State at repository baseline / review branch | Review conclusion |
 | --- | --- | --- |
-| `00-why-raiatea.md` | Accepted | Purpose, first person, product hypotheses, P0 priority and kill criteria are explicit |
-| `01-manifesto.md` | Accepted | Durable human/product principles constrain later implementation without fixing technologies |
-| `02-vision.md` | Accepted | Long-term direction, P0-P7 inclusion, product hierarchy and current-vs-future state are separated |
-| `03-system-context.md` | Accepted | Raiatea/Alfred/Durex/TheBitLab and external provider boundaries are explicit |
-| `04-product-map.md` | Accepted | Document Library, Research/Learning surfaces and shared capabilities are separated |
-| `05-use-case-model.md` | Accepted | Significant goals, actors, failures and cross-cutting invariants are documented |
-| `06-risk-list.md` + register | Accepted | 23 risks, first-slice gates, feature gates and kill/narrowing criteria are explicit |
-| `07-glossary.md` + compatibility map | Accepted | Minimum ubiquitous language is stable enough for Elaboration without becoming an implicit schema |
-| `08-inception-review.md` | Draft | This final gate |
+| `00-why-raiatea.md` | Accepted on `main` | Purpose, first person, product hypotheses, P0 priority and kill criteria are explicit |
+| `01-manifesto.md` | Accepted on `main` | Durable human/product principles constrain later implementation without fixing technologies |
+| `02-vision.md` | Accepted on `main` | Long-term direction, P0-P7 inclusion, product hierarchy and current-vs-future state are separated |
+| `03-system-context.md` | Accepted on `main` | Raiatea/Alfred/Durex/TheBitLab and external provider boundaries are explicit |
+| `04-product-map.md` | Accepted on `main` | Document Library, Research/Learning surfaces and shared capabilities are separated |
+| `05-use-case-model.md` | Accepted on `main` | Significant goals, actors, failures and cross-cutting invariants are documented |
+| `06-risk-list.md` + register | Accepted on `main` | 23 risks, first-slice gates, feature gates and kill/narrowing criteria are explicit |
+| `07-glossary.md` + compatibility map | Accepted on `main` | Minimum ubiquitous language is stable enough for Elaboration without becoming an implicit schema |
+| `08-inception-review.md` | Absent on baseline `main`; Draft in PR #122 | This final gate is under review |
 
-The first eight accepted artifacts establish enough common context for
-risk-driven Elaboration. They do not establish implementation completeness.
+The eight accepted artifacts from `00-why-raiatea.md` through
+`07-glossary.md` establish enough common context for risk-driven Elaboration.
+They do not establish implementation completeness.
 
 ### 3.2 Questions now answered well enough
 
@@ -154,8 +161,8 @@ which is the appropriate Inception outcome.
 
 ## 4. Current implementation and evidence boundary
 
-> Assertion status: `current-contract` for repository state observed on
-> 21 August 2026
+> Assertion status: `current-contract` for repository state observed at the
+> pinned baseline and pilot references above
 
 Raiatea is **not** yet the Universal Document & Asset Library described by the
 Product Map and is **not** yet a general Source Ingestion & Extraction Hub.

@@ -102,6 +102,9 @@ class TikaRouteTests(unittest.TestCase):
         def fake_run(command, **kwargs):
             captured["command"] = command
             captured["cwd"] = Path(kwargs["cwd"])
+            fontcache = next(item for item in command if item.startswith("-Dpdfbox.fontcache="))
+            fontcache_dir = Path(fontcache.split("=", 1)[1])
+            (fontcache_dir / ".pdfbox.cache").write_text("fixture-cache", encoding="utf-8")
             return Completed()
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -138,7 +141,13 @@ class TikaRouteTests(unittest.TestCase):
         self.assertEqual(observation["ocr_policy"], "explicit-no-ocr")
         command = captured["command"]
         self.assertEqual(command[0], "java")
-        self.assertTrue(command[1].startswith("-Djava.io.tmpdir="))
+        tmp_arg = next(item for item in command if item.startswith("-Djava.io.tmpdir="))
+        cache_arg = next(item for item in command if item.startswith("-Dpdfbox.fontcache="))
+        java_tmp = Path(tmp_arg.split("=", 1)[1])
+        fontcache_dir = Path(cache_arg.split("=", 1)[1])
+        controlled_root = captured["cwd"].parent
+        self.assertEqual(java_tmp.parent, controlled_root)
+        self.assertEqual(fontcache_dir.parent, controlled_root)
         self.assertIn("-jar", command)
         self.assertIn("-x", command)
         self.assertTrue(any(item.startswith("--config=") for item in command))
@@ -146,6 +155,9 @@ class TikaRouteTests(unittest.TestCase):
         self.assertFalse(any(item in {"-p", "--password", "-z", "--extract"} for item in command))
         self.assertEqual(captured["cwd"].name, "work")
         self.assertFalse(observation["bbox_structure_observed"])
+        self.assertEqual(observation["side_effect_files"], [])
+        self.assertIn("pdfbox-font-cache/.pdfbox.cache", observation["controlled_runtime_files"])
+        self.assertIn("-Dpdfbox.fontcache=<controlled>", observation["command_options"])
 
     def test_route_reports_missing_config_without_execution(self):
         with tempfile.TemporaryDirectory() as tmp:

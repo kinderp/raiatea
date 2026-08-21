@@ -1,16 +1,14 @@
 # P0 Elaboration
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 1.1.0
+> Version: 2.0.0
 >
 > Last reviewed: 21 August 2026
 >
-> Accepted baseline through: [PR #124](https://github.com/kinderp/raiatea/pull/124)
->
-> Current review issue: [#125](https://github.com/kinderp/raiatea/issues/125)
+> Accepted through: [PR #126](https://github.com/kinderp/raiatea/pull/126)
 >
 > Phase: **Elaboration — P0 risk reduction and architecture**
 >
@@ -41,11 +39,11 @@ Accepted through #123 / PR #124 / `c1be73d`:
 Acceptance records the boundary; it does not claim that a risk gate is satisfied
 or that the first slice has been promoted.
 
-## E-02 — technology survey / build-buy-reuse — #125
+## E-02 — accepted technology survey / build-buy-reuse
 
-> Assertion status: `working-hypothesis` until #125 is accepted
+> Assertion status: `mixed`
 
-Current Draft evidence package:
+Accepted through #125 / PR #126:
 
 - [`technology-survey.md`](technology-survey.md) — current primary-source survey
   for extraction/OCR/conversion Provider candidates;
@@ -80,9 +78,9 @@ A self-hosted HTTP/service process inside the user's controlled environment is
 not treated as an external remote Provider merely because it uses a network
 protocol locally.
 
-## Current survey candidates
+## E-02 survey candidates
 
-The Draft survey includes current primary-source evidence for:
+The accepted survey records current primary-source evidence for:
 
 - Docling;
 - Marker;
@@ -95,15 +93,15 @@ The Draft survey includes current primary-source evidence for:
 - Pandoc;
 - EPUB-specific parsing options.
 
-The list is not a product endorsement and may be narrowed or extended by review.
+The list is not a product endorsement and remains subject to E-03/E-04 evidence.
 
 ## Elaboration sequence
 
 The accepted Inception Review authorizes a bounded sequence:
 
 1. source taxonomy + rights/threat boundary — **completed** (#123/#124);
-2. current technology survey/build-buy-reuse — **in review** (#125);
-3. rights-safe benchmark corpus/fixture design — next after E-02 acceptance;
+2. current technology survey/build-buy-reuse — **completed** (#125/#126);
+3. rights-safe benchmark corpus/fixture design — **next**;
 4. source-class benchmark contract and baseline measurements;
 5. Provider-neutral P0 contract exploration;
 6. Alfred reconciliation/integration evidence;

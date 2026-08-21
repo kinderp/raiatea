@@ -1,12 +1,14 @@
 # Raiatea Use Case Model
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.1
+> Version: 1.0.0
 >
 > Last reviewed: 21 August 2026
+>
+> Accepted through: [PR #114](https://github.com/kinderp/raiatea/pull/114)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 >

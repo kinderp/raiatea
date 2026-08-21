@@ -219,8 +219,9 @@ def run_baseline(
             "pdfinfo_executable": pdfinfo_info.get("resolved_executable"),
             "pdfinfo_version": pdfinfo_info.get("version"),
             "pdfinfo_executable_sha256": pdfinfo_info.get("executable_sha256"),
-            "command_options": ["-xml", "-hidden", "-nodrm", "-q"],
+            "command_options": ["-xml", "-hidden", "-q"],
             "native_coordinate_system": "top-left-scaled-canvas",
+            "respects_pdf_access_restrictions": True,
         },
     }
 
@@ -307,6 +308,7 @@ def run_baseline(
             "Poppler routes in this child are controls, not production Provider-selection candidates.",
             "Gold coordinate comparison uses page-exact strict containment inside broad reference regions; no universal IoU threshold is introduced.",
             "Hierarchy is not measured because visual/font cues are not promoted to Provider-neutral semantics.",
+            "The Poppler controls respect PDF access restrictions; the benchmark never requests a DRM/access-control override.",
             "Timing values are single-run observations and are not performance claims.",
             "Provider network traffic is not instrumented; the measured local Poppler tools do not require remote Provider transmission for these fixtures.",
             "Results apply only to the recorded route/version/environment and current minimal fixtures.",

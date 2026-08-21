@@ -64,6 +64,11 @@ announced by `genesis/README.md`.
 | [`07-glossary.md`](07-glossary.md) | Present | `Draft` | `mixed` | Establish the initial ubiquitous language without freezing schema/API | Accepted Inception artifacts 01-06, #117 |
 | `08-inception-review.md` | Not created | — | `planned` | Decide whether evidence supports entering Elaboration | All preceding artifacts and pilot results |
 
+Supporting terminology reconciliation for the Glossary is documented in
+[`07-terminology-compatibility.md`](07-terminology-compatibility.md). It maps
+accepted pre-Glossary shorthand to the preferred vocabulary without rewriting
+historical canonical documents or implying schema migrations.
+
 `planned` in this table qualifies the creation of each absent artifact. It does
 not assign document maturity to a file that does not exist and does not approve
 the future artifact's conclusions in advance.

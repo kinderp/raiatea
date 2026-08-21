@@ -1,0 +1,206 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-tika-reference-baseline",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "evidence_source_commit": "14acf44200705bfdc6deb5b2c723d319498a18c2",
+  "ci_evidence": {
+    "workflow_run_id": 32528505169,
+    "artifact_id": 9463033920,
+    "artifact_name": "p0-b01-tika-3.3.2-14acf44200705bfdc6deb5b2c723d319498a18c2",
+    "artifact_digest": "sha256:4155813b13c67fd3d0334929ebcc81d831fff119de3741dce1dbf2cba99d9d44",
+    "exact_source_checkout_verified": true,
+    "all_required_jobs_green": true
+  },
+  "harness_fingerprints": {
+    "generator": "c66c08615227e379db08fe40fcfeee980c99bd97bd20e6c637311795c416c1db",
+    "fixture_manifest": "b83cd333e45981f8e1b45634a53f70d5cbc563d3cbea15f5e734c64692fd8583",
+    "gold": "ba08fb72af8a76db34dbdb5f2efca766678846b5a14e0e5f1ac09dc172501047",
+    "tika_config": "2a1fe156c5be30ae578496e472e7754c01f156624d28d35f423a4224287841c2",
+    "tika_routes": "9f83742ad93eaeebee59bd210e0cc0533da41cab7f2b2b096c089e430c7bc7d9",
+    "score_b01": "cc049d4e43ad20d260d7bf8d1c321e00abcf5fa83eb45faf5642f905157396ef",
+    "measure_tika_b01": "c781080ad52055591ce77a00055dc04f5ed39018e108af56fdaafce29b9be8ac"
+  },
+  "environment": {
+    "scope": "single-reference-environment",
+    "platform_system": "Linux",
+    "platform_release": "6.17.0-1022-azure",
+    "platform_version": "#22-Ubuntu SMP Mon Jul 27 17:24:03 UTC 2026",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logical_cpu_count": 4,
+    "memory_total_observed": "16372440 kB",
+    "python_version": "3.12.14",
+    "python_implementation": "CPython",
+    "gpu": "not-instrumented",
+    "portability_claim": false,
+    "runner": "GitHub Actions ubuntu-24.04"
+  },
+  "rights_state": {
+    "redistribution": "not-established",
+    "decision_issue": 131,
+    "public_rights_safe": false,
+    "remote_provider": "denied"
+  },
+  "route": {
+    "route": "tika-app-3.3.2-xhtml",
+    "tika_version": "3.3.2",
+    "jar": {
+      "verified": true,
+      "reason": null,
+      "expected_sha512": "88c2032cba0d45feea361e6eebd2918bd04707614cdda5d89a1b167da5503c98e7b4cd368336f0402d559abcaf5006fcc7c825c32c749ae0417ea2f3b8423aba",
+      "actual_sha512": "88c2032cba0d45feea361e6eebd2918bd04707614cdda5d89a1b167da5503c98e7b4cd368336f0402d559abcaf5006fcc7c825c32c749ae0417ea2f3b8423aba",
+      "sha256": "71ca551380e5eab1add99101f4597a8a49a6a18c6143d6874ee9599ca10ae00e",
+      "bytes": 66978444
+    },
+    "java": {
+      "executable": "java",
+      "resolved_executable": "/opt/hostedtoolcache/Java_Temurin-Hotspot_jdk/21.0.12-8/x64/bin/java",
+      "version_line": "openjdk version \"21.0.12\" 2026-07-21 LTS",
+      "returncode": 0,
+      "error": null,
+      "executable_sha256": "11af352aa2c506c4123a4e4c19c187d59e06cd0dff317d54f5e6806e07c6715d"
+    },
+    "config_path": "/home/runner/work/raiatea/raiatea/elaboration/p0/benchmark/config/tika-pdf-native-no-ocr.xml",
+    "config_sha256": "2a1fe156c5be30ae578496e472e7754c01f156624d28d35f423a4224287841c2",
+    "ocr_policy": "explicit-no-ocr",
+    "command_semantics": [
+      "java",
+      "-Djava.io.tmpdir=<controlled>",
+      "-Dpdfbox.fontcache=<controlled>",
+      "-jar",
+      "<verified-tika-app-3.3.2.jar>",
+      "--config=<pinned-no-ocr-config>",
+      "-x",
+      "<local-fixture.pdf>"
+    ],
+    "runtime_filesystem_policy": {
+      "java_tmp": "controlled",
+      "pdfbox_fontcache": "controlled",
+      "unexpected_files_under_controlled_parent": "recorded-per-fixture"
+    },
+    "hosted_or_remote": false,
+    "access_control_override": false,
+    "network_instrumentation": "not-measured",
+    "os_level_sandbox": false
+  },
+  "results": {
+    "B01-PDF-001": {
+      "fixture_sha256": "be1a5d9ef8a06c5534826ed29cfff34f1d030e0349f39da21b96bfc9a82f4311",
+      "route_status": "success",
+      "content_text": "3/3",
+      "reading_order_edges": "2/2",
+      "observed_reference_text_sequence": [
+        "Raiatea B01 PDF 001",
+        "Alpha paragraph preserves exact benchmark text.",
+        "Beta paragraph follows alpha in reading order."
+      ],
+      "source_coordinates": "not-measured",
+      "page_structure_observed": true,
+      "bbox_structure_observed": false,
+      "hierarchy": {
+        "status": "measured",
+        "type_exact": "2/3",
+        "semantic_evidence_count": 3,
+        "mismatches": [
+          {
+            "reference_unit": "title",
+            "match_state": "unique",
+            "semantic_evidence_available": true,
+            "expected_type": "heading",
+            "observed_type": "paragraph",
+            "type_exact": false,
+            "observed_level": null
+          }
+        ]
+      },
+      "metadata_key_count": 20,
+      "controlled_runtime_files": [
+        "pdfbox-font-cache/.pdfbox.cache"
+      ],
+      "unexpected_side_effect_files": [],
+      "raw_xhtml_sha256": "6004c7c397851f22c9d0731acd838e32b3955b9733a8fbecff4bf7cba2332a35",
+      "raw_xhtml_bytes": 1506
+    },
+    "B01-PDF-002": {
+      "fixture_sha256": "fce2f6285698c63596d9fe4d42fcaff773b787e6521587c50fa23b5691f7edcc",
+      "route_status": "success",
+      "content_text": "5/5",
+      "reading_order_edges": "4/4",
+      "observed_reference_text_sequence": [
+        "Raiatea B01 PDF 002",
+        "Left one.",
+        "Left two.",
+        "Right one.",
+        "Right two."
+      ],
+      "source_coordinates": "not-measured",
+      "page_structure_observed": true,
+      "bbox_structure_observed": false,
+      "hierarchy": {
+        "status": "measured",
+        "type_exact": "4/5",
+        "semantic_evidence_count": 5,
+        "mismatches": [
+          {
+            "reference_unit": "title",
+            "match_state": "unique",
+            "semantic_evidence_available": true,
+            "expected_type": "heading",
+            "observed_type": "paragraph",
+            "type_exact": false,
+            "observed_level": null
+          }
+        ]
+      },
+      "metadata_key_count": 20,
+      "controlled_runtime_files": [
+        "pdfbox-font-cache/.pdfbox.cache"
+      ],
+      "unexpected_side_effect_files": [],
+      "raw_xhtml_sha256": "b34e3c20337e8a81b04fadeae0064dfbf2aa1e03e19662851e4e9768ea7867ba",
+      "raw_xhtml_bytes": 1469
+    }
+  },
+  "comparison_controls": {
+    "reference_commit": "add6bbe0757848d66d17a364f8566985eef21c60",
+    "note": "Poppler B-01 controls are canonical in E-04c. This Tika child does not rerun/rewrite them; comparison is limited to common measured dimensions."
+  },
+  "coverage": {
+    "benchmark_class": "B-01",
+    "normal_fixtures": [
+      "B01-PDF-001",
+      "B01-PDF-002"
+    ],
+    "full_b01_coverage": false,
+    "remaining_gaps": [
+      "headings/lists/links fixture",
+      "figures/captions",
+      "tables",
+      "formula/code",
+      "defective native text subprofile",
+      "malformed/access-controlled negative fixtures",
+      "Docling and other structured Provider measurements"
+    ]
+  },
+  "measurement_limits": [
+    "Tika XHTML is mapped conservatively; absent geometry semantics are not fabricated.",
+    "Explicit Tika page containers provide page identity only; they are not promoted to source geometry.",
+    "OCR is explicitly disabled for this born-digital route through the pinned Tika config and Tesseract parser exclusion.",
+    "Java temporary files and the PDFBox font cache are redirected under the controlled benchmark parent and recorded separately from unexpected side effects.",
+    "Timing values are single-run observations and are not performance claims.",
+    "OS-level filesystem/network isolation is not claimed.",
+    "Results apply only to the recorded jar/config/runtime/environment and current minimal fixtures."
+  ],
+  "decision_boundary": {
+    "provider_selected": false,
+    "first_slice_promoted": false,
+    "g02_satisfied": false,
+    "g04_satisfied": false,
+    "g05_satisfied": false
+  }
+}

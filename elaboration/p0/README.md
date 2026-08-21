@@ -1,16 +1,14 @@
 # P0 Elaboration
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 2.1.0
+> Version: 3.0.0
 >
 > Last reviewed: 21 August 2026
 >
-> Accepted baseline through: [PR #126](https://github.com/kinderp/raiatea/pull/126)
->
-> Current review issue: [#127](https://github.com/kinderp/raiatea/issues/127)
+> Accepted through: [PR #128](https://github.com/kinderp/raiatea/pull/128)
 >
 > Phase: **Elaboration — P0 risk reduction and architecture**
 >
@@ -80,11 +78,11 @@ A self-hosted HTTP/service process inside the user's controlled environment is
 not treated as an external remote Provider merely because it uses a network
 protocol locally.
 
-## E-03 — rights-safe benchmark fixtures / gold data — #127
+## E-03 — accepted rights-safe benchmark fixtures / gold data
 
-> Assertion status: `working-hypothesis` until #127 is accepted
+> Assertion status: `mixed`
 
-Current Draft evidence package:
+Accepted through #127 / PR #128:
 
 - [`benchmark-fixture-plan.md`](benchmark-fixture-plan.md) — Provider-neutral B-01
   PDF and B-02 EPUB fixture families, negative/security cases and reproducibility
@@ -96,7 +94,7 @@ Current Draft evidence package:
   for content, hierarchy, reading order, Source Coordinates, links/assets,
   tables/formulas/code and expected failure/degradation states.
 
-E-03 defines the material and reference semantics that E-04 will measure. It does
+E-03 defines the material and reference semantics that E-04 may measure. It does
 not create numerical Provider results, select a Provider or make the PDF/EPUB
 first slice `planned`.
 
@@ -105,13 +103,14 @@ first slice `planned`.
 - public baseline should prefer project-created/generated fixtures;
 - private/licensed Sources may inform private exploratory comparisons but cannot
   become public benchmark dependencies;
-- PDF and EPUB use different Source Coordinate semantics;
+- PDF and EPUB use different Source Coordinate semantics; concrete EPUB anchor
+  representation remains provisional;
 - failure/security fixtures are not mixed into normal quality averages;
 - gold data is Provider-neutral and may express exact, tolerance-based,
   relational, ordered, human-reviewed or intentionally ambiguous expectations;
 - no fixture or gold format becomes the future P0 public extraction schema.
 
-## E-02 survey candidates feeding E-03/E-04
+## E-02 survey candidates feeding E-04
 
 The accepted survey records current primary-source evidence for:
 
@@ -126,7 +125,8 @@ The accepted survey records current primary-source evidence for:
 - Pandoc;
 - EPUB-specific parsing options.
 
-The list is not a product endorsement and remains subject to E-03/E-04 evidence.
+The list is not a product endorsement and remains subject to E-04 measured
+evidence.
 
 ## Elaboration sequence
 
@@ -134,8 +134,8 @@ The accepted Inception Review authorizes a bounded sequence:
 
 1. source taxonomy + rights/threat boundary — **completed** (#123/#124);
 2. current technology survey/build-buy-reuse — **completed** (#125/#126);
-3. rights-safe benchmark corpus/fixture/gold-data design — **in review** (#127);
-4. source-class benchmark contract and baseline measurements — next after E-03;
+3. rights-safe benchmark corpus/fixture/gold-data design — **completed** (#127/#128);
+4. source-class benchmark contract and baseline measurements — **next**;
 5. Provider-neutral P0 contract exploration;
 6. Alfred reconciliation/integration evidence;
 7. evidence packages for G-01..G-07;

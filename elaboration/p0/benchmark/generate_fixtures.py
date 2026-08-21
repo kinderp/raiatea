@@ -96,9 +96,12 @@ def generate_pdf_two_column(path: Path) -> None:
     )
 
 
-def _zip_write_text(zf: zipfile.ZipFile, name: str, text: str, compress: bool = True) -> None:
+def _zip_write_text(zf: zipfile.ZipFile, name: str, text: str, compress: bool = False) -> None:
+    # Keep fixture members uncompressed so byte output does not depend on the
+    # zlib version available on the benchmark host.
     info = zipfile.ZipInfo(name, ZIP_DATE)
     info.compress_type = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
+    info.create_system = 3
     info.external_attr = 0o644 << 16
     zf.writestr(info, text.encode("utf-8"))
 
@@ -220,12 +223,25 @@ def load_manifest() -> dict:
     return json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
 
 
+def _safe_output_path(output_dir: Path, name: str) -> Path:
+    if (
+        not name
+        or Path(name).is_absolute()
+        or Path(name).name != name
+        or "/" in name
+        or "\\" in name
+        or name in {".", ".."}
+    ):
+        raise ValueError(f"Fixture output must be one safe basename: {name!r}")
+    return output_dir / name
+
+
 def generate_all(output_dir: Path) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest = load_manifest()
     generated = []
     for fixture in manifest["fixtures"]:
-        output_path = output_dir / fixture["output"]
+        output_path = _safe_output_path(output_dir, fixture["output"])
         generator_name = fixture["generator"]
         GENERATORS[generator_name](output_path)
         generated.append(

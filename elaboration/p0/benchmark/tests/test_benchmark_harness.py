@@ -151,6 +151,38 @@ class BenchmarkHarnessTests(unittest.TestCase):
             self.assertFalse((root.parent / "outside.txt").exists())
             self.assertFalse((root / "outside.txt").exists())
 
+    def test_manifest_ids_outputs_and_generators_are_unique_and_safe(self):
+        fixtures = self.fixture_manifest["fixtures"]
+        ids = [fixture["id"] for fixture in fixtures]
+        outputs = [fixture["output"] for fixture in fixtures]
+        self.assertEqual(len(ids), len(set(ids)))
+        self.assertEqual(len(outputs), len(set(outputs)))
+        for fixture in fixtures:
+            self.assertIn(fixture["generator"], MODULE.GENERATORS)
+            self.assertEqual(Path(fixture["output"]).name, fixture["output"])
+            self.assertNotIn("/", fixture["output"])
+            self.assertNotIn("\\", fixture["output"])
+            self.assertIn(fixture["id"], self.gold["fixtures"])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            for unsafe in ["../outside.pdf", "nested/file.pdf", r"nested\file.pdf"]:
+                with self.assertRaises(ValueError):
+                    MODULE._safe_output_path(Path(tmp), unsafe)
+
+    def test_epub_generation_avoids_compression_version_drift(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            MODULE.generate_all(Path(tmp))
+            for filename in [
+                "B02-EPUB-001.epub",
+                "B02-EPUB-002.epub",
+                "B02-EPUB-NEG-001.epub",
+                "B02-EPUB-NEG-002.epub",
+            ]:
+                with zipfile.ZipFile(Path(tmp) / filename) as zf:
+                    self.assertTrue(
+                        all(info.compress_type == zipfile.ZIP_STORED for info in zf.infolist())
+                    )
+
     def test_generated_manifest_records_fingerprints_and_rights(self):
         with tempfile.TemporaryDirectory() as tmp:
             result = MODULE.generate_all(Path(tmp))

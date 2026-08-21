@@ -51,6 +51,53 @@ The output directory contains generated PDF/EPUB fixtures plus
 Generated binaries are intentionally not committed: deterministic source, gold
 and generator definitions are the reviewable evidence.
 
+## B-01 PDF control routes
+
+E-04c adds two **Poppler control routes** for born-digital PDF. They establish
+cheap deterministic baselines and do not select Poppler as a production
+Provider:
+
+- `pdftotext-bbox-layout` — maps Poppler bbox-layout XHTML from top-left points
+  into bottom-left PDF points;
+- `pdftohtml-xml` — maps Poppler XML from its top-left scaled canvas into
+  bottom-left PDF points using physical per-page dimensions from `pdfinfo`.
+
+The second route deliberately never uses `-nodrm` or another access-control
+override. If page-size evidence is ambiguous for a multi-page source, coordinate
+mapping fails closed rather than assuming all pages share one size.
+
+Run a local B-01 control measurement:
+
+```bash
+python elaboration/p0/benchmark/routes/measure_b01.py \
+  --output /tmp/raiatea-b01-baseline \
+  --evidence-source-commit <exact-code-commit>
+```
+
+A dedicated GitHub Actions reference job checks out the exact PR head, installs
+`poppler-utils`, runs this command and uploads the complete evidence artifact.
+The accepted reference source is commit `0e754bc`; its compact evidence is under:
+
+```text
+elaboration/p0/benchmark/evidence/
+  b01-reference-ubuntu-poppler-24.02.0/
+    b01-baseline.json
+    b01-summary.md
+```
+
+The source run was GitHub Actions run `32525854079`, artifact `9462154504`,
+digest `sha256:6a94fe46b7609fefadcf3ff37c8a425d32264a93cc5e32bc294f99f0f2870d44`.
+It measured Poppler 24.02.0 on Ubuntu 24.04 / Python 3.12.14.
+
+On `B01-PDF-002` both controls recover all current reference text and coordinate
+regions, but they differ in observed reading order: `pdftotext-bbox-layout`
+satisfies 3/4 gold edges whereas `pdftohtml-xml` satisfies 4/4. Hierarchy remains
+`not-measured`; font/layout cues are not promoted to semantic structure.
+
+Tika and Docling remain structured Provider candidates from E-02, but they are
+`not-measured` in this reference run. Absence/setup state is never treated as an
+extraction-quality result.
+
 ## B-02 baseline routes
 
 E-04b adds two benchmark-only local routes:
@@ -108,6 +155,10 @@ Tests cover:
 - fail-closed rights state;
 - deterministic regeneration;
 - valid basic PDF structure;
+- B-01 Poppler XML/XHTML mappings and top-left → bottom-left coordinate conversion;
+- fail-closed multi-page page-size handling;
+- no Poppler DRM/access-control override;
+- B-01 text/reading-order/coordinate scoring and ambiguous duplicate-text handling;
 - EPUB `mimetype`/container/OPF/nav structure;
 - EPUB no-canonical-page gold invariant;
 - cross-resource anchors;
@@ -122,12 +173,12 @@ Tests cover:
 - dynamic report metadata so reruns cannot inherit stale hard-coded Provider
   versions.
 
-The dedicated `P0 benchmark harness` GitHub Actions matrix runs on Linux and
-Windows with supported Python versions. It does not install external Providers,
-so external-route measurements remain explicit reference-environment evidence.
+The `P0 benchmark harness` workflow runs the dependency-light contract tests on
+Linux and Windows. Provider-specific reference jobs are separate and must pin the
+exact source commit/environment used to generate evidence.
 
-`pdfinfo` and `unzip` may be used as optional manual diagnostics but are not test
-dependencies.
+`pdfinfo` and `unzip` may be used as optional manual diagnostics but are not
+requirements of the dependency-light test matrix.
 
 ## Contract boundary
 

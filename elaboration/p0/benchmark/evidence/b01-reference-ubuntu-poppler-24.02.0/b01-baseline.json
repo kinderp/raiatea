@@ -1,0 +1,181 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-reference-baseline",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "evidence_source_commit": "0e754bc99d4a4b58b736ed768ef61491d1ffc7c1",
+  "ci_evidence": {
+    "workflow_run_id": 32525854079,
+    "artifact_id": 9462154504,
+    "artifact_name": "p0-b01-poppler-reference-0e754bc99d4a4b58b736ed768ef61491d1ffc7c1",
+    "artifact_digest": "sha256:6a94fe46b7609fefadcf3ff37c8a425d32264a93cc5e32bc294f99f0f2870d44",
+    "exact_source_checkout_verified": true
+  },
+  "harness_fingerprints": {
+    "generator": "c66c08615227e379db08fe40fcfeee980c99bd97bd20e6c637311795c416c1db",
+    "fixture_manifest": "b83cd333e45981f8e1b45634a53f70d5cbc563d3cbea15f5e734c64692fd8583",
+    "gold": "ba08fb72af8a76db34dbdb5f2efca766678846b5a14e0e5f1ac09dc172501047",
+    "pdf_routes": "6aeb5e16ff5e993759264628aaac2ebdaf20bab5abf9398143c1c0aa41fdc080",
+    "score_b01": "36b03891e88fe3583ac3edc739c61455d6fc4c2ce1d6611a6b03617f232b01c5",
+    "measure_b01": "c61cd5c5537b4025428a41b4384f248c2794c1b8a54c521468bddebe420e9d13"
+  },
+  "environment": {
+    "scope": "single-reference-environment",
+    "runner": "GitHub Actions ubuntu-24.04",
+    "platform_system": "Linux",
+    "platform_release": "6.17.0-1022-azure",
+    "machine": "x86_64",
+    "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+    "logical_cpu_count": 4,
+    "memory_total_observed": "16373452 kB",
+    "python_version": "3.12.14",
+    "python_implementation": "CPython",
+    "gpu": "not-instrumented",
+    "portability_claim": false
+  },
+  "rights_state": {
+    "redistribution": "not-established",
+    "decision_issue": 131,
+    "public_rights_safe": false,
+    "remote_provider": "denied"
+  },
+  "routes": {
+    "pdftotext-bbox-layout": {
+      "control_route": true,
+      "version": "24.02.0",
+      "resolved_executable": "/usr/bin/pdftotext",
+      "executable_sha256": "0fb98ea179e19154a90202608c164f2a319b79f16576fa6534b2d601033565e7",
+      "command_options": ["-bbox-layout"],
+      "native_coordinate_system": "top-left-points"
+    },
+    "pdftohtml-xml": {
+      "control_route": true,
+      "version": "24.02.0",
+      "resolved_executable": "/usr/bin/pdftohtml",
+      "executable_sha256": "70bd5fbb655a14d0b02cb32cb53a601d3b0842a63553a24d1a6a612cf9f0624e",
+      "pdfinfo_version": "24.02.0",
+      "pdfinfo_executable": "/usr/bin/pdfinfo",
+      "pdfinfo_executable_sha256": "3293dda06d80e1e38dab859aa47368c2876aedc41cbc2e24e8fb9a4e66392078",
+      "command_options": ["-xml", "-hidden", "-q"],
+      "native_coordinate_system": "top-left-scaled-canvas",
+      "respects_pdf_access_restrictions": true
+    }
+  },
+  "results": {
+    "B01-PDF-001": {
+      "fixture_sha256": "be1a5d9ef8a06c5534826ed29cfff34f1d030e0349f39da21b96bfc9a82f4311",
+      "pdftotext-bbox-layout": {
+        "route_status": "success",
+        "content_text": "3/3",
+        "coordinates_contained": "3/3",
+        "reading_order_edges": "2/2",
+        "hierarchy": "not-measured",
+        "raw_output_sha256": "0d146b83ddcc6609a8a6492bc2fe15a40813e7dab2b271cf177ec6b2b3bcfad5",
+        "raw_output_bytes": 2617,
+        "side_effect_files": []
+      },
+      "pdftohtml-xml": {
+        "route_status": "success",
+        "content_text": "3/3",
+        "coordinates_contained": "3/3",
+        "reading_order_edges": "2/2",
+        "hierarchy": "not-measured",
+        "raw_output_sha256": "3515f33e7ea25a13cbad4287b0314f15ecb56cbc5d77a1a24aa03456bf8b6e48",
+        "raw_output_bytes": 672,
+        "side_effect_files": []
+      }
+    },
+    "B01-PDF-002": {
+      "fixture_sha256": "fce2f6285698c63596d9fe4d42fcaff773b787e6521587c50fa23b5691f7edcc",
+      "pdftotext-bbox-layout": {
+        "route_status": "success",
+        "content_text": "5/5",
+        "coordinates_contained": "5/5",
+        "reading_order_edges": "3/4",
+        "observed_reference_text_sequence": [
+          "Raiatea B01 PDF 002",
+          "Left one.",
+          "Right one.",
+          "Left two.",
+          "Right two."
+        ],
+        "failed_reading_order_edge": ["l2", "r1"],
+        "hierarchy": "not-measured",
+        "raw_output_sha256": "3c4b5daa2bc8b55f9ad3770210db11ccbbd7ed73fe29f49b92a3571e308ec616",
+        "raw_output_bytes": 2563,
+        "side_effect_files": []
+      },
+      "pdftohtml-xml": {
+        "route_status": "success",
+        "content_text": "5/5",
+        "coordinates_contained": "5/5",
+        "reading_order_edges": "4/4",
+        "observed_reference_text_sequence": [
+          "Raiatea B01 PDF 002",
+          "Left one.",
+          "Left two.",
+          "Right one.",
+          "Right two."
+        ],
+        "hierarchy": "not-measured",
+        "raw_output_sha256": "6b6cd70dc533fc0bd3080044a4c52b25cbfb870c0a5418deb04ca0a203900121",
+        "raw_output_bytes": 749,
+        "side_effect_files": []
+      }
+    }
+  },
+  "structured_provider_setup": {
+    "policy": "availability/setup evidence only; unavailable/not-installed is not extraction-quality evidence",
+    "apache-tika": {
+      "surveyed_version": "3.3.2",
+      "survey_evidence_scope": "carried-forward-from-E02-not-reverified-by-this-run",
+      "execution_status": "not-measured",
+      "setup_status": "not-installed-or-materialized-for-this-run",
+      "quality_assessment": null
+    },
+    "docling": {
+      "surveyed_version": "2.117.0",
+      "survey_evidence_scope": "carried-forward-from-E02-not-reverified-by-this-run",
+      "python_module_available": false,
+      "execution_status": "not-measured",
+      "quality_assessment": null
+    }
+  },
+  "coordinate_measurement": {
+    "gold_coordinate_system": "bottom-left-points",
+    "method": "page-exact plus strict containment of observed tight text bbox inside broad gold reference region",
+    "universal_iou_threshold": null,
+    "pdftotext_conversion": "top-left points -> bottom-left points using page height",
+    "pdftohtml_conversion": "top-left scaled canvas -> bottom-left points using pdfinfo physical page dimensions and per-axis scale"
+  },
+  "coverage": {
+    "benchmark_class": "B-01",
+    "full_b01_coverage": false,
+    "remaining_gaps": [
+      "headings/lists/links",
+      "figures/captions",
+      "tables",
+      "formula/code",
+      "defective native text subprofile",
+      "malformed/access-controlled negative fixtures",
+      "structured generalist Provider measurements such as Docling/Tika"
+    ]
+  },
+  "measurement_limits": [
+    "Poppler routes are controls, not production Provider-selection candidates.",
+    "Hierarchy is not measured from visual/font cues.",
+    "Timing values from the source artifact are single-run observations and are not promoted as performance claims in this compact record.",
+    "The controls do not request a DRM/access-control override.",
+    "Results apply only to the recorded route/version/environment and current minimal fixtures."
+  ],
+  "decision_boundary": {
+    "provider_selected": false,
+    "first_slice_promoted": false,
+    "g02_satisfied": false,
+    "g04_satisfied": false,
+    "g05_satisfied": false
+  }
+}

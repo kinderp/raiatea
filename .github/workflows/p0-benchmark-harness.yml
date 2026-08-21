@@ -54,11 +54,15 @@ jobs:
           test -s "${RUNNER_TEMP}/raiatea-p0-fixtures/generated-manifest.json"
 
   b01-poppler-reference:
-    name: B-01 Poppler reference / Ubuntu
+    name: B-01 Poppler reference / Ubuntu 24.04
     needs: test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      EXPECTED_POPPLER_VERSION: "24.02.0"
+      EXPECTED_PDFTOTEXT_SHA256: "0fb98ea179e19154a90202608c164f2a319b79f16576fa6534b2d601033565e7"
+      EXPECTED_PDFTOHTML_SHA256: "70bd5fbb655a14d0b02cb32cb53a601d3b0842a63553a24d1a6a612cf9f0624e"
+      EXPECTED_PDFINFO_SHA256: "3293dda06d80e1e38dab859aa47368c2876aedc41cbc2e24e8fb9a4e66392078"
 
     steps:
       - name: Check out exact evidence source commit
@@ -71,18 +75,23 @@ jobs:
           test "$(git rev-parse HEAD)" = "${EVIDENCE_SOURCE_COMMIT}"
           echo "Evidence source commit: ${EVIDENCE_SOURCE_COMMIT}"
 
-      - name: Set up Python
+      - name: Set up exact reference Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.12.14"
 
-      - name: Install Poppler controls
+      - name: Install and verify exact Poppler controls
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends poppler-utils
-          pdftotext -v 2>&1 | head -1
-          pdftohtml -v 2>&1 | head -1
-          pdfinfo -v 2>&1 | head -1
+
+          pdftotext -v 2>&1 | head -1 | grep -F "version ${EXPECTED_POPPLER_VERSION}"
+          pdftohtml -v 2>&1 | head -1 | grep -F "version ${EXPECTED_POPPLER_VERSION}"
+          pdfinfo -v 2>&1 | head -1 | grep -F "version ${EXPECTED_POPPLER_VERSION}"
+
+          echo "${EXPECTED_PDFTOTEXT_SHA256}  /usr/bin/pdftotext" | sha256sum -c -
+          echo "${EXPECTED_PDFTOHTML_SHA256}  /usr/bin/pdftohtml" | sha256sum -c -
+          echo "${EXPECTED_PDFINFO_SHA256}  /usr/bin/pdfinfo" | sha256sum -c -
 
       - name: Run B-01 reference baseline
         run: |

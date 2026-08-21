@@ -646,7 +646,7 @@ and output confinement still matter for P0 processing.
 
 ## 10. Provider isolation questions
 
-> Assertion status: `deferred-to-Elaboration-evidence`
+> Assertion status: `working-hypothesis`
 
 The project has not yet chosen whether extraction Providers require:
 

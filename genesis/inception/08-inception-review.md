@@ -1,18 +1,18 @@
 # Raiatea Inception Review
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.2.0
+> Version: 1.0.0
 >
 > Last reviewed: 21 August 2026
+>
+> Accepted through: [PR #122](https://github.com/kinderp/raiatea/pull/122)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 >
 > Child issue: [#121](https://github.com/kinderp/raiatea/issues/121)
->
-> Review PR: [#122](https://github.com/kinderp/raiatea/pull/122)
 >
 > P0 roadmap: [#106](https://github.com/kinderp/raiatea/issues/106)
 >
@@ -46,7 +46,7 @@ asks a narrower risk-driven question:
 > important P0 risks without pretending that the first product slice, providers,
 > schema or pedagogical thesis have already been validated?**
 
-The review must preserve four distinctions:
+The review preserves four distinctions:
 
 1. **phase readiness is not product validation**;
 2. **P0 risk-reduction work is not first-slice implementation approval**;
@@ -55,13 +55,13 @@ The review must preserve four distinctions:
 
 ## 2. Review decision
 
-> Assertion status: `accepted-decision` only after maintainer acceptance and
-> merge; proposed decision while this document is Draft
+> Assertion status: `accepted-decision`
 
-### Proposed decision: GO to Elaboration for bounded P0 risk reduction
+### Decision: GO to Elaboration for bounded P0 risk reduction
 
-Raiatea should leave Project Genesis/Inception and enter **Elaboration focused
-on P0 risk reduction and architecture**.
+Raiatea leaves Project Genesis/Inception and enters **Elaboration focused on P0
+risk reduction and architecture** when this accepted target state is merged to
+`main`.
 
 This GO authorizes work that produces evidence needed to decide *how* P0 should
 be built and whether the candidate first document slice should later become
@@ -84,9 +84,8 @@ It does **not** authorize:
 
 ### Meaning of the GO
 
-The GO means only that the project now has enough reviewed structure to reduce
-its highest risks deliberately instead of continuing broad conceptual
-exploration.
+The GO means only that the project has enough reviewed structure to reduce its
+highest risks deliberately instead of continuing broad conceptual exploration.
 
 The immediate Elaboration question becomes:
 
@@ -98,26 +97,26 @@ The immediate Elaboration question becomes:
 ## 3. Inception completeness review
 
 > Assertion status: `current-contract` for repository/document state observed at
-> the pinned `main` baseline above; conclusions are `provisional-decision` until
-> this review is accepted
+> the pinned `main` baseline above; review conclusions are `accepted-decision`
 
 ### 3.1 Canonical artifact status
 
-| Artifact | State at repository baseline / review branch | Review conclusion |
+| Artifact | State at repository baseline / accepted review target | Review conclusion |
 | --- | --- | --- |
-| `00-why-raiatea.md` | Accepted on `main` | Purpose, first person, product hypotheses, P0 priority and kill criteria are explicit |
-| `01-manifesto.md` | Accepted on `main` | Durable human/product principles constrain later implementation without fixing technologies |
-| `02-vision.md` | Accepted on `main` | Long-term direction, P0-P7 inclusion, product hierarchy and current-vs-future state are separated |
-| `03-system-context.md` | Accepted on `main` | Raiatea/Alfred/Durex/TheBitLab and external provider boundaries are explicit |
-| `04-product-map.md` | Accepted on `main` | Document Library, Research/Learning surfaces and shared capabilities are separated |
-| `05-use-case-model.md` | Accepted on `main` | Significant goals, actors, failures and cross-cutting invariants are documented |
-| `06-risk-list.md` + register | Accepted on `main` | 23 risks, first-slice gates, feature gates and kill/narrowing criteria are explicit |
-| `07-glossary.md` + compatibility map | Accepted on `main` | Minimum ubiquitous language is stable enough for Elaboration without becoming an implicit schema |
-| `08-inception-review.md` | Absent on baseline `main`; Draft in PR #122 | This final gate is under review |
+| `00-why-raiatea.md` | Accepted on baseline `main` | Purpose, first person, product hypotheses, P0 priority and kill criteria are explicit |
+| `01-manifesto.md` | Accepted on baseline `main` | Durable human/product principles constrain later implementation without fixing technologies |
+| `02-vision.md` | Accepted on baseline `main` | Long-term direction, P0-P7 inclusion, product hierarchy and current-vs-future state are separated |
+| `03-system-context.md` | Accepted on baseline `main` | Raiatea/Alfred/Durex/TheBitLab and external provider boundaries are explicit |
+| `04-product-map.md` | Accepted on baseline `main` | Document Library, Research/Learning surfaces and shared capabilities are separated |
+| `05-use-case-model.md` | Accepted on baseline `main` | Significant goals, actors, failures and cross-cutting invariants are documented |
+| `06-risk-list.md` + register | Accepted on baseline `main` | 23 risks, first-slice gates, feature gates and kill/narrowing criteria are explicit |
+| `07-glossary.md` + compatibility map | Accepted on baseline `main` | Minimum ubiquitous language is stable enough for Elaboration without becoming an implicit schema |
+| `08-inception-review.md` | Accepted target state in PR #122; authoritative after merge | Final phase gate and bounded GO decision |
 
 The eight accepted artifacts from `00-why-raiatea.md` through
-`07-glossary.md` establish enough common context for risk-driven Elaboration.
-They do not establish implementation completeness.
+`07-glossary.md`, together with this final accepted review, establish enough
+common context for risk-driven Elaboration. They do not establish implementation
+completeness.
 
 ### 3.2 Questions now answered well enough
 
@@ -171,13 +170,13 @@ The repository already contains a narrower local pedagogical vertical and pilot
 infrastructure. That implementation demonstrates feasibility of selected
 learning-module mechanics but does not prove the long-term product thesis.
 
-The independent supervised pilot remains open:
+The independent supervised pilot remains open at the observation baseline:
 
 - parent issue [#93](https://github.com/kinderp/raiatea/issues/93) is open;
 - [PR #95](https://github.com/kinderp/raiatea/pull/95), the incident-log/stop-
   criteria increment, remains open and unmerged at the observation date.
 
-Therefore this Inception Review must **not** claim that Raiatea improves
+Therefore this Inception Review does **not** claim that Raiatea improves
 learning, transfer, retention or study efficiency.
 
 ### Consequence
@@ -196,10 +195,11 @@ Progress on one stream does not manufacture evidence for the other.
 
 ## 5. What Elaboration is authorized to do
 
-> Assertion status: `provisional-decision` until this review is accepted
+> Assertion status: `accepted-decision`
 
-The following work is appropriate immediately after the Inception gate because
-it **reduces uncertainty** without assuming the desired technical result.
+The following work is authorized after the Inception gate because it **reduces
+uncertainty** without assuming the desired technical result. Each concrete
+change still requires a scoped issue/PR under the normal repository rules.
 
 ### E-01 — Source taxonomy, rights and threat boundary
 
@@ -350,8 +350,7 @@ mechanical enough to audit rather than a matter of enthusiasm.
 
 ## 6. What remains unauthorized after the GO
 
-> Assertion status: `accepted-decision` for existing feature/evidence gates;
-> review restates them without changing their status
+> Assertion status: `accepted-decision`
 
 ### 6.1 Candidate first slice
 
@@ -550,7 +549,7 @@ roadmap work; this review does not invent them prematurely.
 The accepted Why/Manifesto/Vision preserve a Research & Learning direction, but
 that direction requires independent evidence.
 
-The supervised pilot roadmap remains open at the review observation date.
+The supervised pilot roadmap remains open at the review observation baseline.
 Therefore:
 
 - no learning-outcome claim is promoted;
@@ -565,20 +564,20 @@ This separation protects both lines of inquiry from circular evidence.
 
 ## 11. Repository and project-state decision
 
-> Assertion status: `provisional-decision` until this review is accepted
+> Assertion status: `accepted-decision`
 
-If this review is accepted and merged:
+Upon merge of this accepted review:
 
 1. **Project Genesis / Inception is complete.**
 2. The repository phase becomes **Elaboration — P0 risk reduction and
    architecture**.
-3. Root and Genesis README files should state explicitly that:
+3. Root and Genesis README files state explicitly that:
    - Inception is complete;
    - P0 remains planned, not implemented;
    - the candidate first product slice remains a working hypothesis;
    - the active objective is evidence generation for P0 and G-01..G-07;
    - the supervised pedagogical pilot continues independently.
-4. Parent issue #98 may close as `completed`.
+4. Parent issue #98 may close as `completed` after merge and traceability update.
 5. P0 issue #106 becomes the primary platform Elaboration roadmap.
 
 A phase transition is a governance/orientation decision, not a software release.
@@ -617,9 +616,9 @@ missing evidence or turn candidate technologies into facts.
 
 ## 13. Review outcome matrix
 
-> Assertion status: `provisional-decision` until accepted
+> Assertion status: `accepted-decision`
 
-| Question | Proposed answer | Why |
+| Question | Answer | Why |
 | --- | --- | --- |
 | Is the complete long-term Raiatea vision ready for implementation? | **No** | P1-P7, broader products and many feature gates remain intentionally unresolved |
 | Is Project Genesis/Inception complete enough to stop broad conceptual expansion? | **Yes** | Purpose, principles, boundaries, use cases, risks and vocabulary are canonical |
@@ -635,7 +634,7 @@ missing evidence or turn candidate technologies into facts.
 
 ## 14. Open decisions carried forward
 
-The following do not block the proposed Elaboration entry but remain visible:
+The following do not block Elaboration entry but remain visible:
 
 - first supported operating environment and Alfred fallback/reconciliation
   details;
@@ -657,9 +656,9 @@ silently answered by the phase transition.
 
 ## 15. Inception exit criteria
 
-> Assertion status: `provisional-decision` until accepted
+> Assertion status: `accepted-decision`
 
-Project Genesis may close when all of the following are true:
+The accepted review target satisfies the Project Genesis exit package:
 
 - [x] Why/problem/first person documented and accepted;
 - [x] Manifesto and Vision accepted;
@@ -672,12 +671,13 @@ Project Genesis may close when all of the following are true:
 - [x] Critical risks and evidence gates remain visible rather than declared
   solved;
 - [x] pedagogical pilot state is not confused with P0/platform readiness;
-- [ ] this Inception Review is accepted and merged;
-- [ ] repository orientation is updated to the resulting phase.
+- [x] this Inception Review is in its accepted target state;
+- [x] repository orientation is updated on the review branch to the resulting
+  phase; `main` becomes authoritative after merge.
 
-## 16. Final proposed decision record
+## 16. Final decision record
 
-> Assertion status: `provisional-decision` until maintainer acceptance
+> Assertion status: `accepted-decision`
 
 **Decision:** `GO — enter Elaboration for bounded P0 risk reduction and
 architecture.`

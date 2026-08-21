@@ -1,12 +1,14 @@
 # P0 Elaboration
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 1.0.0
 >
 > Last reviewed: 21 August 2026
+>
+> Accepted through: [PR #124](https://github.com/kinderp/raiatea/pull/124)
 >
 > Phase: **Elaboration — P0 risk reduction and architecture**
 >
@@ -20,7 +22,7 @@ is to reduce risk before a first product slice is promoted to `planned` work.
 The current PDF/EPUB first slice remains a **working hypothesis**. Nothing in
 this directory makes it implemented or planned by itself.
 
-## Current micro-step — #123
+## Completed boundary micro-step — #123
 
 The first Elaboration child defines the boundary needed before Provider survey
 and benchmark design:
@@ -35,14 +37,16 @@ and benchmark design:
   boundary, filesystem/path/provider threats and evidence required by G-02/G-03/
   G-04/G-05/G-07.
 
-All three are Draft until #123's review gate is completed.
+All three are Accepted through PR #124. Acceptance records the evidence boundary;
+it does not claim that any risk gate is satisfied or that the first slice has
+been promoted.
 
 ## Elaboration sequence
 
 The accepted Inception Review authorizes a bounded sequence:
 
-1. source taxonomy + rights/threat boundary — **current**;
-2. current technology survey/build-buy-reuse;
+1. source taxonomy + rights/threat boundary — **completed**;
+2. current technology survey/build-buy-reuse — **next**;
 3. rights-safe benchmark corpus/fixture design;
 4. source-class benchmark contract and baseline measurements;
 5. provider-neutral P0 contract exploration;

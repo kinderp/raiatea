@@ -1,12 +1,14 @@
 # Raiatea Risk List and Evidence Gates
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 1.0.0
 >
 > Last reviewed: 21 August 2026
+>
+> Accepted through: [PR #116](https://github.com/kinderp/raiatea/pull/116)
 >
 > Parent issue: [#98](https://github.com/kinderp/raiatea/issues/98)
 >
@@ -19,6 +21,8 @@
 > [`03-system-context.md`](03-system-context.md),
 > [`04-product-map.md`](04-product-map.md), and
 > [`05-use-case-model.md`](05-use-case-model.md)
+>
+> Complete evidence register: [`06-risk-register.md`](06-risk-register.md)
 
 ## 1. Purpose
 
@@ -58,7 +62,7 @@ This document therefore uses qualitative severity:
 - **Low/Monitor** — track, but do not spend current Inception effort unless new
   evidence raises it.
 
-Severity labels in this Draft are `working-hypothesis` assessments unless an
+Severity labels in this document are `working-hypothesis` assessments unless an
 accepted principle makes the consequence intrinsically blocking.
 
 ### 2.2 Treatment class
@@ -94,7 +98,9 @@ Risks may later be marked:
 - `invalidated-direction` — evidence requires narrowing, replacing or stopping
   the direction.
 
-This Draft begins with risks `open` unless stated otherwise.
+This accepted Inception version begins with risks `open` unless stated
+otherwise. Acceptance records the current risk model; it does not claim the
+risks are mitigated.
 
 ## 3. Current risk priorities
 

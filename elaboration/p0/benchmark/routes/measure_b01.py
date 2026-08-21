@@ -31,7 +31,6 @@ from pdf_routes import (  # noqa: E402
 )
 from score_b01 import measure_b01_fixture  # noqa: E402
 
-
 RESULT_CONTRACT_VERSION = "0.1.0"
 TIKA_SURVEYED_VERSION = "3.3.2"
 TIKA_APP_SHA512 = (
@@ -94,6 +93,7 @@ def _environment() -> dict[str, Any]:
 
 
 def _structured_provider_setup() -> dict[str, Any]:
+    """Record setup/availability only; never synthesize quality evidence."""
     return {
         "policy": (
             "availability/setup evidence only; never convert unavailable/not-installed "
@@ -101,19 +101,17 @@ def _structured_provider_setup() -> dict[str, Any]:
         ),
         "apache-tika": {
             "surveyed_version": TIKA_SURVEYED_VERSION,
+            "survey_evidence_scope": "carried-forward-from-E02-not-reverified-by-this-run",
             "official_release_page": "https://tika.apache.org/3.3.2/",
             "official_download_page": "https://tika.apache.org/download",
-            "tika_app_sha512": TIKA_APP_SHA512,
+            "tika_app_sha512_from_E02_evidence": TIKA_APP_SHA512,
             "execution_status": "not-measured",
-            "setup_status": "artifact-not-materialized-in-current-reference-environment",
+            "setup_status": "not-installed-or-materialized-for-this-run",
             "quality_assessment": None,
-            "note": (
-                "The current environment could not materialize the official Tika app jar "
-                "through its available download path. This is setup evidence, not a quality result."
-            ),
         },
         "docling": {
             "surveyed_version": "2.117.0",
+            "survey_evidence_scope": "carried-forward-from-E02-not-reverified-by-this-run",
             "python_module_available": importlib.util.find_spec("docling") is not None,
             "execution_status": "not-measured",
             "quality_assessment": None,
@@ -164,8 +162,8 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
         [
             "## Structured Provider setup status",
             "",
-            "- Apache Tika 3.3.2: `not-measured`; official artifact setup was not materialized in this reference environment. This is not a quality failure.",
-            f"- Docling 2.117.0 Python module available in this environment: `{report['structured_provider_setup']['docling']['python_module_available']}`; execution remains `not-measured`.",
+            "- Apache Tika 3.3.2: `not-measured`; the official E-02 release/hash evidence is carried forward, but no Tika artifact was installed/materialized for this benchmark run. No quality conclusion is drawn.",
+            f"- Docling 2.117.0 Python module available in this run environment: `{report['structured_provider_setup']['docling']['python_module_available']}`; execution remains `not-measured` and no quality conclusion is drawn.",
             "",
             "## Decision boundary",
             "",

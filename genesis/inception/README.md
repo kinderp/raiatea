@@ -4,7 +4,7 @@
 >
 > Assertion status: `accepted-decision`
 >
-> Version: 1.5.0
+> Version: 1.6.0
 >
 > Last reviewed: 21 August 2026
 >
@@ -60,7 +60,7 @@ announced by `genesis/README.md`.
 | [`03-system-context.md`](03-system-context.md) | Present | `Accepted` | `mixed` | Define actors, system boundaries, ownership and external systems | Vision, `genesis/04`, COMPASS, #111, pinned ecosystem evidence |
 | [`04-product-map.md`](04-product-map.md) | Present | `Accepted` | `mixed` | Separate document foundation, research/learning products, experiences and shared capabilities | Vision, System Context, #111 |
 | [`05-use-case-model.md`](05-use-case-model.md) | Present | `Accepted` | `mixed` | Capture primary actors, significant scenarios, alternatives/failures and invariants | System Context, Product Map, #113 |
-| `06-risk-list.md` | Not created | — | `planned` | Prioritize product, legal, technical and scientific risks | `genesis/03`, `04`, `08`, `11`-`20`; Use Case Model |
+| [`06-risk-list.md`](06-risk-list.md) | Present | `Draft` | `mixed` | Prioritize failure modes and define evidence, promotion and invalidation gates | Why, Manifesto, Vision, Use Case Model, #115 |
 | `07-glossary.md` | Not created | — | `planned` | Establish the initial ubiquitous language | All accepted canonical artifacts |
 | `08-inception-review.md` | Not created | — | `planned` | Decide whether evidence supports entering Elaboration | All preceding artifacts and pilot results |
 
@@ -218,8 +218,10 @@ Before acceptance, reviewers must verify:
 ## 10. Current next step
 
 `00-why-raiatea.md` through `05-use-case-model.md` are accepted canonical
-artifacts in the proposed PR #114 state; `main` becomes authoritative after
-merge. The next sequential Inception step is the Risk List, followed by Glossary
-and the final Inception Review. P0 implementation work remains tracked
-separately in [#106](https://github.com/kinderp/raiatea/issues/106) and must use
-the accepted System Context, Product Map and Use Case Model as boundary input.
+artifacts on `main`. Issue [#115](https://github.com/kinderp/raiatea/issues/115)
+is the current sequential micro-step: `06-risk-list.md` is Draft and must be
+reviewed before its priorities and evidence gates become canonical. The
+following Inception steps remain Glossary and the final Inception Review. P0
+implementation work remains tracked separately in
+[#106](https://github.com/kinderp/raiatea/issues/106) and must use the accepted
+boundaries/use cases plus the later accepted Risk List as evidence input.

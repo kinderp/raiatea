@@ -19,7 +19,7 @@
 This matrix compares **documented** Provider capabilities. It is not a benchmark
 scorecard.
 
-Legend:
+Legend for Provider-capability cells:
 
 - **D** — documented by a primary source at the observed version;
 - **P** — plausible/partial but needs direct fixture verification;
@@ -31,21 +31,43 @@ Legend:
 
 No `D` value means “Raiatea has tested it.” E-04 owns measured evidence.
 
+Two kinds of information deliberately coexist in this document and must not be
+confused:
+
+1. **Provider evidence** — documented formats, outputs, deployment shapes and
+   licenses, using the status legend above;
+2. **Raiatea assessment** — architecture/threat interpretation derived from E-01,
+   explicitly labelled as such and never presented as a Provider claim.
+
+An externally hosted or third-party remote service can be noted as existing
+without becoming an eligible P0 route. **Every externally hosted route is blocked
+from E-04 by default in E-02 unless a separate, current Provider data-policy
+snapshot and E-01 rights/sensitivity decision explicitly make that route
+eligible.** Self-hosted HTTP/service deployment inside the user's controlled
+environment is not the same trust boundary as sending Source content to an
+external Provider.
+
 ## 2. Version and license snapshot
 
-| Provider/tool | Snapshot | Code license / material constraint | Local route | Remote route | Survey note |
+| Provider/tool | Snapshot | Code license / material constraint | Local route | Remote/hosted status in E-02 | Survey note |
 | --- | --- | --- | --- | --- | --- |
-| Docling | 2.117.0 | MIT; model licenses separate | D | D/Separate via service/model routes | broad generalist |
-| Marker | 2.0.0 | current code files Apache-2.0; model weights use modified AI Pubs Open Rail-M terms | D | Separate hosted/on-prem/API options | PDF-focused; model/runtime license is material |
-| MinerU | 3.4.4 | MinerU Open Source License = Apache-2.0 + extra commercial/attribution terms | D | D/Separate client-server routes | multiple pipeline/VLM/hybrid backends |
-| Unstructured | 0.25.0 | OSS community components Apache-2.0; hosted platform separate | D | Separate | element/ETL oriented |
-| Apache Tika | 3.3.2 | Apache-2.0 | D | D via tika-server | broad type/metadata/text extraction |
-| GROBID | 0.9.0 | Apache-2.0; bundled/external components have their own licenses | D | local service/container; external metadata consolidation can be networked | scholarly specialist |
-| OCRmyPDF | 17.10.0 | MPL-2.0; dependencies have own licenses | D | N by default | searchable PDF/PDF-A OCR orchestration |
-| Tesseract | 5.5.3 | Apache-2.0 | D | N by default | OCR engine, not document parser |
-| PaddleOCR | 3.7.0 | Apache-2.0 code; exact model/runtime licenses must be pinned | D | Separate API/service/model routes | OCR + layout/VLM ecosystem |
-| Pandoc | 3.10.2 | GPL-2.0-or-later project; distribution implications require normal dependency review | D | N by default | semantic converter/AST |
-| EbookLib | 0.20 | AGPL-3.0 | D | N | EPUB read/write; not preselected |
+| Docling | 2.117.0 | MIT; model licenses separate | D | Self-hosted service documented; externally hosted Provider route **not evaluated / blocked** | broad generalist |
+| Marker | 2.0.0 | current code files Apache-2.0; model weights use modified AI Pubs Open Rail-M terms | D | Hosted/on-prem/API offerings may exist; external hosted route **blocked pending data-policy evidence** | PDF-focused; model/runtime license is material |
+| MinerU | 3.4.4 | MinerU Open Source License = Apache-2.0 + extra commercial/attribution terms | D | Self-hosted client/server route documented; external hosted Provider route **not evaluated** | multiple pipeline/VLM/hybrid backends |
+| Unstructured | 0.25.0 | OSS community components Apache-2.0; hosted platform separate | D | Hosted platform existence noted; **blocked pending current data-policy evidence** | element/ETL oriented |
+| Apache Tika | 3.3.2 | Apache-2.0 | D | Self-hosted `tika-server`; no external Provider route evaluated | broad type/metadata/text extraction |
+| GROBID | 0.9.0 | Apache-2.0; bundled/external components have their own licenses | D | Self-hosted service/container; optional external consolidation calls are **separate and blocked unless policy-qualified** | scholarly specialist |
+| OCRmyPDF | 17.10.0 | MPL-2.0; dependencies have own licenses | D | No external hosted route evaluated | searchable PDF/PDF-A OCR orchestration |
+| Tesseract | 5.5.3 | Apache-2.0 | D | No external hosted route evaluated | OCR engine, not document parser |
+| PaddleOCR | 3.7.0 | Apache-2.0 code; exact model/runtime licenses must be pinned | D | Service/API ecosystem existence may be noted; external Provider route **blocked pending data-policy evidence** | OCR + layout/VLM ecosystem |
+| Pandoc | 3.10.2 | GPL, version 2 or greater; distribution implications require normal dependency review | D | No external hosted route evaluated | semantic converter/AST |
+| EbookLib | 0.20 | AGPL-3.0 | D | No external hosted route evaluated | EPUB read/write; not preselected |
+
+The remote/hosted column records **survey scope and eligibility**, not an
+endorsement. E-02's B-01/B-02 route candidates are local/self-hosted routes only.
+A later remote-route survey must pin current retention, training/improvement,
+logging, region/data-residency, subprocessors and deletion behavior as applicable
+before a remote route can enter E-04.
 
 ## 3. Source Family matrix
 
@@ -99,22 +121,29 @@ digitization Source exists.
 
 ## 6. Deployment and threat-boundary matrix
 
-| Provider/tool | In-process library | CLI | Local service | Remote service possibility | Untrusted-input isolation concern | Network needed for core route after models installed |
+The Provider/deployment columns below remain documentary evidence. The
+**Raiatea E-01 isolation-review priority** column is explicitly a project threat
+assessment, not a Provider claim and not a measured security score.
+
+| Provider/tool | In-process library | CLI | Local service | Remote/service existence — not eligibility | Raiatea E-01 isolation-review priority | Network needed for local core route after models installed |
 | --- | --- | --- | --- | --- | --- | --- |
-| Docling | D | D | D docling-serve | D | High for complex parsers/models; survey isolation needed | P/No for local route |
-| Marker | D | D | D inference/server patterns | D hosted/on-prem options | High; VLM server + document parser | No for configured local route after assets available |
-| MinerU | D | D | D FastAPI/Gradio/client-server | D | High; multiple VLM/pipeline backends | No for local engine after models available |
-| Unstructured | D | P | D/local API | D platform API | High for hi_res/model/container parsing | No for configured local route after models |
-| Apache Tika | Java API | D app | D tika-server | self-hosted service | High for broad parser surface; Tika 3.3.2 tightened server defaults | No for local parser set |
-| GROBID | Java/core | D/Gradle tooling | D web service/Docker | self-hosted; optional Crossref/glutton enrichment may use network | Medium/high PDF parser + service | No for core extraction if consolidation disabled |
-| OCRmyPDF | Python API | D | containerizable | N native hosted service | High for PDF/Ghostscript/qpdf/Tesseract toolchain | No |
-| Tesseract | library | D | wrapper needed | N native | Medium image parser/native library | No |
-| PaddleOCR | D | D | D/deployment ecosystem | D third-party/official service integrations | High VLM/OCR model surface | No for local models |
-| Pandoc | library ecosystem | D | wrapper needed | N native | Medium/high for readers/resources; active content must stay non-executing | Usually no for local files, except explicitly fetched resources |
-| EbookLib/direct EPUB | D | N primary | wrapper needed | N | High for ZIP/path/resource traversal if untrusted | No |
+| Docling | D | D | D `docling-serve` | Self-hosted service documented; external hosted route not evaluated | High — complex parsers/models and untrusted documents | P/No for local route |
+| Marker | D | D | D inference/server patterns | Hosted/on-prem/API existence noted; external hosted route blocked | High — VLM server + document parser | No for configured local route after assets available |
+| MinerU | D | D | D FastAPI/Gradio/client-server | Self-hosted client/server documented; external hosted route not evaluated | High — multiple VLM/pipeline backends | No for local engine after models available |
+| Unstructured | D | P | D/local API | Hosted platform exists; external hosted route blocked | High — `hi_res`/model/container parsing | No for configured local route after models |
+| Apache Tika | Java API | D app | D `tika-server` | Self-hosted service only in E-02 scope | High — broad parser/dependency surface | No for local parser set |
+| GROBID | Java/core | D/Gradle tooling | D web service/Docker | Self-hosted; optional external Crossref/glutton enrichment separately policy-gated | Medium/high — PDF parser + service/dependency surface | No for core extraction if consolidation disabled |
+| OCRmyPDF | Python API | D | containerizable | No external hosted route evaluated | High — PDF/Ghostscript/qpdf/Tesseract toolchain | No |
+| Tesseract | library | D | wrapper needed | No external hosted route evaluated | Medium — native image parser/OCR engine | No |
+| PaddleOCR | D | D | D/deployment ecosystem | Service ecosystem exists; external hosted route blocked | High — VLM/OCR model/runtime surface | No for local models |
+| Pandoc | library ecosystem | D | wrapper needed | No external hosted route evaluated | Medium/high — broad readers/resources; active content remains data | Usually no for local files, except explicitly fetched resources |
+| EbookLib/direct EPUB | D | N primary | wrapper needed | No external hosted route evaluated | High — untrusted ZIP/path/resource traversal requires hardening | No |
 
 “Network needed” does not mean “network should be allowed.” The threat boundary
-may require network-disabled benchmark execution for local Providers.
+may require network-disabled benchmark execution for local Providers. Likewise,
+a High isolation-review priority does not mean a Provider is known vulnerable;
+it means Raiatea's E-01 threat model requires stronger isolation evidence before
+processing valuable/untrusted Sources with that route.
 
 ## 7. Licensing/adoption matrix
 
@@ -129,7 +158,7 @@ may require network-disabled benchmark execution for local Providers.
 | OCRmyPDF | MPL-2.0 | source modifications to OCRmyPDF subject to MPL; external deps separate | good process/API composition candidate |
 | Tesseract | Apache-2.0 | language traineddata/model provenance separately relevant | low core-license friction |
 | PaddleOCR | Apache-2.0 code | specific models/runtime packages must be checked | component-level manifest required |
-| Pandoc | GPL-2.0-or-later | distribution/linkage/deployment design needs normal compliance review | prefer process boundary if avoiding license coupling concerns |
+| Pandoc | GPL, version 2 or greater | distribution/linkage/deployment design needs normal compliance review | prefer process boundary if avoiding license coupling concerns |
 | EbookLib | AGPL-3.0 | strong copyleft + open 2026 path-traversal issue | do not preselect for a reusable neutral core |
 
 The matrix is architectural evidence, not legal advice.
@@ -148,6 +177,9 @@ The matrix is architectural evidence, not legal advice.
 | Tika 3.3.2 | broad text/metadata baseline | parser dependent | weak for bbox requirement | parser dependent | yes | cheap/broad native extraction control |
 | PaddleOCR document parse | candidate | candidate | detection/layout coordinates | tables/formulas/layout | yes | independent OCR/VL architecture |
 
+All B-01 entries above refer to local/self-hosted evaluation routes. No external
+hosted service is admitted to E-04 by this matrix.
+
 No route is selected by this matrix.
 
 ## 9. B-02 EPUB candidate matrix
@@ -160,6 +192,10 @@ No route is selected by this matrix.
 | Marker `[full]` | P conversion support | P/unknown | P | P | may use conversion pipeline | format support may not preserve source package coordinates |
 | Unstructured EPUB | D/P partition support | P | D/P | P | low | element output may lose original anchor granularity |
 | Tika EPUB | D parser support | P | D/P | P | low | useful metadata/text baseline, coordinate fidelity uncertain |
+
+All B-02 entries above refer to local/self-hosted evaluation routes. Remote
+service existence is outside E-04 eligibility until the separate policy evidence
+required by E-01 is available.
 
 B-02 must not reward page/bbox features that are meaningless for canonical
 reflowable content.
@@ -199,6 +235,10 @@ The following cells cannot be promoted from `P` to measured support until E-04:
 - malformed/adversarial input behavior under isolation;
 - Adapter complexity based on real outputs;
 - quality/cost tradeoffs between fast/pipeline/VLM modes.
+
+Remote-hosted route eligibility additionally requires a separate current
+Provider data-policy evidence package and E-01 rights/sensitivity approval before
+it can even become an E-04 candidate.
 
 ## 12. Out of scope
 

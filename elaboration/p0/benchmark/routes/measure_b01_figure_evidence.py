@@ -60,9 +60,13 @@ def _scored_row(
     from score_b01_figure import measure_b01_figure_dimensions
 
     combined = dict(observation)
+    combined["blocks"] = list(observation.get("blocks", []))
     if provider_figure_evidence is not None:
         if "figures" in provider_figure_evidence:
             combined["figures"] = provider_figure_evidence["figures"]
+        caption_blocks = provider_figure_evidence.get("caption_blocks")
+        if isinstance(caption_blocks, list):
+            combined["blocks"].extend(caption_blocks)
         if provider_figure_evidence.get("figure_caption_relations") is not None:
             combined["figure_caption_relations"] = provider_figure_evidence[
                 "figure_caption_relations"
@@ -137,6 +141,7 @@ def run_docling(
     evidence_source_commit: str | None,
 ) -> dict[str, Any]:
     import measure_docling_b01
+    from docling_figure_evidence import map_docling_figure_evidence
 
     _limit_to_figure_fixture(measure_docling_b01)
     report = measure_docling_b01.run_baseline(
@@ -148,9 +153,26 @@ def run_docling(
     observation = _load_observation(
         output / "observations" / "B01-PDF-004__docling.json"
     )
-    # Picture-specific Docling evidence is added only after inspecting the pinned
-    # lossless JSON shape. Until then, missing figure evidence remains explicit.
-    _write_figure_results(output, "docling", [_scored_row(observation)])
+    raw_document = _load_observation(
+        output / "raw" / "B01-PDF-004__docling.json"
+    )
+    explicit_picture = map_docling_figure_evidence(raw_document)
+
+    # B01-PDF-004 has exactly one authored figure and this pinned Docling run
+    # exposes exactly one explicit picture item. Mapping those identities is
+    # therefore cardinality-based and inspectable; caption association itself
+    # is still credited only from Docling's explicit picture.captions ref.
+    if len(explicit_picture.get("figures", [])) == 1:
+        for relation in explicit_picture.get("figure_caption_relations", []):
+            relation["gold_figure_id"] = "figure-1"
+            relation["gold_caption_unit"] = "caption"
+            relation["gold_matching_basis"] = "single-explicit-figure-cardinality"
+
+    _write_figure_results(
+        output,
+        "docling",
+        [_scored_row(observation, explicit_picture)],
+    )
     return report
 
 

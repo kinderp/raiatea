@@ -1,0 +1,194 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-pdf-003-semantic-structure-baseline",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "evidence_source_commit": "804bd104b5ba9eed4d7be41cc6364d66885c3e70",
+  "fixture": {
+    "id": "B01-PDF-003",
+    "version": "0.1.0",
+    "sha256": "91c16c6d06b213123256ae4b0ad15f8aa398c2dd5e9af34fc0f27e7cb494061b",
+    "bytes": 1394,
+    "generator": "pdf_semantic_structure",
+    "generator_version": "0.2.0",
+    "authored_dimensions": [
+      "content",
+      "heading/list/code semantics",
+      "heading levels",
+      "reading order",
+      "source coordinates",
+      "URI link target and source association"
+    ],
+    "rights": {
+      "redistribution": "not-established",
+      "decision_issue": 131,
+      "public_rights_safe": false,
+      "remote_provider": "denied"
+    }
+  },
+  "ci_evidence": {
+    "general_reference_run": {
+      "workflow_run_id": 32569054875,
+      "status": "success",
+      "poppler_artifact": {
+        "id": 9474843038,
+        "name": "p0-b01-poppler-reference-804bd104b5ba9eed4d7be41cc6364d66885c3e70",
+        "digest": "sha256:0dae2cccbfa3eb82d4e4f32c7e09e8d4ef2d72943bcc17147391eab92d0a1d4e"
+      },
+      "tika_artifact": {
+        "id": 9474841518,
+        "name": "p0-b01-tika-3.3.2-804bd104b5ba9eed4d7be41cc6364d66885c3e70",
+        "digest": "sha256:91ade410c4e5f91b052fa2d81e174c418fd8f613aa8b17053602c03da9f15396"
+      },
+      "docling_canonical_artifact": {
+        "id": 9474875972,
+        "name": "p0-b01-docling-2.118.0-804bd104b5ba9eed4d7be41cc6364d66885c3e70",
+        "digest": "sha256:4f2ae90650ad1fae7efc3d2189f2f69df2ca6a95dc46460de42ab63810cfe066"
+      }
+    },
+    "docling_semantic_supplement_run": {
+      "workflow_run_id": 32569054888,
+      "status": "success",
+      "artifact": {
+        "id": 9474872892,
+        "name": "p0-b01-docling-semantic-2.118.0-804bd104b5ba9eed4d7be41cc6364d66885c3e70",
+        "digest": "sha256:1080ae6b809b0398e10e7a23ee6a9aac506bfaffbb3b0c68c95402035e06d3a9"
+      },
+      "policy": {
+        "list_surface": "explicit Docling lossless orig for list_item only",
+        "links": "explicit Docling lossless hyperlink only",
+        "visual_inference": false
+      }
+    }
+  },
+  "shared_harness_fingerprints": {
+    "generator": "c7a3ee5ec062a8874fb3515ffafc901ac7b7eea54d66cb4f13e6b62b34c18034",
+    "fixture_manifest": "df9346707b61dc083bbda0fcbf7e48be1a815ef88511664d8b0bf28a711f55ff",
+    "gold": "ff9e1eff80c886fd5e8464147cda59429d13b5e2d2775402eecdd2fb71aa10b0",
+    "score_b01": "7c7fb2f50f06bf88fae0c07a425ba518ee90e6b3944a341e84916328e5422bb2"
+  },
+  "results": {
+    "pdftotext-bbox-layout": {
+      "route_family": "Poppler control",
+      "content_preserved": "8/8",
+      "segmentation_exact": "8/8",
+      "reading_order": "7/7",
+      "coordinates": {
+        "status": "measured",
+        "contained": "8/8"
+      },
+      "semantic_types": "0/8",
+      "heading_levels": {
+        "status": "not-measured",
+        "exact": "0/3"
+      },
+      "links": {
+        "status": "not-measured",
+        "target_exact": "0/1",
+        "association_exact": "0/1"
+      },
+      "raw_output_sha256": "c9c8dc5601b92659018ea34bdacf8e4221acfbad3b77ab3f046ff6c3e68e942b",
+      "raw_output_bytes": 4718
+    },
+    "pdftohtml-xml": {
+      "route_family": "Poppler control",
+      "content_preserved": "8/8",
+      "segmentation_exact": "8/8",
+      "reading_order": "7/7",
+      "coordinates": {
+        "status": "measured",
+        "contained": "8/8"
+      },
+      "semantic_types": "0/8",
+      "heading_levels": {
+        "status": "not-measured",
+        "exact": "0/3"
+      },
+      "links": {
+        "status": "measured",
+        "target_exact": "1/1",
+        "association_exact": "1/1",
+        "evidence": "explicit pdftohtml <a href>"
+      },
+      "raw_output_sha256": "551043b6f836bd0936159caf3cebd0a281294d67fbfa2a3c489cde6d23bd4f85",
+      "raw_output_bytes": 1336
+    },
+    "tika-app-3.3.2-xhtml": {
+      "route_family": "Apache Tika structured",
+      "content_preserved": "8/8",
+      "segmentation_exact": "8/8",
+      "reading_order": "7/7",
+      "coordinates": {
+        "status": "not-measured",
+        "reason": "Measured XHTML exposes page structure but no source bbox geometry"
+      },
+      "semantic_types": "2/8",
+      "semantic_observation": "All eight current text units are emitted as paragraph elements; only authored paragraph/link-label paragraph types match gold",
+      "heading_levels": {
+        "status": "not-measured",
+        "exact": "0/3"
+      },
+      "links": {
+        "status": "not-measured",
+        "target_exact": "0/1",
+        "association_exact": "0/1",
+        "reason": "Target URI is not exposed in measured Tika XHTML/metadata"
+      },
+      "raw_output_sha256": "65173e9ba82aedd71ed4bb051a1823b43998a08424fdb93013f15b72c7f5b2b3",
+      "raw_output_bytes": 1747
+    },
+    "docling-2.118.0-standard-pdf-native-no-ocr": {
+      "route_family": "Docling structured",
+      "content_preserved": "8/8",
+      "segmentation_exact": "8/8",
+      "reading_order": "7/7",
+      "coordinates": {
+        "status": "measured",
+        "contained": "8/8"
+      },
+      "semantic_types": "6/8",
+      "semantic_mismatches": [
+        "code is emitted as text/paragraph",
+        "link-label is emitted as section_header/heading"
+      ],
+      "heading_levels": {
+        "status": "measured",
+        "exact": "1/3",
+        "observation": "All three Docling section_header units expose level 1; only authored level-1 title matches"
+      },
+      "links": {
+        "status": "measured",
+        "target_exact": "1/1",
+        "association_exact": "1/1",
+        "evidence": "explicit lossless Docling hyperlink field"
+      },
+      "list_surface_policy": {
+        "observation": "Docling text normalizes away 1./2. markers while lossless orig preserves authored surface",
+        "benchmark_use": "orig accepted only for explicit list_item surface evidence",
+        "visual_inference": false
+      },
+      "raw_output_sha256": "4b7c700266db13e985332d60b04cd4b38436a22f1f52e8f1646f55dbdecede97",
+      "raw_output_bytes": 3458,
+      "model_payload_manifest_sha256": "c9afe973808a41c359c1f270f063097972985c096468089b206031395f8a885e",
+      "environment_freeze_sha256": "54625595793321bdcb4f7b5763122b2c403ce1f4ecbd6d7837ab619a96c39456"
+    }
+  },
+  "comparison_boundary": {
+    "statement": "Per-dimension evidence only; no route wins a universal score.",
+    "provider_selected": false,
+    "first_slice_promoted": false,
+    "g02_satisfied": false,
+    "g04_satisfied": false,
+    "g05_satisfied": false,
+    "remaining_b01_gaps": [
+      "figures/captions",
+      "tables",
+      "formula fidelity beyond code/preformatted text",
+      "defective native text",
+      "malformed/access-controlled negatives"
+    ]
+  }
+}

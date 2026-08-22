@@ -69,6 +69,9 @@ Important invariants:
   matches the authored caption after whitespace normalization;
 - an absent or structurally invalid Provider picture collection is an unknown /
   degraded state, not an explicit zero-picture observation;
+- figure count remains an independent observation; geometry and pixel identity
+  for `B01-PDF-004` are bound only in the unambiguous `1 authored : 1 observed`
+  case, never by first-item/list-position matching;
 - pixel identity uses the decoded pixel payload when inspectable, not equality of
   Provider-specific encoded files;
 - geometry preserves raw bbox evidence and raw per-edge errors in PDF points;
@@ -172,8 +175,8 @@ not produce comparable image bytes. Pixel identity therefore remains
 
 ## Robustness findings after the measured snapshot
 
-The review of the first measured implementation produced two additional semantic
-hardening changes that do not alter the Provider facts above.
+Review of the first measured implementation produced semantic hardening changes
+that do not alter the Provider facts above.
 
 ### F2 — relation binding must prove caption identity
 
@@ -194,24 +197,52 @@ one authored figure
 
 Otherwise the relation stays unbound and receives no association credit.
 
-### F3 — missing picture collection is unknown, not zero
+### F3 — missing or malformed picture collection is unknown, not zero
 
-A missing or incompatible Docling `pictures` collection must not be collapsed to
-an empty list. The hardened mapper distinguishes:
+A missing, incompatible or partially malformed Docling `pictures` collection
+must not be collapsed to an empty list. The hardened mapper distinguishes:
 
 ```text
-pictures missing / wrong shape
+pictures missing / wrong shape / malformed item present
   -> degraded
   -> figures = null
-  -> figure presence not-measured
+  -> figure presence and geometry not-measured
 
 pictures = [] explicitly
   -> Provider collection is known
   -> zero explicit pictures is an observable state
 ```
 
-This preserves the E-04 rule that unknown Provider evidence cannot silently
-become failure or success.
+Valid caption evidence may remain visible when other picture items are malformed,
+but an incomplete collection cannot establish a trustworthy figure count. This
+preserves the E-04 rule that unknown Provider evidence cannot silently become
+failure or success.
+
+### F4 — figure identity cannot come from list position
+
+Figure count and figure identity are different evidence dimensions. A Provider
+may explicitly expose two figures while the gold contains one; that proves a
+count mismatch but does not prove that the first Provider item corresponds to
+the authored figure.
+
+For `B01-PDF-004`, geometry and decoded-pixel identity are therefore bound only
+when there is exactly one authored figure and exactly one explicit Provider
+figure. On any cardinality mismatch:
+
+```text
+figure presence/count
+  -> measured
+
+figure geometry
+  -> not-measured for gold identity
+
+pixel identity
+  -> not-measured for gold identity
+```
+
+No first-item or list-position matching is permitted. A future multi-figure
+fixture will require an explicit, inspectable identity/alignment method rather
+than extending this one-figure shortcut.
 
 ## Repeatability observation
 
@@ -288,7 +319,7 @@ Docling lossless JSON
 Therefore E-05 should preserve capability/evidence partiality and Provider-native
 provenance rather than forcing every Adapter into a false all-or-nothing
 `extract()` success shape. It must also keep `unknown`, `not-measured`, explicit
-zero/empty and degraded states distinguishable.
+zero/empty, ambiguous identity and degraded states distinguishable.
 
 This directly informs the later Raiatea Plugin API: an `ExtractorPlugin` should
 advertise and return inspectable capabilities/evidence, while Raiatea Core owns

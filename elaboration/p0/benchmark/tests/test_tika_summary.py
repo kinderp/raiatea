@@ -16,7 +16,7 @@ assert SPEC.loader is not None
 SPEC.loader.exec_module(MODULE)
 
 
-def _result(fixture_id: str, expected_units: int, expected_edges: int):
+def _result(fixture_id: str, expected_units: int, expected_edges: int, heading_levels: int = 0):
     return {
         "fixture_id": fixture_id,
         "route_status": "success",
@@ -24,6 +24,7 @@ def _result(fixture_id: str, expected_units: int, expected_edges: int):
             "content_text": {
                 "status": "measured",
                 "matched_units": expected_units,
+                "exact_block_units": expected_units,
                 "expected_units": expected_units,
             },
             "reading_order": {
@@ -36,6 +37,16 @@ def _result(fixture_id: str, expected_units: int, expected_edges: int):
                 "status": "measured",
                 "type_exact_count": expected_units - 1,
                 "expected_count": expected_units,
+                "heading_levels": {
+                    "status": "not-measured" if heading_levels else "not-applicable",
+                    "exact_count": 0,
+                    "expected_count": heading_levels,
+                },
+            },
+            "links": {
+                "status": "not-measured" if fixture_id == "B01-PDF-003" else "not-applicable",
+                "target_exact_count": 0,
+                "expected_count": 1 if fixture_id == "B01-PDF-003" else 0,
             },
         },
         "page_structure_observed": True,
@@ -69,6 +80,7 @@ class TikaSummaryTests(unittest.TestCase):
             "results": [
                 _result("B01-PDF-001", 3, 2),
                 _result("B01-PDF-002", 5, 4),
+                _result("B01-PDF-003", 8, 7, heading_levels=3),
             ],
         }
         with tempfile.TemporaryDirectory() as tmp:
@@ -80,7 +92,10 @@ class TikaSummaryTests(unittest.TestCase):
         self.assertIn("Unexpected files observed under the controlled parent: `0`", text)
         self.assertIn("page structure observed: `True`", text)
         self.assertIn("bbox structure observed: `False`", text)
-        self.assertIn("title is emitted by Tika as a paragraph", text)
+        self.assertIn("B01-PDF-003", text)
+        self.assertIn("heading levels: `not-measured`", text)
+        self.assertIn("links: `not-measured`", text)
+        self.assertIn("visual/font cues are not promoted to semantic structure", text)
         self.assertIn('openjdk version "21.0.12"', text)
         self.assertIn("Java executable SHA-256", text)
 

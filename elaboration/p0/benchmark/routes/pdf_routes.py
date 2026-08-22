@@ -316,6 +316,7 @@ def run_pdftohtml_xml(
         "warnings": [],
         "pages": [],
         "blocks": [],
+        "links": [],
         "native_coordinate_system": "top-left-scaled-canvas",
         "mapped_coordinate_system": "bottom-left-points",
     }
@@ -395,6 +396,22 @@ def run_pdftohtml_xml(
                         ),
                     }
                 )
+                for anchor in node.iter("a"):
+                    href = anchor.attrib.get("href")
+                    if not href:
+                        continue
+                    anchor_text = " ".join("".join(anchor.itertext()).split())
+                    observation["links"].append(
+                        {
+                            "kind": "uri"
+                            if href.startswith(("http://", "https://"))
+                            else "other",
+                            "target": href,
+                            "from_text": anchor_text or text,
+                            "page_index": page_index,
+                            "source": "pdftohtml-explicit-anchor",
+                        }
+                    )
         observation["status"] = "success"
         return observation
     finally:

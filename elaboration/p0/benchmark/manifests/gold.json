@@ -7,38 +7,158 @@
   },
   "fixtures": {
     "B01-PDF-001": {
-      "assertion_modes": ["exact", "ordered-relation", "tolerance-based"],
+      "assertion_modes": [
+        "exact",
+        "ordered-relation",
+        "tolerance-based"
+      ],
       "reference_units": [
-        {"id": "title", "type": "heading", "text": "Raiatea B01 PDF 001", "page_index": 0, "region": [72, 700, 360, 735]},
-        {"id": "p1", "type": "paragraph", "text": "Alpha paragraph preserves exact benchmark text.", "page_index": 0, "region": [72, 650, 500, 680]},
-        {"id": "p2", "type": "paragraph", "text": "Beta paragraph follows alpha in reading order.", "page_index": 0, "region": [72, 610, 500, 640]}
+        {
+          "id": "title",
+          "type": "heading",
+          "text": "Raiatea B01 PDF 001",
+          "page_index": 0,
+          "region": [72, 700, 360, 735]
+        },
+        {
+          "id": "p1",
+          "type": "paragraph",
+          "text": "Alpha paragraph preserves exact benchmark text.",
+          "page_index": 0,
+          "region": [72, 650, 500, 680]
+        },
+        {
+          "id": "p2",
+          "type": "paragraph",
+          "text": "Beta paragraph follows alpha in reading order.",
+          "page_index": 0,
+          "region": [72, 610, 500, 640]
+        }
       ],
       "reading_order": [["title", "p1"], ["p1", "p2"]],
-      "coordinate_semantics": {"kind": "pdf-page-geometry", "units": "points", "origin": "bottom-left"}
+      "coordinate_semantics": {
+        "kind": "pdf-page-geometry",
+        "units": "points",
+        "origin": "bottom-left"
+      }
     },
     "B01-PDF-002": {
-      "assertion_modes": ["exact", "ordered-relation", "tolerance-based"],
+      "assertion_modes": [
+        "exact",
+        "ordered-relation",
+        "tolerance-based"
+      ],
       "reference_units": [
-        {"id": "title", "type": "heading", "text": "Raiatea B01 PDF 002", "page_index": 0, "region": [72, 700, 360, 735]},
-        {"id": "l1", "type": "paragraph", "text": "Left one.", "page_index": 0, "region": [72, 650, 250, 680]},
-        {"id": "l2", "type": "paragraph", "text": "Left two.", "page_index": 0, "region": [72, 610, 250, 640]},
-        {"id": "r1", "type": "paragraph", "text": "Right one.", "page_index": 0, "region": [330, 650, 520, 680]},
-        {"id": "r2", "type": "paragraph", "text": "Right two.", "page_index": 0, "region": [330, 610, 520, 640]}
+        {
+          "id": "title",
+          "type": "heading",
+          "text": "Raiatea B01 PDF 002",
+          "page_index": 0,
+          "region": [72, 700, 360, 735]
+        },
+        {
+          "id": "l1",
+          "type": "paragraph",
+          "text": "Left one.",
+          "page_index": 0,
+          "region": [72, 650, 250, 680]
+        },
+        {
+          "id": "l2",
+          "type": "paragraph",
+          "text": "Left two.",
+          "page_index": 0,
+          "region": [72, 610, 250, 640]
+        },
+        {
+          "id": "r1",
+          "type": "paragraph",
+          "text": "Right one.",
+          "page_index": 0,
+          "region": [330, 650, 520, 680]
+        },
+        {
+          "id": "r2",
+          "type": "paragraph",
+          "text": "Right two.",
+          "page_index": 0,
+          "region": [330, 610, 520, 640]
+        }
       ],
       "reading_order": [["title", "l1"], ["l1", "l2"], ["l2", "r1"], ["r1", "r2"]],
-      "coordinate_semantics": {"kind": "pdf-page-geometry", "units": "points", "origin": "bottom-left"}
+      "coordinate_semantics": {
+        "kind": "pdf-page-geometry",
+        "units": "points",
+        "origin": "bottom-left"
+      }
     },
     "B01-PDF-003": {
-      "assertion_modes": ["exact", "ordered-relation", "tolerance-based", "relation-or-set"],
+      "assertion_modes": [
+        "exact",
+        "ordered-relation",
+        "tolerance-based",
+        "relation-or-set"
+      ],
       "reference_units": [
-        {"id": "title", "type": "heading", "level": 1, "text": "Raiatea B01 PDF 003", "page_index": 0, "region": [72, 710, 420, 752]},
-        {"id": "section", "type": "heading", "level": 2, "text": "Semantic Structure", "page_index": 0, "region": [72, 670, 390, 704]},
-        {"id": "p1", "type": "paragraph", "text": "This paragraph belongs to the main section.", "page_index": 0, "region": [72, 640, 520, 670]},
-        {"id": "nested", "type": "heading", "level": 3, "text": "Nested Topic", "page_index": 0, "region": [72, 600, 360, 632]},
-        {"id": "li1", "type": "list-item", "text": "1. First list item.", "page_index": 0, "region": [90, 565, 380, 592]},
-        {"id": "li2", "type": "list-item", "text": "2. Second list item.", "page_index": 0, "region": [90, 540, 380, 568]},
-        {"id": "code", "type": "code", "text": "print(\"raiatea-structure\")", "page_index": 0, "region": [90, 495, 390, 522]},
-        {"id": "link-label", "type": "paragraph", "text": "Raiatea benchmark link", "page_index": 0, "region": [72, 432, 300, 460]}
+        {
+          "id": "title",
+          "type": "heading",
+          "level": 1,
+          "text": "Raiatea B01 PDF 003",
+          "page_index": 0,
+          "region": [72, 710, 420, 752]
+        },
+        {
+          "id": "section",
+          "type": "heading",
+          "level": 2,
+          "text": "Semantic Structure",
+          "page_index": 0,
+          "region": [72, 670, 390, 704]
+        },
+        {
+          "id": "p1",
+          "type": "paragraph",
+          "text": "This paragraph belongs to the main section.",
+          "page_index": 0,
+          "region": [72, 640, 520, 670]
+        },
+        {
+          "id": "nested",
+          "type": "heading",
+          "level": 3,
+          "text": "Nested Topic",
+          "page_index": 0,
+          "region": [72, 600, 360, 632]
+        },
+        {
+          "id": "li1",
+          "type": "list-item",
+          "text": "1. First list item.",
+          "page_index": 0,
+          "region": [90, 565, 380, 592]
+        },
+        {
+          "id": "li2",
+          "type": "list-item",
+          "text": "2. Second list item.",
+          "page_index": 0,
+          "region": [90, 540, 380, 568]
+        },
+        {
+          "id": "code",
+          "type": "code",
+          "text": "print(\"raiatea-structure\")",
+          "page_index": 0,
+          "region": [90, 495, 390, 522]
+        },
+        {
+          "id": "link-label",
+          "type": "paragraph",
+          "text": "Raiatea benchmark link",
+          "page_index": 0,
+          "region": [72, 432, 300, 460]
+        }
       ],
       "reading_order": [
         ["title", "section"],
@@ -57,44 +177,165 @@
           "target": "https://example.invalid/raiatea-benchmark"
         }
       ],
-      "coordinate_semantics": {"kind": "pdf-page-geometry", "units": "points", "origin": "bottom-left"},
+      "coordinate_semantics": {
+        "kind": "pdf-page-geometry",
+        "units": "points",
+        "origin": "bottom-left"
+      },
       "semantic_intent_note": "Heading levels, list/code roles and URI target are authored fixture intent. Providers are credited only for explicit evidence they expose; typography alone is never promoted to semantic success."
+    },
+    "B01-PDF-004": {
+      "assertion_modes": [
+        "exact",
+        "ordered-relation",
+        "tolerance-based",
+        "relation-or-set"
+      ],
+      "reference_units": [
+        {
+          "id": "title",
+          "type": "heading",
+          "text": "Raiatea B01 PDF 004",
+          "page_index": 0,
+          "region": [72, 710, 420, 752]
+        },
+        {
+          "id": "body-before",
+          "type": "paragraph",
+          "text": "Body text before the benchmark figure.",
+          "page_index": 0,
+          "region": [72, 650, 430, 680]
+        },
+        {
+          "id": "caption",
+          "type": "caption",
+          "text": "Figure 1. Deterministic Raiatea color grid.",
+          "page_index": 0,
+          "region": [72, 455, 430, 485]
+        },
+        {
+          "id": "body-after",
+          "type": "paragraph",
+          "text": "Body text after the benchmark figure.",
+          "page_index": 0,
+          "region": [72, 410, 430, 440]
+        }
+      ],
+      "reading_order": [
+        ["title", "body-before"],
+        ["body-before", "caption"],
+        ["caption", "body-after"]
+      ],
+      "figures": [
+        {
+          "id": "figure-1",
+          "kind": "raster-image",
+          "page_index": 0,
+          "region": [72, 500, 252, 620],
+          "pixel_width": 4,
+          "pixel_height": 3,
+          "color_space": "DeviceRGB",
+          "bits_per_component": 8,
+          "pixel_payload_sha256": "2e9756a2943938c833aa0b9d72189577b64146bfdc7ce30957624a762cf5abee"
+        }
+      ],
+      "figure_caption_relations": [
+        {
+          "figure_id": "figure-1",
+          "caption_unit": "caption",
+          "relation": "caption-of"
+        }
+      ],
+      "coordinate_semantics": {
+        "kind": "pdf-page-geometry",
+        "units": "points",
+        "origin": "bottom-left"
+      },
+      "figure_intent_note": "The raster payload, figure region and caption relation are authored fixture intent. Provider scoring must keep figure presence, asset identity, caption text, geometry and association separate; association is credited only when the Provider exposes explicit relation evidence, never from spatial proximity alone."
     },
     "B02-EPUB-001": {
       "assertion_modes": ["exact", "ordered-relation"],
       "spine": ["ch1", "ch2"],
       "reference_units": [
-        {"id": "intro", "type": "heading", "text": "Introduction", "resource": "OEBPS/ch1.xhtml", "fragment": "intro"},
-        {"id": "intro-p", "type": "paragraph", "text": "The first chapter establishes the package order.", "resource": "OEBPS/ch1.xhtml", "fragment": "intro-text"},
-        {"id": "next", "type": "heading", "text": "Next Chapter", "resource": "OEBPS/ch2.xhtml", "fragment": "next"},
-        {"id": "next-p", "type": "paragraph", "text": "The second chapter follows the first in the spine.", "resource": "OEBPS/ch2.xhtml", "fragment": "next-text"}
+        {
+          "id": "intro",
+          "type": "heading",
+          "text": "Introduction",
+          "resource": "OEBPS/ch1.xhtml",
+          "fragment": "intro"
+        },
+        {
+          "id": "intro-p",
+          "type": "paragraph",
+          "text": "The first chapter establishes the package order.",
+          "resource": "OEBPS/ch1.xhtml",
+          "fragment": "intro-text"
+        },
+        {
+          "id": "next",
+          "type": "heading",
+          "text": "Next Chapter",
+          "resource": "OEBPS/ch2.xhtml",
+          "fragment": "next"
+        },
+        {
+          "id": "next-p",
+          "type": "paragraph",
+          "text": "The second chapter follows the first in the spine.",
+          "resource": "OEBPS/ch2.xhtml",
+          "fragment": "next-text"
+        }
       ],
       "reading_order": [["intro", "intro-p"], ["intro-p", "next"], ["next", "next-p"]],
-      "coordinate_semantics": {"kind": "epub-package-logical", "canonical_rendered_pages": false}
+      "coordinate_semantics": {
+        "kind": "epub-package-logical",
+        "canonical_rendered_pages": false
+      }
     },
     "B02-EPUB-002": {
       "assertion_modes": ["exact", "relation-or-set", "ordered-relation"],
       "spine": ["ch1", "ch2"],
       "navigation": [
-        {"label": "Start", "resource": "OEBPS/ch1.xhtml", "fragment": "start"},
-        {"label": "Details", "resource": "OEBPS/ch2.xhtml", "fragment": "details"}
+        {
+          "label": "Start",
+          "resource": "OEBPS/ch1.xhtml",
+          "fragment": "start"
+        },
+        {
+          "label": "Details",
+          "resource": "OEBPS/ch2.xhtml",
+          "fragment": "details"
+        }
       ],
       "links": [
-        {"from_resource": "OEBPS/ch1.xhtml", "from_fragment": "to-details", "target": "ch2.xhtml#details"}
+        {
+          "from_resource": "OEBPS/ch1.xhtml",
+          "from_fragment": "to-details",
+          "target": "ch2.xhtml#details"
+        }
       ],
-      "coordinate_semantics": {"kind": "epub-package-logical", "canonical_rendered_pages": false}
+      "coordinate_semantics": {
+        "kind": "epub-package-logical",
+        "canonical_rendered_pages": false
+      }
     },
     "B02-EPUB-NEG-001": {
       "assertion_modes": ["exact"],
       "expected_state": "degraded-with-warning-or-safe-success",
       "security_expectations": ["script-not-executed", "no-network-required"],
-      "coordinate_semantics": {"kind": "epub-package-logical", "canonical_rendered_pages": false}
+      "coordinate_semantics": {
+        "kind": "epub-package-logical",
+        "canonical_rendered_pages": false
+      }
     },
     "B02-EPUB-NEG-002": {
       "assertion_modes": ["exact"],
       "expected_state": "rejected-or-degraded-with-warning",
       "security_expectations": ["no-path-escape", "no-extractall"],
-      "coordinate_semantics": {"kind": "epub-package-logical", "canonical_rendered_pages": false}
+      "coordinate_semantics": {
+        "kind": "epub-package-logical",
+        "canonical_rendered_pages": false
+      }
     }
   }
 }

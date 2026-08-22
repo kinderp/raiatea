@@ -15,7 +15,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 MANIFEST_PATH = HERE / "manifests" / "fixtures.json"
-GENERATOR_VERSION = "0.2.0"
+GENERATOR_VERSION = "0.3.0"
 ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 
 
@@ -75,19 +75,10 @@ def _build_pdf(lines: list[tuple[str, int, int, int]]) -> bytes:
     return bytes(out)
 
 
-def _semantic_text_cmd(
-    text: str,
-    x: int,
-    y: int,
-    size: int,
-    font: str = "F1",
-) -> str:
+def _semantic_text_cmd(text: str, x: int, y: int, size: int, font: str = "F1") -> str:
     if font not in {"F1", "F2"}:
         raise ValueError(f"Unsupported semantic fixture font: {font}")
-    return (
-        f"BT /{font} {size} Tf 1 0 0 1 {x} {y} Tm "
-        f"({_pdf_escape(text)}) Tj ET\n"
-    )
+    return f"BT /{font} {size} Tf 1 0 0 1 {x} {y} Tm ({_pdf_escape(text)}) Tj ET\n"
 
 
 def _serialize_pdf_objects(objects: list[bytes]) -> bytes:
@@ -114,13 +105,7 @@ def _serialize_pdf_objects(objects: list[bytes]) -> bytes:
 
 
 def _build_semantic_structure_pdf() -> bytes:
-    """Build B01-PDF-003 without adding a fixture-generation dependency.
-
-    Authored hierarchy/list/code/link intent lives in gold. The PDF contains
-    deterministic visual distinctions plus a real URI link annotation; Providers
-    are measured on what they actually expose and are never assumed to recover
-    semantics from typography alone.
-    """
+    """Build B01-PDF-003 without adding a fixture-generation dependency."""
     lines = [
         ("Raiatea B01 PDF 003", 72, 730, 20, "F1"),
         ("Semantic Structure", 72, 685, 16, "F1"),
@@ -132,8 +117,7 @@ def _build_semantic_structure_pdf() -> bytes:
         ("Raiatea benchmark link", 72, 445, 12, "F1"),
     ]
     stream = "".join(
-        _semantic_text_cmd(text, x, y, size, font)
-        for text, x, y, size, font in lines
+        _semantic_text_cmd(text, x, y, size, font) for text, x, y, size, font in lines
     ).encode("ascii")
 
     uri = "https://example.invalid/raiatea-benchmark"
@@ -154,6 +138,51 @@ def _build_semantic_structure_pdf() -> bytes:
             + _pdf_escape(uri).encode("ascii")
             + b") >> >>"
         ),
+    ]
+    return _serialize_pdf_objects(objects)
+
+
+def _figure_pixel_payload() -> bytes:
+    """Return the authored 4x3 RGB pixel payload used by B01-PDF-004."""
+    return bytes(
+        [
+            255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 255, 0,
+            0, 255, 255, 255, 0, 255, 64, 64, 64, 192, 192, 192,
+            255, 128, 0, 128, 0, 255, 0, 128, 255, 128, 255, 0,
+        ]
+    )
+
+
+def _build_figure_caption_pdf() -> bytes:
+    """Build B01-PDF-004 with one explicit raster XObject and authored caption."""
+    pixels = _figure_pixel_payload()
+    stream = (
+        _text_cmd("Raiatea B01 PDF 004", 72, 730, 20)
+        + _text_cmd("Body text before the benchmark figure.", 72, 665, 12)
+        + "q 180 0 0 120 72 500 cm /Im1 Do Q\n"
+        + _text_cmd("Figure 1. Deterministic Raiatea color grid.", 72, 470, 12)
+        + _text_cmd("Body text after the benchmark figure.", 72, 425, 12)
+    ).encode("ascii")
+
+    image = (
+        b"<< /Type /XObject /Subtype /Image /Width 4 /Height 3 "
+        b"/ColorSpace /DeviceRGB /BitsPerComponent 8 /Length "
+        + str(len(pixels)).encode("ascii")
+        + b" >>\nstream\n"
+        + pixels
+        + b"\nendstream"
+    )
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 4 0 R >> /XObject << /Im1 5 0 R >> >> "
+            b"/Contents 6 0 R >>"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+        image,
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"endstream",
     ]
     return _serialize_pdf_objects(objects)
 
@@ -188,9 +217,11 @@ def generate_pdf_semantic_structure(path: Path) -> None:
     path.write_bytes(_build_semantic_structure_pdf())
 
 
+def generate_pdf_figure_caption(path: Path) -> None:
+    path.write_bytes(_build_figure_caption_pdf())
+
+
 def _zip_write_text(zf: zipfile.ZipFile, name: str, text: str, compress: bool = False) -> None:
-    # Keep fixture members uncompressed so byte output does not depend on the
-    # zlib version available on the benchmark host.
     info = zipfile.ZipInfo(name, ZIP_DATE)
     info.compress_type = zipfile.ZIP_DEFLATED if compress else zipfile.ZIP_STORED
     info.create_system = 3
@@ -305,6 +336,7 @@ GENERATORS = {
     "pdf_single_column": generate_pdf_single_column,
     "pdf_two_column": generate_pdf_two_column,
     "pdf_semantic_structure": generate_pdf_semantic_structure,
+    "pdf_figure_caption": generate_pdf_figure_caption,
     "epub_spine": generate_epub_spine,
     "epub_navigation": generate_epub_navigation,
     "epub_inert_active_content": generate_epub_inert_active_content,

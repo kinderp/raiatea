@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import importlib.util
 from pathlib import Path
+import sys
 import unittest
 
 
 BENCH_DIR = Path(__file__).resolve().parents[1]
 ROUTES = BENCH_DIR / "routes"
+sys.path.insert(0, str(ROUTES))
 SPEC = importlib.util.spec_from_file_location(
     "p0_docling_figure_evidence", ROUTES / "docling_figure_evidence.py"
 )

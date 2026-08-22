@@ -17,7 +17,9 @@ from docling_routes import _bbox_bottom_left, _page_sizes
 def map_docling_figure_evidence(document: dict[str, Any]) -> dict[str, Any]:
     pages = _page_sizes(document)
     texts = document.get("texts", [])
-    pictures = document.get("pictures", [])
+    pictures_value = document.get("pictures")
+    pictures_available = isinstance(pictures_value, list)
+    pictures = pictures_value if pictures_available else []
     text_registry = {
         f"#/texts/{index}": item
         for index, item in enumerate(texts if isinstance(texts, list) else [])
@@ -26,9 +28,11 @@ def map_docling_figure_evidence(document: dict[str, Any]) -> dict[str, Any]:
 
     result: dict[str, Any] = {
         "route": "docling-lossless-explicit-picture-evidence",
-        "status": "success",
+        "status": "success" if pictures_available else "degraded",
         "warnings": [],
-        "figures": [],
+        # None means the Provider collection was unavailable/invalid, while []
+        # means it was explicitly present and contained zero picture items.
+        "figures": [] if pictures_available else None,
         "caption_blocks": [],
         "figure_caption_relations": [],
         "asset_identity_available": False,
@@ -38,9 +42,25 @@ def map_docling_figure_evidence(document: dict[str, Any]) -> dict[str, Any]:
         ),
         "association_policy": "Docling captions refs only; no spatial proximity inference",
     }
+    if not pictures_available:
+        result["warnings"].append(
+            {
+                "code": "docling-picture-collection-unavailable",
+                "details": (
+                    "Lossless Docling output did not expose `pictures` as a list; "
+                    "figure presence is unknown and must remain not-measured."
+                ),
+            }
+        )
 
-    for index, picture in enumerate(pictures if isinstance(pictures, list) else []):
+    for index, picture in enumerate(pictures):
         if not isinstance(picture, dict):
+            result["warnings"].append(
+                {
+                    "code": "docling-picture-item-invalid",
+                    "details": {"index": index, "type": type(picture).__name__},
+                }
+            )
             continue
         provider_ref = picture.get("self_ref") or f"#/pictures/{index}"
         figure: dict[str, Any] = {
@@ -68,6 +88,7 @@ def map_docling_figure_evidence(document: dict[str, Any]) -> dict[str, Any]:
                                 "details": {"ref": provider_ref, "reason": warning},
                             }
                         )
+        assert isinstance(result["figures"], list)
         result["figures"].append(figure)
 
         captions = picture.get("captions") if isinstance(picture.get("captions"), list) else []

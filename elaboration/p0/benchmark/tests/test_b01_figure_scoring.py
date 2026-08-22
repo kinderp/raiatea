@@ -42,7 +42,7 @@ class B01FigureScoringTests(unittest.TestCase):
             dimensions["figure_caption_association"]["status"], "not-measured"
         )
 
-    def test_explicit_figure_can_measure_presence_geometry_and_pixel_identity(self):
+    def test_explicit_figure_can_measure_exact_geometry_and_pixel_identity(self):
         observation = {
             "blocks": self.blocks,
             "figures": [
@@ -57,11 +57,45 @@ class B01FigureScoringTests(unittest.TestCase):
             ],
         }
         dimensions = SCORE.measure_b01_figure_dimensions(observation, self.gold)
+        geometry = dimensions["figure_geometry"]
         self.assertTrue(dimensions["figure_presence"]["count_exact"])
-        self.assertEqual(dimensions["figure_geometry"]["status"], "measured")
-        self.assertEqual(dimensions["figure_geometry"]["contained_count"], 1)
+        self.assertEqual(geometry["status"], "measured")
+        self.assertEqual(geometry["page_exact_count"], 1)
+        self.assertEqual(geometry["bbox_exact_count"], 1)
+        self.assertEqual(geometry["max_observed_edge_error_points"], 0.0)
+        self.assertEqual(geometry["figures"][0]["absolute_edge_error_points"], [0.0, 0.0, 0.0, 0.0])
         self.assertEqual(dimensions["asset_identity"]["status"], "measured")
         self.assertEqual(dimensions["asset_identity"]["exact_count"], 1)
+
+    def test_geometry_reports_raw_error_without_post_hoc_tolerance(self):
+        observation = {
+            "blocks": self.blocks,
+            "figures": [
+                {
+                    "provider_ref": "picture-0",
+                    "page_index": 0,
+                    "bbox_points_bottom_left": [
+                        70.90522003173828,
+                        500.0570068359375,
+                        252.6000518798828,
+                        621.0237884521484,
+                    ],
+                }
+            ],
+        }
+        geometry = SCORE.measure_b01_figure_dimensions(
+            observation, self.gold
+        )["figure_geometry"]
+        row = geometry["figures"][0]
+        self.assertEqual(geometry["status"], "measured")
+        self.assertEqual(geometry["page_exact_count"], 1)
+        self.assertEqual(geometry["bbox_exact_count"], 0)
+        self.assertAlmostEqual(geometry["max_observed_edge_error_points"], 1.0947799682617188)
+        self.assertAlmostEqual(row["absolute_edge_error_points"][0], 1.0947799682617188)
+        self.assertAlmostEqual(row["absolute_edge_error_points"][1], 0.0570068359375)
+        self.assertAlmostEqual(row["absolute_edge_error_points"][2], 0.6000518798828125)
+        self.assertAlmostEqual(row["absolute_edge_error_points"][3], 1.0237884521484375)
+        self.assertIn("no post-hoc tolerance", geometry["policy"])
 
     def test_nearby_caption_never_creates_association(self):
         observation = {

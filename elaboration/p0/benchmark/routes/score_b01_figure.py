@@ -60,13 +60,15 @@ def _caption_text(gold_fixture: dict[str, Any], observation: dict[str, Any]) -> 
     }
 
 
-def _bbox_inside(inner: list[float], outer: list[float]) -> bool:
-    return (
-        inner[0] >= outer[0]
-        and inner[1] >= outer[1]
-        and inner[2] <= outer[2]
-        and inner[3] <= outer[3]
-    )
+def _edge_errors(observed: list[float], expected: list[float]) -> dict[str, Any]:
+    signed = [float(observed[index]) - float(expected[index]) for index in range(4)]
+    absolute = [abs(value) for value in signed]
+    return {
+        "signed_edge_error_points": signed,
+        "absolute_edge_error_points": absolute,
+        "max_absolute_edge_error_points": max(absolute),
+        "bbox_exact": all(value == 0.0 for value in absolute),
+    }
 
 
 def _figures(gold_fixture: dict[str, Any], observation: dict[str, Any]) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
@@ -109,18 +111,18 @@ def _figures(gold_fixture: dict[str, Any], observation: dict[str, Any]) -> tuple
             and len(expected_bbox) == 4
         )
         page_exact = geometry_available and observed_page == expected_page
-        contained = geometry_available and page_exact and _bbox_inside(observed_bbox, expected_bbox)
+        error = _edge_errors(observed_bbox, expected_bbox) if geometry_available else {}
         geometry_rows.append(
             {
                 "gold_figure": gold_figure.get("id"),
                 "provider_ref": provider_figure.get("provider_ref") if provider_figure else None,
                 "evidence_available": geometry_available,
                 "page_exact": page_exact if geometry_available else None,
-                "bbox_inside_gold_region": contained if geometry_available else None,
                 "expected_page_index": expected_page,
                 "observed_page_index": observed_page,
                 "gold_region_points_bottom_left": expected_bbox,
                 "observed_provider_bbox_points_bottom_left": observed_bbox,
+                **error,
             }
         )
 
@@ -150,13 +152,23 @@ def _figures(gold_fixture: dict[str, Any], observation: dict[str, Any]) -> tuple
         if geometry_evidence == len(geometry_rows)
         else "partial"
     )
+    measured_edge_errors = [
+        row["max_absolute_edge_error_points"]
+        for row in geometry_rows
+        if row.get("evidence_available")
+    ]
     geometry = {
         "status": geometry_status,
         "expected_count": len(geometry_rows),
         "evidence_count": geometry_evidence,
-        "contained_count": sum(row["bbox_inside_gold_region"] is True for row in geometry_rows),
+        "page_exact_count": sum(row.get("page_exact") is True for row in geometry_rows),
+        "bbox_exact_count": sum(row.get("bbox_exact") is True for row in geometry_rows),
+        "max_observed_edge_error_points": max(measured_edge_errors) if measured_edge_errors else None,
         "figures": geometry_rows,
-        "policy": "page-exact plus strict containment in broad authored figure region; no caption proximity is used",
+        "policy": (
+            "record page identity and raw per-edge point errors against authored geometry; "
+            "no post-hoc tolerance or universal geometry pass threshold is introduced"
+        ),
     }
     if geometry_status != "measured":
         geometry["reason"] = "Explicit Provider figure geometry is incomplete or unavailable."

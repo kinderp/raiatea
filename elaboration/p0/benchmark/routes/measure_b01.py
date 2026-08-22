@@ -32,6 +32,7 @@ from pdf_routes import (  # noqa: E402
 from score_b01 import measure_b01_fixture  # noqa: E402
 
 RESULT_CONTRACT_VERSION = "0.1.0"
+B01_NORMAL_FIXTURES = ["B01-PDF-001", "B01-PDF-002", "B01-PDF-003"]
 TIKA_SURVEYED_VERSION = "3.3.2"
 TIKA_APP_SHA512 = (
     "88c2032cba0d45feea361e6eebd2918bd04707614cdda5d89a1b167da5503c98"
@@ -110,10 +111,10 @@ def _structured_provider_setup() -> dict[str, Any]:
             "quality_assessment": None,
         },
         "docling": {
-            "surveyed_version": "2.117.0",
-            "survey_evidence_scope": "carried-forward-from-E02-not-reverified-by-this-run",
+            "surveyed_version": "2.118.0",
+            "survey_evidence_scope": "measured-in-E04e-separate-reference-route",
             "python_module_available": importlib.util.find_spec("docling") is not None,
-            "execution_status": "not-measured",
+            "execution_status": "not-measured-in-this-control-route",
             "quality_assessment": None,
         },
     }
@@ -141,7 +142,7 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
         "- Timing values are single-run observations only; not performance claims.",
         "",
     ]
-    for fixture_id in ["B01-PDF-001", "B01-PDF-002"]:
+    for fixture_id in B01_NORMAL_FIXTURES:
         lines.extend([f"## {fixture_id}", ""])
         for route in ["pdftotext-bbox-layout", "pdftohtml-xml"]:
             result = by_key.get((fixture_id, route), {})
@@ -150,11 +151,15 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
             text = dim(result, "content_text")
             coords = dim(result, "source_coordinates")
             order = dim(result, "reading_order")
+            hierarchy = dim(result, "hierarchy")
+            links = dim(result, "links")
             lines.append(
-                f"- `{route}`: text `{text.get('matched_units')}/{text.get('expected_units')}`, "
-                f"coordinates contained `{coords.get('contained_count')}/{coords.get('expected_count')}`, "
-                f"reading-order edges `{order.get('satisfied_edges')}/{order.get('expected_edges')}`, "
-                f"hierarchy `{dim(result, 'hierarchy').get('status')}`."
+                f"- `{route}`: content `{text.get('matched_units')}/{text.get('expected_units')}`, "
+                f"segmentation exact `{text.get('exact_block_units')}/{text.get('expected_units')}`, "
+                f"coordinates `{coords.get('status')}` contained `{coords.get('contained_count')}/{coords.get('expected_count')}`, "
+                f"reading-order `{order.get('satisfied_edges')}/{order.get('expected_edges')}`, "
+                f"hierarchy `{hierarchy.get('status')}`, heading levels `{hierarchy.get('heading_levels', {}).get('status')}`, "
+                f"links `{links.get('status')}`."
             )
         lines.append("")
 
@@ -162,14 +167,15 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
         [
             "## Structured Provider setup status",
             "",
-            "- Apache Tika 3.3.2: `not-measured`; the official E-02 release/hash evidence is carried forward, but no Tika artifact was installed/materialized for this benchmark run. No quality conclusion is drawn.",
-            f"- Docling 2.117.0 Python module available in this run environment: `{report['structured_provider_setup']['docling']['python_module_available']}`; execution remains `not-measured` and no quality conclusion is drawn.",
+            "- Apache Tika 3.3.2: measured separately in E-04d; not executed by this Poppler control route.",
+            f"- Docling 2.118.0 Python module available in this run environment: `{report['structured_provider_setup']['docling']['python_module_available']}`; measured separately in E-04e, not by this control route.",
             "",
             "## Decision boundary",
             "",
             "- Poppler routes are controls for born-digital PDF, not Provider-selection outcomes.",
             "- No weighted/universal score is produced.",
-            "- B-01 coverage is incomplete: headings/lists/links, figures/captions, tables, formula/code, defective native text and negative malformed/access-controlled PDF fixtures remain open.",
+            "- B-01 coverage remains incomplete: figures/captions, tables, formula fidelity, defective native text and negative malformed/access-controlled PDF fixtures remain open.",
+            "- B01-PDF-003 link semantics are credited only if a route explicitly exposes link evidence; typography/layout never implies a link.",
             "- #131 remains open; G-02 is not complete.",
             "- G-04 and G-05 remain open; no Provider or first slice is selected/promoted.",
             "",
@@ -226,7 +232,7 @@ def run_baseline(
     results: list[dict[str, Any]] = []
     observations_dir = output_dir / "observations"
     observations_dir.mkdir(exist_ok=True)
-    for fixture_id in ["B01-PDF-001", "B01-PDF-002"]:
+    for fixture_id in B01_NORMAL_FIXTURES:
         fixture_path = fixture_dir / fixtures[fixture_id]["output"]
         gold_fixture = gold["fixtures"][fixture_id]
 
@@ -290,26 +296,25 @@ def run_baseline(
         "results": results,
         "coverage": {
             "benchmark_class": "B-01",
-            "normal_fixtures": ["B01-PDF-001", "B01-PDF-002"],
+            "normal_fixtures": B01_NORMAL_FIXTURES,
             "full_b01_coverage": False,
             "remaining_gaps": [
-                "headings/lists/links",
                 "figures/captions",
                 "tables",
-                "formula/code",
+                "formula fidelity beyond code/preformatted text",
                 "defective native text subprofile",
                 "malformed/access-controlled negative fixtures",
-                "structured generalist Provider measurements such as Docling/Tika",
             ],
         },
         "measurement_limits": [
             "Poppler routes in this child are controls, not production Provider-selection candidates.",
             "Gold coordinate comparison uses page-exact strict containment inside broad reference regions; no universal IoU threshold is introduced.",
-            "Hierarchy is not measured because visual/font cues are not promoted to Provider-neutral semantics.",
+            "Hierarchy and heading levels are never inferred from font size or layout in Poppler outputs.",
+            "Link semantics are measured only from explicit route evidence; a visible label or PDF rectangle is not enough by itself.",
             "The Poppler controls respect PDF access restrictions; the benchmark never requests a DRM/access-control override.",
             "Timing values are single-run observations and are not performance claims.",
             "Provider network traffic is not instrumented; the measured local Poppler tools do not require remote Provider transmission for these fixtures.",
-            "Results apply only to the recorded route/version/environment and current minimal fixtures.",
+            "Results apply only to the recorded route/version/environment and current fixture subset.",
         ],
         "decision_boundary": {
             "provider_selected": False,

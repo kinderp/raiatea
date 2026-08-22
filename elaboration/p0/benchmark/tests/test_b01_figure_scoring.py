@@ -64,8 +64,37 @@ class B01FigureScoringTests(unittest.TestCase):
         self.assertEqual(geometry["bbox_exact_count"], 1)
         self.assertEqual(geometry["max_observed_edge_error_points"], 0.0)
         self.assertEqual(geometry["figures"][0]["absolute_edge_error_points"], [0.0, 0.0, 0.0, 0.0])
+        self.assertEqual(geometry["figures"][0]["matching_basis"], "single-figure-cardinality")
         self.assertEqual(dimensions["asset_identity"]["status"], "measured")
         self.assertEqual(dimensions["asset_identity"]["exact_count"], 1)
+
+    def test_ambiguous_figure_count_does_not_use_first_item_as_gold_identity(self):
+        observation = {
+            "blocks": self.blocks,
+            "figures": [
+                {
+                    "provider_ref": "image-1",
+                    "page_index": 0,
+                    "bbox_points_bottom_left": [72.0, 500.0, 252.0, 620.0],
+                    "decoded_pixel_sha256": "2e9756a2943938c833aa0b9d72189577b64146bfdc7ce30957624a762cf5abee",
+                },
+                {
+                    "provider_ref": "image-extra",
+                    "page_index": 0,
+                    "bbox_points_bottom_left": [300.0, 300.0, 320.0, 320.0],
+                    "decoded_pixel_sha256": "extra",
+                },
+            ],
+        }
+        dimensions = SCORE.measure_b01_figure_dimensions(observation, self.gold)
+        self.assertEqual(dimensions["figure_presence"]["status"], "measured")
+        self.assertEqual(dimensions["figure_presence"]["observed_count"], 2)
+        self.assertFalse(dimensions["figure_presence"]["count_exact"])
+        self.assertEqual(dimensions["figure_geometry"]["status"], "not-measured")
+        self.assertEqual(dimensions["figure_geometry"]["evidence_count"], 0)
+        self.assertEqual(dimensions["asset_identity"]["status"], "not-measured")
+        self.assertEqual(dimensions["asset_identity"]["evidence_count"], 0)
+        self.assertIn("ambiguous", dimensions["figure_geometry"]["reason"])
 
     def test_geometry_reports_raw_error_without_post_hoc_tolerance(self):
         observation = {

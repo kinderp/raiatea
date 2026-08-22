@@ -308,6 +308,10 @@ def measure_b01_fixture(
         ambiguous = before_state.startswith("ambiguous") or after_state.startswith(
             "ambiguous"
         )
+        ambiguous_duplicate_text = (
+            before_state == "ambiguous-duplicate-text"
+            or after_state == "ambiguous-duplicate-text"
+        )
         satisfied = (
             not ambiguous
             and before_position is not None
@@ -320,6 +324,9 @@ def measure_b01_fixture(
                 "after": after_id,
                 "satisfied": satisfied,
                 "ambiguous_alignment": ambiguous,
+                # Compatibility field retained for canonical Poppler evidence/tests.
+                # Newer scorers additionally expose the broader ambiguous_alignment.
+                "ambiguous_duplicate_text": ambiguous_duplicate_text,
                 "before_position": before_position,
                 "after_position": after_position,
             }

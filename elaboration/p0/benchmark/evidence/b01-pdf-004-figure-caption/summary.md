@@ -13,6 +13,11 @@ the already-pinned Poppler, Apache Tika and Docling routes. It is benchmark-only
 evidence. It does not define the E-05 public extraction contract, select a
 Provider, or promote the candidate first slice.
 
+The numeric snapshot remains anchored to source commit `614816a`. Later commits
+in the same PR harden mapping/failure semantics without rewriting the observed
+Provider facts below; the final PR head must pass the complete benchmark and
+Provider CI before acceptance.
+
 ## Fixture
 
 `B01-PDF-004` is a deterministic 1,133-byte born-digital PDF containing:
@@ -59,6 +64,11 @@ Important invariants:
 - missing Provider evidence is `not-measured`, not zero and not success;
 - a text box near an image is never treated as a caption relation;
 - association requires a Provider-originated relation record;
+- a single Provider relation is bound to the single authored figure/caption only
+  when the Provider figure ref agrees and its explicit caption text exactly
+  matches the authored caption after whitespace normalization;
+- an absent or structurally invalid Provider picture collection is an unknown /
+  degraded state, not an explicit zero-picture observation;
 - pixel identity uses the decoded pixel payload when inspectable, not equality of
   Provider-specific encoded files;
 - geometry preserves raw bbox evidence and raw per-edge errors in PDF points;
@@ -160,6 +170,73 @@ The current pinned Docling route has `generate_picture_images=False`, so it does
 not produce comparable image bytes. Pixel identity therefore remains
 `not-measured` even though the picture item itself is explicit.
 
+## Robustness findings after the measured snapshot
+
+The review of the first measured implementation produced two additional semantic
+hardening changes that do not alter the Provider facts above.
+
+### F2 — relation binding must prove caption identity
+
+A cardinality-only binding could have credited the only Provider relation to the
+only gold caption even if a future/malformed Provider relation referenced the
+wrong caption text. The hardened mapper now assigns gold figure/caption IDs only
+when all of these are true:
+
+```text
+one authored figure
++ one authored figure-caption relation
++ one Provider picture
++ one explicit Provider picture-caption relation
++ matching Provider picture ref
++ non-empty Provider relation source
++ exact authored caption text after whitespace normalization
+```
+
+Otherwise the relation stays unbound and receives no association credit.
+
+### F3 — missing picture collection is unknown, not zero
+
+A missing or incompatible Docling `pictures` collection must not be collapsed to
+an empty list. The hardened mapper distinguishes:
+
+```text
+pictures missing / wrong shape
+  -> degraded
+  -> figures = null
+  -> figure presence not-measured
+
+pictures = [] explicitly
+  -> Provider collection is known
+  -> zero explicit pictures is an observable state
+```
+
+This preserves the E-04 rule that unknown Provider evidence cannot silently
+become failure or success.
+
+## Repeatability observation
+
+A repeat measurement of Poppler `pdftohtml-xml` reproduced the scored evidence,
+figure bbox, generated PNG SHA-256 and decoded pixel SHA-256, while the raw XML
+SHA-256 changed. Inspection showed that `pdftohtml` embeds the temporary absolute
+output path in the XML `<image src>` value.
+
+This is retained as an observed **run-path nondeterminism**, not normalized away:
+
+```text
+stable across compared runs
+- caption result
+- figure count
+- bbox [72.0, 500.0, 252.0, 620.0]
+- generated PNG SHA-256
+- decoded pixel SHA-256
+
+run-specific
+- raw XML SHA-256 containing temporary absolute image path
+```
+
+The benchmark should therefore distinguish semantic/provider evidence stability
+from byte identity of raw outputs that legitimately contain run-local paths.
+
 ## Reference artifacts
 
 The compact JSON snapshot in this directory survives the temporary Actions
@@ -210,9 +287,12 @@ Docling lossless JSON
 
 Therefore E-05 should preserve capability/evidence partiality and Provider-native
 provenance rather than forcing every Adapter into a false all-or-nothing
-`extract()` success shape. This also informs the later Raiatea Plugin API: an
-`ExtractorPlugin` should advertise and return inspectable capabilities/evidence,
-while Raiatea Core owns the normalized meaning, provenance and failure semantics.
+`extract()` success shape. It must also keep `unknown`, `not-measured`, explicit
+zero/empty and degraded states distinguishable.
+
+This directly informs the later Raiatea Plugin API: an `ExtractorPlugin` should
+advertise and return inspectable capabilities/evidence, while Raiatea Core owns
+the normalized meaning, provenance, rights decisions and failure semantics.
 
 ## Decision
 

@@ -34,6 +34,99 @@ def _load_observation(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
+def _normalize_text(value: str) -> str:
+    return " ".join(value.split())
+
+
+def _bind_single_explicit_relation_to_gold(
+    provider_evidence: dict[str, Any],
+    gold_fixture: dict[str, Any],
+) -> bool:
+    """Bind one explicit Provider relation only when identity is unambiguous.
+
+    B01-PDF-004 intentionally has one authored figure and one authored caption.
+    Cardinality alone is insufficient: the Provider must expose exactly one
+    explicit picture relation, that relation must point to the sole Provider
+    figure, and its caption text must exactly match the authored caption after
+    whitespace normalization. This keeps the benchmark from crediting a wrong
+    semantic relation merely because both sides happen to contain one item.
+    """
+    provider_figures = provider_evidence.get("figures")
+    provider_relations = provider_evidence.get("figure_caption_relations")
+    gold_figures = gold_fixture.get("figures")
+    gold_relations = gold_fixture.get("figure_caption_relations")
+    gold_units = gold_fixture.get("reference_units")
+
+    if not all(
+        isinstance(value, list)
+        for value in (
+            provider_figures,
+            provider_relations,
+            gold_figures,
+            gold_relations,
+            gold_units,
+        )
+    ):
+        return False
+    if not (
+        len(provider_figures) == 1
+        and len(provider_relations) == 1
+        and len(gold_figures) == 1
+        and len(gold_relations) == 1
+    ):
+        return False
+
+    provider_figure = provider_figures[0]
+    provider_relation = provider_relations[0]
+    gold_figure = gold_figures[0]
+    gold_relation = gold_relations[0]
+    if not all(
+        isinstance(value, dict)
+        for value in (provider_figure, provider_relation, gold_figure, gold_relation)
+    ):
+        return False
+
+    gold_caption_id = gold_relation.get("caption_unit")
+    gold_caption = next(
+        (
+            unit
+            for unit in gold_units
+            if isinstance(unit, dict) and unit.get("id") == gold_caption_id
+        ),
+        None,
+    )
+    if not isinstance(gold_caption, dict):
+        return False
+
+    provider_ref = provider_figure.get("provider_ref")
+    provider_relation_ref = provider_relation.get("provider_figure_ref")
+    provider_caption_text = provider_relation.get("caption_text")
+    expected_caption_text = gold_caption.get("text")
+    relation_source = provider_relation.get("provider_relation_source")
+    if not all(
+        isinstance(value, str) and value
+        for value in (
+            provider_ref,
+            provider_relation_ref,
+            provider_caption_text,
+            expected_caption_text,
+            relation_source,
+        )
+    ):
+        return False
+    if provider_relation_ref != provider_ref:
+        return False
+    if _normalize_text(provider_caption_text) != _normalize_text(expected_caption_text):
+        return False
+
+    provider_relation["gold_figure_id"] = gold_figure.get("id")
+    provider_relation["gold_caption_unit"] = gold_caption_id
+    provider_relation["gold_matching_basis"] = (
+        "single-explicit-figure-plus-exact-caption-text"
+    )
+    return True
+
+
 def _write_figure_results(output: Path, provider: str, rows: list[dict[str, Any]]) -> None:
     payload = {
         "contract": {
@@ -158,15 +251,17 @@ def run_docling(
     )
     explicit_picture = map_docling_figure_evidence(raw_document)
 
-    # B01-PDF-004 has exactly one authored figure and this pinned Docling run
-    # exposes exactly one explicit picture item. Mapping those identities is
-    # therefore cardinality-based and inspectable; caption association itself
-    # is still credited only from Docling's explicit picture.captions ref.
-    if len(explicit_picture.get("figures", [])) == 1:
-        for relation in explicit_picture.get("figure_caption_relations", []):
-            relation["gold_figure_id"] = "figure-1"
-            relation["gold_caption_unit"] = "caption"
-            relation["gold_matching_basis"] = "single-explicit-figure-cardinality"
+    if not _bind_single_explicit_relation_to_gold(explicit_picture, _gold()):
+        explicit_picture.setdefault("warnings", []).append(
+            {
+                "code": "docling-figure-gold-binding-ambiguous",
+                "details": (
+                    "Expected one explicit Provider picture/caption relation with exact "
+                    "authored caption text; relation remains unbound and cannot receive "
+                    "figure-caption association credit."
+                ),
+            }
+        )
 
     _write_figure_results(
         output,

@@ -1,0 +1,205 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-docling-reference-baseline",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "evidence_source_commit": "4fca693d512d02df7da971280ae34779cbec57fb",
+  "ci_evidence": {
+    "workflow_run_id": 32566131807,
+    "artifact_id": 9474163662,
+    "artifact_name": "p0-b01-docling-2.118.0-4fca693d512d02df7da971280ae34779cbec57fb",
+    "artifact_digest": "sha256:ad41fef5d2c658284d14c0ee92266c60f860697a2d5a0437b353475944f521c3",
+    "exact_source_checkout_verified": true,
+    "all_required_jobs_green": true
+  },
+  "environment": {
+    "scope": "single-reference-environment",
+    "platform_system": "Linux",
+    "platform_release": "6.17.0-1022-azure",
+    "platform_version": "#22-Ubuntu SMP Mon Jul 27 17:24:03 UTC 2026",
+    "machine": "x86_64",
+    "processor": "x86_64",
+    "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+    "logical_cpu_count": 4,
+    "memory_total_observed": "16372440 kB",
+    "python_version": "3.12.14",
+    "python_implementation": "CPython",
+    "gpu": "not-used-cpu-route",
+    "portability_claim": false,
+    "runner": "GitHub Actions ubuntu-24.04"
+  },
+  "package_provenance": {
+    "docling_version": "2.118.0",
+    "wheel_sha256_from_pypi_evidence": "fd4962c9a54229bae1eb9b49f7fadb7e7b8affabf7e4fba1aac8cb335f558c8f",
+    "source_commit_from_pypi_attestation": "9b454c9e88454d95fd04d538c552a3c07bc3c04d"
+  },
+  "reference_verification": {
+    "verified": true,
+    "dependency_count": 121,
+    "environment_freeze_sha256": "54625595793321bdcb4f7b5763122b2c403ce1f4ecbd6d7837ab619a96c39456",
+    "model_payload_file_count": 11,
+    "model_payload_bytes": 342987978,
+    "model_payload_manifest_sha256": "c9afe973808a41c359c1f270f063097972985c096468089b206031395f8a885e"
+  },
+  "reference_locks": {
+    "dependency_constraints_path": "locks/docling-2.118.0-python312-linux-x86_64.txt",
+    "dependency_constraints_sha256": "2bb61853b0465b6b94a73f1aeabf2a479a976398dd7af8cacc7a57d5a3bb3070",
+    "expected_environment_freeze_sha256": "54625595793321bdcb4f7b5763122b2c403ce1f4ecbd6d7837ab619a96c39456",
+    "model_payload_lock_path": "locks/docling-2.118.0-layout-model-payload.json",
+    "model_payload_lock_sha256": "6831285c20e25ee1c987bbe17dcc54f800360e7cf55cc4de174390378e92f260",
+    "expected_model_payload_manifest_sha256": "c9afe973808a41c359c1f270f063097972985c096468089b206031395f8a885e"
+  },
+  "model_artifacts": {
+    "stable_payload": {
+      "file_count": 11,
+      "bytes": 342987978,
+      "manifest_sha256": "c9afe973808a41c359c1f270f063097972985c096468089b206031395f8a885e"
+    },
+    "cache_inclusive_download_tree": {
+      "file_count": 39,
+      "bytes": 342991110,
+      "manifest_sha256": "2f6923d1b2f6a8c7f2004f8decb6083f6e66189bcf820c08a324927edb30dd87",
+      "stability": "evidence-only; ephemeral .cache metadata excluded from stable payload lock"
+    }
+  },
+  "harness_fingerprints": {
+    "generator": "c66c08615227e379db08fe40fcfeee980c99bd97bd20e6c637311795c416c1db",
+    "fixture_manifest": "b83cd333e45981f8e1b45634a53f70d5cbc563d3cbea15f5e734c64692fd8583",
+    "gold": "ba08fb72af8a76db34dbdb5f2efca766678846b5a14e0e5f1ac09dc172501047",
+    "docling_routes": "903d2ad909171857a5731dc1662500d19f9768a24e5cce140091a5d58c17763a",
+    "score_b01": "136b30bb46e57dd50177ceb5b7a26aa93feadbe941633eb0134f7f8d915be695",
+    "measure_docling_b01": "f8ebb52084cbab1d6bfbf6d5523285776cd2cace280a266162cb7fa66703fb04",
+    "verify_docling_reference": "2aa9c9c75ce035cdc8df47ed36b16b9a3472742d276bcef8074826e27cfac5ab",
+    "dependency_constraints": "2bb61853b0465b6b94a73f1aeabf2a479a976398dd7af8cacc7a57d5a3bb3070",
+    "model_payload_lock": "6831285c20e25ee1c987bbe17dcc54f800360e7cf55cc4de174390378e92f260"
+  },
+  "rights_state": {
+    "redistribution": "not-established",
+    "decision_issue": 131,
+    "public_rights_safe": false,
+    "remote_provider": "denied"
+  },
+  "route": {
+    "route": "docling-2.118.0-standard-pdf-native-no-ocr",
+    "docling_version": "2.118.0",
+    "ocr": false,
+    "table_structure": false,
+    "remote_services": false,
+    "external_plugins": false,
+    "code_formula_picture_chart_enrichment": false,
+    "force_backend_text": false,
+    "accelerator": "cpu",
+    "threads": 4,
+    "artifacts_path": "controlled-prefetched-root",
+    "measured_network_policy": "HF_HUB_OFFLINE=1, TRANSFORMERS_OFFLINE=1, enable_remote_services=false; OS-level network isolation not claimed"
+  },
+  "results": {
+    "B01-PDF-001": {
+      "fixture_sha256": "be1a5d9ef8a06c5534826ed29cfff34f1d030e0349f39da21b96bfc9a82f4311",
+      "route_status": "success",
+      "provider_conversion_status": "ConversionStatus.SUCCESS",
+      "content": {
+        "preserved": "3/3",
+        "segmentation_exact": "3/3"
+      },
+      "reading_order": "2/2",
+      "observed_reference_text_sequence": [
+        "Raiatea B01 PDF 001",
+        "Alpha paragraph preserves exact benchmark text.",
+        "Beta paragraph follows alpha in reading order."
+      ],
+      "source_coordinates": {
+        "status": "measured",
+        "unit_attributable_geometry": "3/3",
+        "contained": 3,
+        "provider_geometry_observed_count": 3
+      },
+      "hierarchy": {
+        "status": "measured",
+        "type_exact": "3/3",
+        "segmentation_exact": "3/3"
+      },
+      "page_structure_observed": true,
+      "bbox_structure_observed": true,
+      "body_order_source": "body.children",
+      "cache_delta_files": [],
+      "raw_json_sha256": "ff88397d1128a9e92d462ef597e3c2c355d0042e11bc5c42c17ffd729ca4e30d",
+      "raw_json_bytes": 1618
+    },
+    "B01-PDF-002": {
+      "fixture_sha256": "fce2f6285698c63596d9fe4d42fcaff773b787e6521587c50fa23b5691f7edcc",
+      "route_status": "success",
+      "provider_conversion_status": "ConversionStatus.SUCCESS",
+      "content": {
+        "preserved": "5/5",
+        "segmentation_exact": "1/5"
+      },
+      "reading_order": "4/4",
+      "observed_reference_text_sequence": [
+        "Raiatea B01 PDF 002",
+        "Left one.",
+        "Left two.",
+        "Right one.",
+        "Right two."
+      ],
+      "source_coordinates": {
+        "status": "partial",
+        "unit_attributable_geometry": "1/5",
+        "contained": 1,
+        "provider_geometry_observed_count": 5
+      },
+      "hierarchy": {
+        "status": "measured",
+        "type_exact": "5/5",
+        "segmentation_exact": "1/5"
+      },
+      "page_structure_observed": true,
+      "bbox_structure_observed": true,
+      "body_order_source": "body.children",
+      "cache_delta_files": [],
+      "raw_json_sha256": "6f1576c784f8127f4b70c62c5a957e9130ec2c586a8228d02a33fede4be01cb1",
+      "raw_json_bytes": 1236
+    }
+  },
+  "comparison_boundary": {
+    "poppler_reference_commit": "add6bbe0757848d66d17a364f8566985eef21c60",
+    "tika_reference_commit": "7fa34beee53305026d21123de97f522730ce1c58",
+    "note": "Per-dimension comparison only. Docling is not selected as a Provider and this record does not promote a first slice."
+  },
+  "coverage": {
+    "benchmark_class": "B-01",
+    "normal_fixtures": [
+      "B01-PDF-001",
+      "B01-PDF-002"
+    ],
+    "full_b01_coverage": false,
+    "remaining_gaps": [
+      "headings/lists/links fixture beyond current synthetic title",
+      "figures/captions",
+      "tables",
+      "formula/code",
+      "defective native text subprofile",
+      "malformed/access-controlled negative fixtures",
+      "additional structured Provider measurements if still decision-relevant"
+    ]
+  },
+  "measurement_limits": [
+    "The route uses only the prefetched, payload-locked model artifact root recorded in this evidence step.",
+    "Ephemeral Hugging Face download/cache metadata is excluded from the stable model payload lock but remains visible in the cache-inclusive artifact manifest.",
+    "Offline environment flags and disabled Docling remote services make implicit supported model fetches fail closed; OS-level network isolation is not claimed.",
+    "OCR/table/enrichment features are disabled so this minimal B-01 run measures layout/text structure rather than unrelated models.",
+    "Content preservation does not imply segmentation preservation; aggregate Provider blocks are aligned conservatively and their geometry is not copied onto substring reference units.",
+    "Timing values are single-run observations and are not performance claims.",
+    "Results apply only to the recorded package/dependencies/models/runtime/environment and current minimal fixtures."
+  ],
+  "decision_boundary": {
+    "provider_selected": false,
+    "first_slice_promoted": false,
+    "g02_satisfied": false,
+    "g04_satisfied": false,
+    "g05_satisfied": false
+  }
+}

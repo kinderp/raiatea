@@ -205,9 +205,11 @@ class DoclingScorerIntegrationTests(unittest.TestCase):
         observation = DOCLING.map_docling_document(document)
         result = SCORE.measure_b01_fixture("B01-PDF-001", observation, gold)
         self.assertEqual(result["dimensions"]["content_text"]["matched_units"], 3)
+        self.assertEqual(result["dimensions"]["content_text"]["exact_block_units"], 3)
         self.assertEqual(result["dimensions"]["reading_order"]["satisfied_edges"], 2)
         self.assertEqual(result["dimensions"]["source_coordinates"]["contained_count"], 3)
         self.assertEqual(result["dimensions"]["hierarchy"]["type_exact_count"], 3)
+        self.assertEqual(result["dimensions"]["hierarchy"]["segmentation_exact_count"], 3)
 
 
 class DoclingArtifactTests(unittest.TestCase):
@@ -229,13 +231,32 @@ class DoclingArtifactTests(unittest.TestCase):
             artifacts = root / "artifacts"
             cache = root / "cache"
             artifacts.mkdir()
-            old = os.environ.get("HF_HUB_OFFLINE")
+            tracked = [
+                "HF_HUB_OFFLINE",
+                "TRANSFORMERS_OFFLINE",
+                "DOCLING_DEVICE",
+                "DOCLING_ARTIFACTS_PATH",
+                "HF_HOME",
+                "HUGGINGFACE_HUB_CACHE",
+                "TRANSFORMERS_CACHE",
+                "XDG_CACHE_HOME",
+                "TORCH_HOME",
+                "MPLCONFIGDIR",
+            ]
+            old = {name: os.environ.get(name) for name in tracked}
             with DOCLING._offline_environment(artifacts, cache):
                 self.assertEqual(os.environ["HF_HUB_OFFLINE"], "1")
                 self.assertEqual(os.environ["TRANSFORMERS_OFFLINE"], "1")
                 self.assertEqual(os.environ["DOCLING_DEVICE"], "cpu")
                 self.assertEqual(Path(os.environ["DOCLING_ARTIFACTS_PATH"]), artifacts.resolve())
-            self.assertEqual(os.environ.get("HF_HUB_OFFLINE"), old)
+                self.assertEqual(Path(os.environ["HF_HOME"]), (cache / "huggingface").resolve())
+                self.assertEqual(Path(os.environ["HUGGINGFACE_HUB_CACHE"]), (cache / "huggingface" / "hub").resolve())
+                self.assertEqual(Path(os.environ["TRANSFORMERS_CACHE"]), (cache / "transformers").resolve())
+                self.assertEqual(Path(os.environ["XDG_CACHE_HOME"]), (cache / "xdg").resolve())
+                self.assertEqual(Path(os.environ["TORCH_HOME"]), (cache / "torch").resolve())
+                self.assertEqual(Path(os.environ["MPLCONFIGDIR"]), (cache / "matplotlib").resolve())
+            for name, value in old.items():
+                self.assertEqual(os.environ.get(name), value)
 
 
 if __name__ == "__main__":

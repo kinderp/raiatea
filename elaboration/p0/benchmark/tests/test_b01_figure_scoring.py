@@ -124,7 +124,8 @@ class B01FigureScoringTests(unittest.TestCase):
         self.assertAlmostEqual(row["absolute_edge_error_points"][1], 0.0570068359375)
         self.assertAlmostEqual(row["absolute_edge_error_points"][2], 0.6000518798828125)
         self.assertAlmostEqual(row["absolute_edge_error_points"][3], 1.0237884521484375)
-        self.assertIn("no post-hoc tolerance", geometry["policy"])
+        self.assertIn("post-hoc tolerance", geometry["policy"])
+        self.assertIn("no list-position matching", geometry["policy"])
 
     def test_nearby_caption_never_creates_association(self):
         observation = {

@@ -43,6 +43,7 @@ from verify_docling_reference import (  # noqa: E402
 
 
 RESULT_CONTRACT_VERSION = "0.1.0"
+B01_NORMAL_FIXTURES = ["B01-PDF-001", "B01-PDF-002", "B01-PDF-003"]
 
 
 def _sha256(path: Path) -> str:
@@ -131,12 +132,14 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
         "- OS-level network isolation is not claimed.",
         "",
     ]
-    for fixture_id in ["B01-PDF-001", "B01-PDF-002"]:
+    for fixture_id in B01_NORMAL_FIXTURES:
         result = by_fixture.get(fixture_id, {})
         text = dim(result, "content_text")
         order = dim(result, "reading_order")
         coords = dim(result, "source_coordinates")
         hierarchy = dim(result, "hierarchy")
+        levels = hierarchy.get("heading_levels", {})
+        links = dim(result, "links")
         lines.extend(
             [
                 f"## {fixture_id}",
@@ -147,6 +150,8 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
                 f"- reading-order edges: `{order.get('satisfied_edges')}/{order.get('expected_edges')}`",
                 f"- source coordinates: `{coords.get('status')}`; unit-attributable geometry `{coords.get('geometry_evidence_count')}/{coords.get('expected_count')}`, contained `{coords.get('contained_count')}` when measured",
                 f"- hierarchy: `{hierarchy.get('status')}`; exact semantic types `{hierarchy.get('type_exact_count')}/{hierarchy.get('expected_count')}`; segmentation-exact semantic units `{hierarchy.get('segmentation_exact_count')}/{hierarchy.get('expected_count')}`",
+                f"- heading levels: `{levels.get('status')}`; exact `{levels.get('exact_count')}/{levels.get('expected_count')}` when measurable",
+                f"- links: `{links.get('status')}`; target exact `{links.get('target_exact_count')}/{links.get('expected_count')}` when measurable",
                 f"- page structure observed: `{result.get('page_structure_observed')}`",
                 f"- bbox structure observed: `{result.get('bbox_structure_observed')}`",
                 f"- Docling body order source: `{result.get('body_order_source')}`",
@@ -163,6 +168,8 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
             "- Aggregate-block geometry is retained as Provider evidence but is never copied onto each substring-aligned reference unit; only unit-attributable bbox evidence can satisfy coordinate fidelity.",
             "- Docling geometry is compared only when provenance bbox and page identity are explicitly present.",
             "- TOPLEFT provenance is converted using the corresponding Docling page height; BOTTOMLEFT provenance maps directly.",
+            "- Heading levels are credited only from explicit Docling level evidence; visual hierarchy is not inferred by the scorer.",
+            "- Link targets/associations are credited only if lossless Docling output exposes explicit link evidence; visible text/layout is not enough.",
             "- Missing provenance/unknown labels remain visible warnings or unmeasured dimensions; they are never invented.",
             "- The stable model lock excludes ephemeral `.cache` download metadata while pinning every payload file by path, size and SHA-256.",
             "- No weighted/universal score is produced.",
@@ -247,7 +254,7 @@ def run_baseline(
     )
 
     results: list[dict[str, Any]] = []
-    for fixture_id in ["B01-PDF-001", "B01-PDF-002"]:
+    for fixture_id in B01_NORMAL_FIXTURES:
         fixture_path = fixture_dir / fixtures[fixture_id]["output"]
         fixture_cache = cache_root / fixture_id
         observation = run_docling_pdf_json(
@@ -350,19 +357,18 @@ def run_baseline(
             "poppler_reference_commit": "add6bbe0757848d66d17a364f8566985eef21c60",
             "tika_reference_commit": "7fa34beee53305026d21123de97f522730ce1c58",
             "note": (
-                "Existing control/structured evidence is not rerun or rewritten; "
-                "comparison is limited to common measured dimensions."
+                "Existing Poppler/Tika evidence remains canonical for earlier fixtures; "
+                "this run extends the current fixture subset and comparisons remain per dimension."
             ),
         },
         "coverage": {
             "benchmark_class": "B-01",
-            "normal_fixtures": ["B01-PDF-001", "B01-PDF-002"],
+            "normal_fixtures": B01_NORMAL_FIXTURES,
             "full_b01_coverage": False,
             "remaining_gaps": [
-                "headings/lists/links fixture beyond current synthetic title",
                 "figures/captions",
                 "tables",
-                "formula/code",
+                "formula fidelity beyond code/preformatted text",
                 "defective native text subprofile",
                 "malformed/access-controlled negative fixtures",
                 "additional structured Provider measurements if still decision-relevant",
@@ -372,10 +378,11 @@ def run_baseline(
             "The route uses only the prefetched, payload-locked model artifact root recorded in this evidence step.",
             "Ephemeral Hugging Face download/cache metadata is excluded from the stable model payload lock but remains visible in the cache-inclusive artifact manifest.",
             "Offline environment flags and disabled Docling remote services make implicit supported model fetches fail closed; OS-level network isolation is not claimed.",
-            "OCR/table/enrichment features are disabled so this minimal B-01 run measures layout/text structure rather than unrelated models.",
+            "OCR/table/enrichment features are disabled so this B-01 route measures layout/text structure rather than unrelated models.",
             "Content preservation does not imply segmentation preservation; aggregate Provider blocks are aligned conservatively and their geometry is not copied onto substring reference units.",
+            "Heading levels and link targets/associations are credited only from explicit lossless Docling evidence; typography/layout is never used as a fallback.",
             "Timing values are single-run observations and are not performance claims.",
-            "Results apply only to the recorded package/dependencies/models/runtime/environment and current minimal fixtures.",
+            "Results apply only to the recorded package/dependencies/models/runtime/environment and current fixture subset.",
         ],
         "decision_boundary": {
             "provider_selected": False,

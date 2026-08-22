@@ -34,6 +34,7 @@ from tika_routes import (  # noqa: E402
 
 
 RESULT_CONTRACT_VERSION = "0.1.0"
+B01_NORMAL_FIXTURES = ["B01-PDF-001", "B01-PDF-002", "B01-PDF-003"]
 
 
 def _sha256(path: Path) -> str:
@@ -127,21 +128,26 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
         "- OS-level sandboxing/network isolation are not claimed.",
         "",
     ]
-    for fixture_id in ["B01-PDF-001", "B01-PDF-002"]:
+    for fixture_id in B01_NORMAL_FIXTURES:
         result = by_fixture.get(fixture_id, {})
         text = dim(result, "content_text")
         order = dim(result, "reading_order")
         coords = dim(result, "source_coordinates")
         hierarchy = dim(result, "hierarchy")
+        levels = hierarchy.get("heading_levels", {})
+        links = dim(result, "links")
         lines.extend(
             [
                 f"## {fixture_id}",
                 "",
                 f"- route status: `{result.get('route_status')}`",
-                f"- exact reference text units: `{text.get('matched_units')}/{text.get('expected_units')}`",
+                f"- reference text content preserved: `{text.get('matched_units')}/{text.get('expected_units')}`",
+                f"- segmentation-exact blocks: `{text.get('exact_block_units')}/{text.get('expected_units')}`",
                 f"- reading-order edges: `{order.get('satisfied_edges')}/{order.get('expected_edges')}`",
                 f"- source coordinates: `{coords.get('status')}`",
                 f"- hierarchy: `{hierarchy.get('status')}`; exact semantic types `{hierarchy.get('type_exact_count')}/{hierarchy.get('expected_count')}` when measurable",
+                f"- heading levels: `{levels.get('status')}`; exact `{levels.get('exact_count')}/{levels.get('expected_count')}` when measurable",
+                f"- links: `{links.get('status')}`; target exact `{links.get('target_exact_count')}/{links.get('expected_count')}` when measurable",
                 f"- page structure observed: `{result.get('page_structure_observed')}`",
                 f"- bbox structure observed: `{result.get('bbox_structure_observed')}`",
                 f"- metadata keys observed: `{result.get('metadata_key_count')}`",
@@ -157,10 +163,10 @@ def _write_summary(report: dict[str, Any], path: Path) -> None:
             "",
             "- Missing bbox evidence is reported as `not-measured`/`partial`, never as successful geometry and never as an invented zero score.",
             "- Explicit page containers are retained as page identity; they do not imply source geometry.",
-            "- Explicit XHTML tags may provide hierarchy evidence; visual/font cues are not promoted to semantic structure.",
-            "- The current fixture title is emitted by Tika as a paragraph, so heading recovery is correctly reported as a semantic mismatch rather than inferred from typography.",
+            "- Explicit XHTML tags may provide hierarchy/heading-level evidence; visual/font cues are not promoted to semantic structure.",
+            "- Link targets/associations are measured only if Tika XHTML/metadata expose inspectable link evidence; a visible label is never promoted to a link by the scorer.",
             "- No weighted/universal score is produced.",
-            "- Comparison with Poppler controls is limited to dimensions measured by both routes.",
+            "- Comparison with Poppler/Docling is limited to dimensions measured by the routes.",
             "- B-01 coverage remains incomplete and #131/G-02/G-04/G-05/first-slice promotion remain open.",
             "",
         ]
@@ -193,7 +199,7 @@ def run_baseline(
     observations_dir = output_dir / "observations"
     observations_dir.mkdir(exist_ok=True)
     route_java: dict[str, Any] | None = None
-    for fixture_id in ["B01-PDF-001", "B01-PDF-002"]:
+    for fixture_id in B01_NORMAL_FIXTURES:
         fixture_path = fixture_dir / fixtures[fixture_id]["output"]
         observation = run_tika_pdf_xhtml(
             fixture_path,
@@ -263,24 +269,23 @@ def run_baseline(
         },
         "results": results,
         "comparison_controls": {
-            "reference_commit": "add6bbe0757848d66d17a364f8566985eef21c60",
+            "poppler_reference_commit": "add6bbe0757848d66d17a364f8566985eef21c60",
+            "docling_reference_commit": "64fd193cbaeb087d938654693ac22db65b81791e",
             "note": (
-                "Poppler B-01 controls are canonical in E-04c. This Tika child does not "
-                "rerun/rewrite them; comparison is limited to common measured dimensions."
+                "Existing Poppler/Docling evidence remains canonical for earlier fixtures; "
+                "this run extends the current fixture subset and comparisons remain per dimension."
             ),
         },
         "coverage": {
             "benchmark_class": "B-01",
-            "normal_fixtures": ["B01-PDF-001", "B01-PDF-002"],
+            "normal_fixtures": B01_NORMAL_FIXTURES,
             "full_b01_coverage": False,
             "remaining_gaps": [
-                "headings/lists/links fixture",
                 "figures/captions",
                 "tables",
-                "formula/code",
+                "formula fidelity beyond code/preformatted text",
                 "defective native text subprofile",
                 "malformed/access-controlled negative fixtures",
-                "Docling and other structured Provider measurements",
             ],
         },
         "measurement_limits": [
@@ -288,9 +293,10 @@ def run_baseline(
             "Explicit Tika page containers provide page identity only; they are not promoted to source geometry.",
             "OCR is explicitly disabled for this born-digital route through the pinned Tika config and Tesseract parser exclusion.",
             "Java temporary files and the PDFBox font cache are redirected under the controlled benchmark parent and recorded separately from unexpected side effects.",
+            "Heading levels and links are credited only from explicit XHTML/metadata evidence; typography/layout is not used as a fallback.",
             "Timing values are single-run observations and are not performance claims.",
             "OS-level filesystem/network isolation is not claimed.",
-            "Results apply only to the recorded jar/config/runtime/environment and current minimal fixtures.",
+            "Results apply only to the recorded jar/config/runtime/environment and current fixture subset.",
         ],
         "decision_boundary": {
             "provider_selected": False,

@@ -15,7 +15,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 MANIFEST_PATH = HERE / "manifests" / "fixtures.json"
-GENERATOR_VERSION = "0.1.0"
+GENERATOR_VERSION = "0.2.0"
 ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 
 
@@ -36,6 +36,11 @@ def _text_cmd(text: str, x: int, y: int, size: int = 12) -> str:
 
 
 def _build_pdf(lines: list[tuple[str, int, int, int]]) -> bytes:
+    """Build the original minimal PDF shape used by B01-PDF-001/002.
+
+    Keep this serializer stable so adding later fixtures does not change the
+    byte identity of already-measured canonical fixtures.
+    """
     stream = "".join(_text_cmd(text, x, y, size) for text, x, y, size in lines).encode("ascii")
     objects = [
         b"<< /Type /Catalog /Pages 2 0 R >>",
@@ -70,6 +75,89 @@ def _build_pdf(lines: list[tuple[str, int, int, int]]) -> bytes:
     return bytes(out)
 
 
+def _semantic_text_cmd(
+    text: str,
+    x: int,
+    y: int,
+    size: int,
+    font: str = "F1",
+) -> str:
+    if font not in {"F1", "F2"}:
+        raise ValueError(f"Unsupported semantic fixture font: {font}")
+    return (
+        f"BT /{font} {size} Tf 1 0 0 1 {x} {y} Tm "
+        f"({_pdf_escape(text)}) Tj ET\n"
+    )
+
+
+def _serialize_pdf_objects(objects: list[bytes]) -> bytes:
+    out = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0]
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(out))
+        out.extend(f"{index} 0 obj\n".encode("ascii"))
+        out.extend(obj)
+        out.extend(b"\nendobj\n")
+
+    xref_offset = len(out)
+    out.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    out.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        out.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+    out.extend(
+        (
+            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"startxref\n{xref_offset}\n%%EOF\n"
+        ).encode("ascii")
+    )
+    return bytes(out)
+
+
+def _build_semantic_structure_pdf() -> bytes:
+    """Build B01-PDF-003 without adding a fixture-generation dependency.
+
+    Authored hierarchy/list/code/link intent lives in gold. The PDF contains
+    deterministic visual distinctions plus a real URI link annotation; Providers
+    are measured on what they actually expose and are never assumed to recover
+    semantics from typography alone.
+    """
+    lines = [
+        ("Raiatea B01 PDF 003", 72, 730, 20, "F1"),
+        ("Semantic Structure", 72, 685, 16, "F1"),
+        ("This paragraph belongs to the main section.", 72, 655, 12, "F1"),
+        ("Nested Topic", 72, 615, 14, "F1"),
+        ("1. First list item.", 90, 580, 12, "F1"),
+        ("2. Second list item.", 90, 555, 12, "F1"),
+        ('print("raiatea-structure")', 90, 510, 11, "F2"),
+        ("Raiatea benchmark link", 72, 445, 12, "F1"),
+    ]
+    stream = "".join(
+        _semantic_text_cmd(text, x, y, size, font)
+        for text, x, y, size, font in lines
+    ).encode("ascii")
+
+    uri = "https://example.invalid/raiatea-benchmark"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> "
+            b"/Contents 6 0 R /Annots [7 0 R] >>"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"endstream",
+        (
+            b"<< /Type /Annot /Subtype /Link /Rect [72 438 260 458] "
+            b"/Border [0 0 0] /A << /S /URI /URI ("
+            + _pdf_escape(uri).encode("ascii")
+            + b") >> >>"
+        ),
+    ]
+    return _serialize_pdf_objects(objects)
+
+
 def generate_pdf_single_column(path: Path) -> None:
     path.write_bytes(
         _build_pdf(
@@ -94,6 +182,10 @@ def generate_pdf_two_column(path: Path) -> None:
             ]
         )
     )
+
+
+def generate_pdf_semantic_structure(path: Path) -> None:
+    path.write_bytes(_build_semantic_structure_pdf())
 
 
 def _zip_write_text(zf: zipfile.ZipFile, name: str, text: str, compress: bool = False) -> None:
@@ -212,6 +304,7 @@ def generate_epub_unsafe_path(path: Path) -> None:
 GENERATORS = {
     "pdf_single_column": generate_pdf_single_column,
     "pdf_two_column": generate_pdf_two_column,
+    "pdf_semantic_structure": generate_pdf_semantic_structure,
     "epub_spine": generate_epub_spine,
     "epub_navigation": generate_epub_navigation,
     "epub_inert_active_content": generate_epub_inert_active_content,

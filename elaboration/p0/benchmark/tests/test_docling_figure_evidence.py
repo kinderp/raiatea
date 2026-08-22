@@ -84,6 +84,33 @@ class DoclingFigureEvidenceTests(unittest.TestCase):
         self.assertFalse(evidence["asset_identity_available"])
         self.assertIsNone(evidence["figures"][0]["decoded_pixel_sha256"])
 
+    def test_missing_picture_collection_is_degraded_not_zero_figures(self):
+        evidence = DOCLING.map_docling_figure_evidence(
+            {"pages": {}, "texts": []}
+        )
+        self.assertEqual(evidence["status"], "degraded")
+        self.assertIsNone(evidence["figures"])
+        self.assertTrue(
+            any(
+                warning["code"] == "docling-picture-collection-unavailable"
+                for warning in evidence["warnings"]
+            )
+        )
+
+    def test_invalid_picture_collection_is_degraded_not_zero_figures(self):
+        evidence = DOCLING.map_docling_figure_evidence(
+            {"pages": {}, "texts": [], "pictures": {"unexpected": "shape"}}
+        )
+        self.assertEqual(evidence["status"], "degraded")
+        self.assertIsNone(evidence["figures"])
+
+    def test_explicit_empty_picture_collection_is_known_zero(self):
+        evidence = DOCLING.map_docling_figure_evidence(
+            {"pages": {}, "texts": [], "pictures": []}
+        )
+        self.assertEqual(evidence["status"], "success")
+        self.assertEqual(evidence["figures"], [])
+
     def test_unresolved_caption_ref_stays_visible(self):
         document = {
             "pages": {},

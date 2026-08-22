@@ -28,6 +28,38 @@
       "reading_order": [["title", "l1"], ["l1", "l2"], ["l2", "r1"], ["r1", "r2"]],
       "coordinate_semantics": {"kind": "pdf-page-geometry", "units": "points", "origin": "bottom-left"}
     },
+    "B01-PDF-003": {
+      "assertion_modes": ["exact", "ordered-relation", "tolerance-based", "relation-or-set"],
+      "reference_units": [
+        {"id": "title", "type": "heading", "level": 1, "text": "Raiatea B01 PDF 003", "page_index": 0, "region": [72, 710, 420, 752]},
+        {"id": "section", "type": "heading", "level": 2, "text": "Semantic Structure", "page_index": 0, "region": [72, 670, 390, 704]},
+        {"id": "p1", "type": "paragraph", "text": "This paragraph belongs to the main section.", "page_index": 0, "region": [72, 640, 520, 670]},
+        {"id": "nested", "type": "heading", "level": 3, "text": "Nested Topic", "page_index": 0, "region": [72, 600, 360, 632]},
+        {"id": "li1", "type": "list-item", "text": "1. First list item.", "page_index": 0, "region": [90, 565, 380, 592]},
+        {"id": "li2", "type": "list-item", "text": "2. Second list item.", "page_index": 0, "region": [90, 540, 380, 568]},
+        {"id": "code", "type": "code", "text": "print(\"raiatea-structure\")", "page_index": 0, "region": [90, 495, 390, 522]},
+        {"id": "link-label", "type": "paragraph", "text": "Raiatea benchmark link", "page_index": 0, "region": [72, 432, 300, 460]}
+      ],
+      "reading_order": [
+        ["title", "section"],
+        ["section", "p1"],
+        ["p1", "nested"],
+        ["nested", "li1"],
+        ["li1", "li2"],
+        ["li2", "code"],
+        ["code", "link-label"]
+      ],
+      "links": [
+        {
+          "id": "uri-link",
+          "from_unit": "link-label",
+          "kind": "uri",
+          "target": "https://example.invalid/raiatea-benchmark"
+        }
+      ],
+      "coordinate_semantics": {"kind": "pdf-page-geometry", "units": "points", "origin": "bottom-left"},
+      "semantic_intent_note": "Heading levels, list/code roles and URI target are authored fixture intent. Providers are credited only for explicit evidence they expose; typography alone is never promoted to semantic success."
+    },
     "B02-EPUB-001": {
       "assertion_modes": ["exact", "ordered-relation"],
       "spine": ["ch1", "ch2"],

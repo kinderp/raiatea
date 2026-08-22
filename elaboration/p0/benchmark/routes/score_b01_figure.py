@@ -2,7 +2,8 @@
 
 This is benchmark-only evidence logic. It deliberately keeps caption text,
 figure presence, figure geometry, asset identity and figure-caption association
-as independent dimensions. It never infers association from spatial proximity.
+as independent dimensions. It never infers association or figure identity from
+spatial/positional coincidence.
 """
 
 from __future__ import annotations
@@ -94,10 +95,21 @@ def _figures(gold_fixture: dict[str, Any], observation: dict[str, Any]) -> tuple
         "policy": "explicit Provider figure records only",
     }
 
+    # B01-PDF-004 has one authored figure and no general cross-provider figure
+    # identity protocol. Geometry/asset evidence may therefore be bound only in
+    # the unambiguous 1 expected : 1 observed case. A count mismatch remains a
+    # valid presence observation but must not make the first Provider item the
+    # first gold item by list position.
+    unique_figure_identity = (
+        len(expected) == 1
+        and len(observed) == 1
+        and isinstance(observed[0], dict)
+    )
+
     geometry_rows = []
     identity_rows = []
     for index, gold_figure in enumerate(expected):
-        provider_figure = observed[index] if index < len(observed) and isinstance(observed[index], dict) else None
+        provider_figure = observed[0] if unique_figure_identity and index == 0 else None
         observed_page = provider_figure.get("page_index") if provider_figure else None
         observed_bbox = provider_figure.get("bbox_points_bottom_left") if provider_figure else None
         expected_page = gold_figure.get("page_index")
@@ -116,6 +128,7 @@ def _figures(gold_fixture: dict[str, Any], observation: dict[str, Any]) -> tuple
             {
                 "gold_figure": gold_figure.get("id"),
                 "provider_ref": provider_figure.get("provider_ref") if provider_figure else None,
+                "matching_basis": "single-figure-cardinality" if provider_figure else None,
                 "evidence_available": geometry_available,
                 "page_exact": page_exact if geometry_available else None,
                 "expected_page_index": expected_page,
@@ -133,6 +146,7 @@ def _figures(gold_fixture: dict[str, Any], observation: dict[str, Any]) -> tuple
             {
                 "gold_figure": gold_figure.get("id"),
                 "provider_ref": provider_figure.get("provider_ref") if provider_figure else None,
+                "matching_basis": "single-figure-cardinality" if provider_figure else None,
                 "evidence_available": identity_available,
                 "expected_pixel_payload_sha256": expected_pixel_hash,
                 "observed_decoded_pixel_sha256": observed_pixel_hash,
@@ -166,12 +180,14 @@ def _figures(gold_fixture: dict[str, Any], observation: dict[str, Any]) -> tuple
         "max_observed_edge_error_points": max(measured_edge_errors) if measured_edge_errors else None,
         "figures": geometry_rows,
         "policy": (
-            "record page identity and raw per-edge point errors against authored geometry; "
-            "no post-hoc tolerance or universal geometry pass threshold is introduced"
+            "record page identity and raw per-edge point errors only after unambiguous figure identity; "
+            "no list-position matching, post-hoc tolerance or universal geometry pass threshold"
         ),
     }
     if geometry_status != "measured":
-        geometry["reason"] = "Explicit Provider figure geometry is incomplete or unavailable."
+        geometry["reason"] = (
+            "Explicit Provider figure geometry is incomplete/unavailable or figure identity is ambiguous."
+        )
 
     identity_evidence = sum(row["evidence_available"] for row in identity_rows)
     identity_status = (
@@ -187,10 +203,15 @@ def _figures(gold_fixture: dict[str, Any], observation: dict[str, Any]) -> tuple
         "evidence_count": identity_evidence,
         "exact_count": sum(row["pixel_identity_exact"] is True for row in identity_rows),
         "figures": identity_rows,
-        "policy": "compare decoded pixel payload SHA-256, not Provider-specific encoded asset bytes",
+        "policy": (
+            "compare decoded pixel payload SHA-256 only after unambiguous figure identity; "
+            "Provider-specific encoded bytes remain separate"
+        ),
     }
     if identity_status != "measured":
-        identity["reason"] = "Comparable decoded pixel evidence is incomplete or unavailable."
+        identity["reason"] = (
+            "Comparable decoded pixel evidence is incomplete/unavailable or figure identity is ambiguous."
+        )
 
     return presence, geometry, identity
 

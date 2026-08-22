@@ -157,8 +157,71 @@ source geometry. On B01-PDF-002, Tika's current reading order is `4/4`, matching
 `pdftohtml-xml` and differing from `pdftotext-bbox-layout` (`3/4`). This is a
 per-dimension observation, **not** a total Provider ranking.
 
-Docling and the other structured candidates remain unmeasured by this evidence
-step; absence/setup state must not be converted into extraction-quality evidence.
+## B-01 Docling structured route
+
+E-04e adds a pinned, local **Docling 2.118.0 standard PDF route** for the same
+born-digital fixtures. It remains benchmark evidence only and does not select
+Docling as the P0 Provider.
+
+The reference route:
+
+- verifies the top-level Docling 2.118.0 wheel SHA-256 before installation;
+- installs against `locks/docling-2.118.0-python312-linux-x86_64.txt` and verifies
+  the exact 121-distribution environment before measurement;
+- prefetches only the `layout` model component, then verifies the stable 11-file
+  payload against `locks/docling-2.118.0-layout-model-payload.json`;
+- excludes ephemeral Hugging Face `.cache` metadata from the stable model payload
+  lock while retaining the cache-inclusive tree as setup evidence;
+- runs on CPU with OCR, table structure and nonessential enrichments disabled;
+- disables remote services/external plugins and enables offline Hugging Face /
+  transformers controls for the measured document phase;
+- maps lossless Docling JSON into the same Provider-neutral B-01 scorer;
+- preserves content and Provider segmentation as separate measurements so an
+  aggregate Provider block cannot masquerade as exact reference segmentation;
+- never copies an aggregate block bbox onto substring-aligned reference units.
+
+A reference-equivalent local run requires the pinned dependency/model material
+used by the CI job. The measurement command itself is:
+
+```bash
+python elaboration/p0/benchmark/routes/measure_docling_b01.py \
+  --output /tmp/raiatea-docling-b01 \
+  --artifacts-path /path/to/pinned/docling-models \
+  --cache-root /tmp/raiatea-docling-cache \
+  --evidence-source-commit <exact-code-commit>
+```
+
+The canonical source run is commit `4fca693`; compact evidence is stored under:
+
+```text
+elaboration/p0/benchmark/evidence/
+  b01-reference-ubuntu-docling-2.118.0/
+    docling-baseline.json
+    docling-summary.md
+```
+
+The source run is GitHub Actions run `32566131807`, artifact `9474163662`,
+digest `sha256:ad41fef5d2c658284d14c0ee92266c60f860697a2d5a0437b353475944f521c3`.
+The pre-measurement verifier matched the dependency freeze SHA-256
+`54625595793321bdcb4f7b5763122b2c403ce1f4ecbd6d7837ab619a96c39456`
+and stable model payload SHA-256
+`c9afe973808a41c359c1f270f063097972985c096468089b206031395f8a885e`.
+
+Measured behavior:
+
+- `B01-PDF-001`: content `3/3`, segmentation exact `3/3`, order `2/2`,
+  unit-attributable coordinates `3/3`, semantic type `3/3`;
+- `B01-PDF-002`: content `5/5`, reading order `4/4`, but segmentation exact
+  only `1/5`; Docling merges the four column paragraphs into one larger
+  paragraph block, so only `1/5` reference units has unit-attributable bbox;
+- the aggregate block bbox remains visible as Provider evidence but is **not**
+  copied onto the four substring-aligned reference paragraphs;
+- no measured-cache delta files were created for either current fixture.
+
+Compared per dimension, Poppler still gives finer current two-column geometry,
+Tika gives page/paragraph semantics without bbox, and Docling gives richer
+heading/paragraph semantics plus bbox provenance but coarser segmentation on the
+current two-column fixture. This is **not a total Provider ranking**.
 
 ## B-02 baseline routes
 
@@ -225,6 +288,11 @@ Tests cover:
 - Tika no-OCR configuration, jar verification and conservative XHTML mapping;
 - Tika Java/PDFBox runtime filesystem confinement across Linux/Windows path semantics;
 - Tika summary/evidence retention of Java hash, controlled cache and semantic limits;
+- Docling lossless-JSON body/group traversal and observed `children: []` leaf behavior;
+- Docling BOTTOMLEFT/TOPLEFT provenance mapping and explicit degradation when page/bbox evidence is unavailable;
+- Provider-neutral aggregate-block alignment that separates content preservation from Provider segmentation;
+- Docling dependency/model payload lock verification, including fail-closed dependency drift and exclusion of ephemeral model-download cache metadata;
+- Docling offline/cache-root confinement and summary separation of content, segmentation and unit-attributable geometry;
 - EPUB `mimetype`/container/OPF/nav structure;
 - EPUB no-canonical-page gold invariant;
 - cross-resource anchors;

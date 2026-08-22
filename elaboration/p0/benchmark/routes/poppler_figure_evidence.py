@@ -100,6 +100,28 @@ def decode_png_rgb8(data: bytes) -> tuple[int, int, bytes]:
     return width, height, b"".join(rows)
 
 
+def controlled_asset_path(work: Path, src: str) -> Path:
+    """Resolve a pdftohtml asset ref only when it stays inside the work root.
+
+    Poppler may emit either an absolute path under the supplied output prefix or
+    a relative basename. Both are acceptable only after canonical containment is
+    proven; traversal and external absolute paths fail closed.
+    """
+    work_root = work.resolve()
+    candidate = Path(src)
+    if candidate.is_absolute():
+        resolved = candidate.resolve()
+    else:
+        if candidate.name != src:
+            raise ValueError("non-basename-relative-reference")
+        resolved = (work_root / candidate).resolve()
+    try:
+        resolved.relative_to(work_root)
+    except ValueError as exc:
+        raise ValueError("asset-reference-outside-work-root") from exc
+    return resolved
+
+
 def run_pdftohtml_figure_evidence(
     source: Path,
     executable: str = "pdftohtml",
@@ -166,12 +188,21 @@ def run_pdftohtml_figure_evidence(
             scale_y = height_points / native_height
             for image_index, image in enumerate(page.findall("image")):
                 src = image.attrib.get("src")
-                if not src or Path(src).is_absolute() or Path(src).name != src:
+                if not src:
                     result["warnings"].append(
-                        {"code": "unsafe-image-reference", "details": src}
+                        {"code": "missing-image-reference", "details": None}
                     )
                     continue
-                asset_path = work / src
+                try:
+                    asset_path = controlled_asset_path(work, src)
+                except ValueError as exc:
+                    result["warnings"].append(
+                        {
+                            "code": "unsafe-image-reference",
+                            "details": {"src": src, "reason": str(exc)},
+                        }
+                    )
+                    continue
                 if not asset_path.is_file():
                     result["warnings"].append(
                         {"code": "missing-generated-image", "details": src}
@@ -191,7 +222,7 @@ def run_pdftohtml_figure_evidence(
                     "bbox_points_bottom_left": _convert_top_left_bbox(
                         *native_bbox, height_points, scale_x, scale_y
                     ),
-                    "asset_name": src,
+                    "asset_name": asset_path.name,
                     "asset_sha256": hashlib.sha256(asset).hexdigest(),
                     "asset_bytes": len(asset),
                 }

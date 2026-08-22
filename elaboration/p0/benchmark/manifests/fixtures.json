@@ -55,6 +55,37 @@
       }
     },
     {
+      "id": "B01-PDF-003",
+      "version": "0.1.0",
+      "source_family": "SF-01",
+      "traits": [
+        "born-digital",
+        "paginated",
+        "single-column",
+        "semantic-structure",
+        "deep-hierarchy",
+        "list",
+        "code",
+        "link-annotation"
+      ],
+      "generator": "pdf_semantic_structure",
+      "output": "B01-PDF-003.pdf",
+      "expected_outcome": "success",
+      "dimensions": {
+        "content": "target",
+        "hierarchy": "target",
+        "reading_order": "target",
+        "source_coordinates": "target",
+        "links": "target"
+      },
+      "rights": {
+        "origin": "project-created",
+        "redistribution": "not-established",
+        "public_rights_safe": false,
+        "remote_provider": "denied"
+      }
+    },
+    {
       "id": "B02-EPUB-001",
       "version": "0.1.0",
       "source_family": "SF-03",
@@ -132,10 +163,9 @@
     }
   ],
   "coverage_gaps": [
-    "B01-PDF-003 headings/lists/links",
     "B01-PDF-004 figures/captions",
     "B01-PDF-005 tables",
-    "B01-PDF-006 formula/code",
+    "B01-PDF-006 formula fidelity beyond the code/preformatted coverage in B01-PDF-003",
     "B01-PDF-007 defective native text",
     "B01-PDF negative malformed/access-controlled cases",
     "B02-EPUB-003 through B02-EPUB-007 semantic feature coverage",

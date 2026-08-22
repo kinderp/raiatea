@@ -30,8 +30,8 @@ def map_docling_figure_evidence(document: dict[str, Any]) -> dict[str, Any]:
         "route": "docling-lossless-explicit-picture-evidence",
         "status": "success" if pictures_available else "degraded",
         "warnings": [],
-        # None means the Provider collection was unavailable/invalid, while []
-        # means it was explicitly present and contained zero picture items.
+        # None means the Provider collection was unavailable/incomplete, while
+        # [] means it was explicitly present, structurally valid and empty.
         "figures": [] if pictures_available else None,
         "caption_blocks": [],
         "figure_caption_relations": [],
@@ -53,8 +53,11 @@ def map_docling_figure_evidence(document: dict[str, Any]) -> dict[str, Any]:
             }
         )
 
+    invalid_picture_item = False
     for index, picture in enumerate(pictures):
         if not isinstance(picture, dict):
+            invalid_picture_item = True
+            result["status"] = "degraded"
             result["warnings"].append(
                 {
                     "code": "docling-picture-item-invalid",
@@ -150,5 +153,11 @@ def map_docling_figure_evidence(document: dict[str, Any]) -> dict[str, Any]:
                     "provider_relation_source": "docling-picture.captions-explicit-ref",
                 }
             )
+
+    if invalid_picture_item:
+        # A partially malformed Provider collection cannot support an exact
+        # figure-count observation. Preserve any caption text evidence collected
+        # from valid items, but make figure presence/geometry unknown.
+        result["figures"] = None
 
     return result

@@ -4,12 +4,14 @@ import hashlib
 import importlib.util
 from pathlib import Path
 import struct
+import sys
 import unittest
 import zlib
 
 
 BENCH_DIR = Path(__file__).resolve().parents[1]
 ROUTES = BENCH_DIR / "routes"
+sys.path.insert(0, str(ROUTES))
 SPEC = importlib.util.spec_from_file_location(
     "p0_poppler_figure_evidence", ROUTES / "poppler_figure_evidence.py"
 )

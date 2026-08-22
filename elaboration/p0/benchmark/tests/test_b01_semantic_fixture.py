@@ -103,10 +103,10 @@ class B01SemanticFixtureTests(unittest.TestCase):
 
     def test_semantic_fixture_closes_only_its_planned_coverage_gap(self):
         gaps = self.fixtures["coverage_gaps"]
-        self.assertFalse(any("B01-PDF-003" in item for item in gaps))
-        self.assertTrue(any("B01-PDF-004" in item for item in gaps))
-        self.assertTrue(any("B01-PDF-005" in item for item in gaps))
-        self.assertTrue(any("B01-PDF-007" in item for item in gaps))
+        self.assertFalse(any(item.startswith("B01-PDF-003 ") for item in gaps))
+        self.assertTrue(any(item.startswith("B01-PDF-004 ") for item in gaps))
+        self.assertTrue(any(item.startswith("B01-PDF-005 ") for item in gaps))
+        self.assertTrue(any(item.startswith("B01-PDF-007 ") for item in gaps))
 
 
 if __name__ == "__main__":

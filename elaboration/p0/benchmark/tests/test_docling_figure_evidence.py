@@ -104,6 +104,33 @@ class DoclingFigureEvidenceTests(unittest.TestCase):
         self.assertEqual(evidence["status"], "degraded")
         self.assertIsNone(evidence["figures"])
 
+    def test_malformed_picture_item_makes_presence_unknown(self):
+        evidence = DOCLING.map_docling_figure_evidence(
+            {"pages": {}, "texts": [], "pictures": ["not-a-picture-object"]}
+        )
+        self.assertEqual(evidence["status"], "degraded")
+        self.assertIsNone(evidence["figures"])
+        self.assertTrue(
+            any(
+                warning["code"] == "docling-picture-item-invalid"
+                for warning in evidence["warnings"]
+            )
+        )
+
+    def test_mixed_valid_and_malformed_picture_items_keep_count_unknown(self):
+        evidence = DOCLING.map_docling_figure_evidence(
+            {
+                "pages": {},
+                "texts": [],
+                "pictures": [
+                    {"self_ref": "#/pictures/0", "label": "picture"},
+                    42,
+                ],
+            }
+        )
+        self.assertEqual(evidence["status"], "degraded")
+        self.assertIsNone(evidence["figures"])
+
     def test_explicit_empty_picture_collection_is_known_zero(self):
         evidence = DOCLING.map_docling_figure_evidence(
             {"pages": {}, "texts": [], "pictures": []}

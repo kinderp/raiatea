@@ -5,6 +5,7 @@ import importlib.util
 from pathlib import Path
 import struct
 import sys
+import tempfile
 import unittest
 import zlib
 
@@ -62,6 +63,35 @@ class PopplerFigureEvidenceTests(unittest.TestCase):
     def test_decoder_rejects_non_png(self):
         with self.assertRaisesRegex(ValueError, "not-png"):
             POPPLER.decode_png_rgb8(b"not a png")
+
+    def test_controlled_asset_path_accepts_absolute_path_inside_work_root(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / "work"
+            work.mkdir()
+            asset = work / "out-1_1.png"
+            asset.write_bytes(b"png")
+            self.assertEqual(
+                POPPLER.controlled_asset_path(work, str(asset)), asset.resolve()
+            )
+
+    def test_controlled_asset_path_accepts_relative_basename(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            work = Path(tmp) / "work"
+            work.mkdir()
+            expected = work / "out-1_1.png"
+            self.assertEqual(
+                POPPLER.controlled_asset_path(work, "out-1_1.png"), expected.resolve()
+            )
+
+    def test_controlled_asset_path_rejects_escape_and_external_absolute_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            work = root / "work"
+            work.mkdir()
+            with self.assertRaisesRegex(ValueError, "non-basename-relative-reference"):
+                POPPLER.controlled_asset_path(work, "../outside.png")
+            with self.assertRaisesRegex(ValueError, "outside-work-root"):
+                POPPLER.controlled_asset_path(work, str(root / "outside.png"))
 
 
 if __name__ == "__main__":

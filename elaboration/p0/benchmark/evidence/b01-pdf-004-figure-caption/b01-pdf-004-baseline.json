@@ -1,0 +1,159 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-pdf-004-figure-caption-baseline",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "evidence_source": {
+    "commit": "614816a66d039aaeaf9bbf1f361b2c81d8c6a044",
+    "workflow": "P0 B-01 figure evidence",
+    "run_id": 32596219962,
+    "run_number": 10,
+    "conclusion": "success",
+    "reference_environment": {
+      "os": "Ubuntu 24.04",
+      "python": "3.12.14"
+    }
+  },
+  "fixture": {
+    "id": "B01-PDF-004",
+    "version": "0.1.0",
+    "generator": "pdf_figure_caption",
+    "generator_version": "0.3.0",
+    "sha256": "8d4c9d3f70bc22cfe0ee7e9eabd76bc6f39d1baa98032112e44557379a34c3da",
+    "bytes": 1133,
+    "authored_pixel_payload_sha256": "2e9756a2943938c833aa0b9d72189577b64146bfdc7ce30957624a762cf5abee",
+    "rights": {
+      "origin": "project-created",
+      "redistribution": "not-established",
+      "public_rights_safe": false,
+      "remote_provider": "denied",
+      "decision_issue": 131
+    }
+  },
+  "artifacts": [
+    {
+      "provider_family": "poppler",
+      "artifact_id": 9481617551,
+      "name": "p0-b01-figure-poppler-614816a66d039aaeaf9bbf1f361b2c81d8c6a044",
+      "digest": "sha256:a426db99771e67933751e40a6cfcf6a0b07bfdefdcd38b741db9cf5eab91c43e",
+      "compact_figure_evidence_sha256": "3529b915764560bf5392d67215a38391e63b853c51a60da2424e88ad6008b3b3",
+      "expires_at": "2026-08-29T20:17:31Z"
+    },
+    {
+      "provider_family": "tika",
+      "artifact_id": 9481616707,
+      "name": "p0-b01-figure-tika-3.3.2-614816a66d039aaeaf9bbf1f361b2c81d8c6a044",
+      "digest": "sha256:8bfc5c050714fb9d7d32f0780ae5981aa38d9cd3fb5a49bb3b46095f7573a7a1",
+      "compact_figure_evidence_sha256": "4a96e6a45cec025332b5b1d3a08cfff5769b3c52c9b2db8ecf2e3e9227ebb2ce",
+      "expires_at": "2026-08-29T20:17:27Z"
+    },
+    {
+      "provider_family": "docling",
+      "artifact_id": 9481654773,
+      "name": "p0-b01-figure-docling-2.118.0-614816a66d039aaeaf9bbf1f361b2c81d8c6a044",
+      "digest": "sha256:0686a9ac22075da56c2a805fb6a5c813fbba8628d7485d2ef130bf5a6495dc97",
+      "compact_figure_evidence_sha256": "cdb2779d7fab511b77a083e8d7ea0da16b6f14a570f9359447b076d314af933c",
+      "expires_at": "2026-08-29T20:20:27Z"
+    }
+  ],
+  "results": [
+    {
+      "provider": "Poppler 24.02.0",
+      "route": "pdftotext-bbox-layout",
+      "route_status": "success",
+      "dimensions": {
+        "caption_text": {"status": "measured", "exact_count": 1, "expected_count": 1},
+        "figure_presence": {"status": "not-measured"},
+        "figure_geometry": {"status": "not-measured"},
+        "asset_identity": {"status": "not-measured"},
+        "figure_caption_association": {"status": "not-measured", "proximity_inference": false}
+      }
+    },
+    {
+      "provider": "Poppler 24.02.0",
+      "route": "pdftohtml-xml",
+      "route_status": "success",
+      "dimensions": {
+        "caption_text": {"status": "measured", "exact_count": 1, "expected_count": 1},
+        "figure_presence": {"status": "measured", "observed_count": 1, "expected_count": 1, "count_exact": true},
+        "figure_geometry": {
+          "status": "measured",
+          "page_exact_count": 1,
+          "bbox_exact_count": 1,
+          "expected_count": 1,
+          "max_observed_edge_error_points": 0.0,
+          "observed_bbox_points_bottom_left": [72.0, 500.0, 252.0, 620.0]
+        },
+        "asset_identity": {
+          "status": "measured",
+          "exact_count": 1,
+          "expected_count": 1,
+          "decoded_pixel_sha256": "2e9756a2943938c833aa0b9d72189577b64146bfdc7ce30957624a762cf5abee",
+          "provider_encoded_asset_sha256": "21b8823b706be67a8ae38bf3d348e068f6ae4c2d9d70c9b8d0ab161a4c3c7815",
+          "provider_asset_bytes": 113
+        },
+        "figure_caption_association": {"status": "not-measured", "proximity_inference": false}
+      }
+    },
+    {
+      "provider": "Apache Tika 3.3.2",
+      "route": "tika-app-3.3.2-xhtml",
+      "route_status": "success",
+      "dimensions": {
+        "caption_text": {"status": "measured", "exact_count": 1, "expected_count": 1},
+        "figure_presence": {"status": "not-measured"},
+        "figure_geometry": {"status": "not-measured"},
+        "asset_identity": {"status": "not-measured"},
+        "figure_caption_association": {"status": "not-measured", "proximity_inference": false}
+      },
+      "warnings": [
+        {"code": "bbox-not-exposed", "meaning": "The measured XHTML route exposed no source geometry recognized by the benchmark mapper."}
+      ]
+    },
+    {
+      "provider": "Docling 2.118.0",
+      "route": "docling-2.118.0-standard-pdf-native-no-ocr",
+      "route_status": "success",
+      "dimensions": {
+        "caption_text": {"status": "measured", "exact_count": 1, "expected_count": 1, "provider_label": "caption"},
+        "figure_presence": {"status": "measured", "observed_count": 1, "expected_count": 1, "count_exact": true, "provider_ref": "#/pictures/0"},
+        "figure_geometry": {
+          "status": "measured",
+          "page_exact_count": 1,
+          "bbox_exact_count": 0,
+          "expected_count": 1,
+          "observed_bbox_points_bottom_left": [70.90522003173828, 500.0570068359375, 252.6000518798828, 621.0237884521484],
+          "signed_edge_error_points": [-1.0947799682617188, 0.0570068359375, 0.6000518798828125, 1.0237884521484375],
+          "max_observed_edge_error_points": 1.0947799682617188,
+          "tolerance_applied": false
+        },
+        "asset_identity": {"status": "not-measured", "reason": "The pinned route disables generate_picture_images, so comparable Provider image bytes were not produced."},
+        "figure_caption_association": {
+          "status": "measured",
+          "evidence_count": 1,
+          "exact_count": 1,
+          "expected_count": 1,
+          "provider_relation_source": "docling-picture.captions-explicit-ref",
+          "proximity_inference": false
+        }
+      }
+    }
+  ],
+  "method_invariants": [
+    "Each dimension is reported independently; no weighted or universal total score exists.",
+    "Missing Provider evidence remains not-measured rather than zero or success.",
+    "Figure-caption association is credited only from explicit Provider-originated relation evidence; spatial proximity is never substituted.",
+    "Asset identity compares decoded pixel payload SHA-256 when such bytes are explicitly available; encoded Provider asset bytes are preserved separately.",
+    "Geometry records raw page/bbox evidence and per-edge point error; no post-hoc tolerance was introduced after observing Provider output.",
+    "The fixture remains rights-pending and external remote Provider use remains denied under issue #131."
+  ],
+  "decision": {
+    "provider_selected": false,
+    "first_slice_promoted": false,
+    "public_e05_contract_frozen": false,
+    "implication": "The measured routes expose complementary evidence surfaces; E-05 must preserve capability- and evidence-specific partiality instead of assuming one extractor returns text, figures, asset bytes, geometry and semantic relations uniformly."
+  }
+}

@@ -180,6 +180,62 @@ def _measure_coordinates(
     return result
 
 
+def _normalize_level(value: Any) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _heading_level_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    level_rows = [row for row in rows if row.get("expected_level") is not None]
+    if not level_rows:
+        return {
+            "status": "not-applicable",
+            "expected_count": 0,
+            "evidence_count": 0,
+            "exact_count": 0,
+            "units": [],
+        }
+
+    evidence_count = sum(row.get("level_evidence_available") is True for row in level_rows)
+    exact_count = sum(row.get("level_exact") is True for row in level_rows)
+    if evidence_count == 0:
+        status = "not-measured"
+        reason = (
+            "Gold declares heading levels, but the measured route exposes no explicit "
+            "heading-level evidence for the aligned units. Typography is not used as a fallback."
+        )
+    elif evidence_count == len(level_rows):
+        status = "measured"
+        reason = None
+    else:
+        status = "partial"
+        reason = "Only part of the gold heading set exposes explicit heading-level evidence."
+
+    result = {
+        "status": status,
+        "expected_count": len(level_rows),
+        "evidence_count": evidence_count,
+        "exact_count": exact_count,
+        "units": [
+            {
+                "reference_unit": row["reference_unit"],
+                "expected_level": row["expected_level"],
+                "observed_level": row["observed_level"],
+                "level_evidence_available": row["level_evidence_available"],
+                "level_exact": row["level_exact"],
+            }
+            for row in level_rows
+        ],
+    }
+    if reason:
+        result["reason"] = reason
+    return result
+
+
 def _measure_hierarchy(
     reference_units: list[dict[str, Any]],
     matched_blocks: dict[str, dict[str, Any]],
@@ -197,6 +253,16 @@ def _measure_hierarchy(
         and matched_blocks[unit["id"]].get("semantic_type") is not None
     ]
     if not semantic_evidence:
+        empty_rows = [
+            {
+                "reference_unit": unit.get("id"),
+                "expected_level": _normalize_level(unit.get("level")),
+                "observed_level": None,
+                "level_evidence_available": False,
+                "level_exact": None,
+            }
+            for unit in comparable
+        ]
         return {
             "status": "not-measured",
             "reason": (
@@ -208,6 +274,7 @@ def _measure_hierarchy(
             "expected_count": len(comparable),
             "type_exact_count": 0,
             "segmentation_exact_count": 0,
+            "heading_levels": _heading_level_summary(empty_rows),
             "units": [],
         }
 
@@ -220,6 +287,16 @@ def _measure_hierarchy(
         expected_type = unit.get("type")
         type_exact = has_semantics and observed_type == expected_type
         segmentation_exact = match_states.get(unit_id) == "exact-block"
+        expected_level = _normalize_level(unit.get("level"))
+        observed_level = _normalize_level(block.get("semantic_level")) if block else None
+        level_evidence_available = (
+            expected_level is not None
+            and observed_type == "heading"
+            and observed_level is not None
+        )
+        level_exact = (
+            observed_level == expected_level if level_evidence_available else None
+        )
         rows.append(
             {
                 "reference_unit": unit_id,
@@ -229,7 +306,10 @@ def _measure_hierarchy(
                 "observed_type": observed_type,
                 "type_exact": type_exact if has_semantics else None,
                 "segmentation_exact": segmentation_exact if block else None,
-                "observed_level": block.get("semantic_level") if block else None,
+                "expected_level": expected_level,
+                "observed_level": observed_level,
+                "level_evidence_available": level_evidence_available,
+                "level_exact": level_exact,
             }
         )
 
@@ -242,12 +322,125 @@ def _measure_hierarchy(
         "segmentation_exact_count": sum(
             row["segmentation_exact"] is True for row in rows
         ),
+        "heading_levels": _heading_level_summary(rows),
         "units": rows,
     }
     if status == "partial":
         result["reason"] = (
             "Only part of the aligned reference set exposes explicit semantic types; "
             "missing semantics remain unmeasured."
+        )
+    return result
+
+
+def _measure_links(
+    gold_fixture: dict[str, Any],
+    observation: dict[str, Any],
+    reference_units: list[dict[str, Any]],
+) -> dict[str, Any]:
+    expected_links = gold_fixture.get("links")
+    if not expected_links:
+        return {
+            "status": "not-applicable",
+            "expected_count": 0,
+            "target_exact_count": 0,
+            "association_evidence_count": 0,
+            "association_exact_count": 0,
+            "links": [],
+        }
+
+    observed_links = observation.get("links")
+    if observed_links is None:
+        return {
+            "status": "not-measured",
+            "reason": "Gold declares links, but the measured route exposes no link collection.",
+            "expected_count": len(expected_links),
+            "target_exact_count": 0,
+            "association_evidence_count": 0,
+            "association_exact_count": 0,
+            "links": [],
+        }
+    if not isinstance(observed_links, list):
+        return {
+            "status": "not-measured",
+            "reason": "Provider link evidence exists in an unsupported benchmark observation shape.",
+            "expected_count": len(expected_links),
+            "target_exact_count": 0,
+            "association_evidence_count": 0,
+            "association_exact_count": 0,
+            "links": [],
+        }
+
+    text_by_id = {
+        unit.get("id"): _normalize_text(str(unit.get("text", "")))
+        for unit in reference_units
+        if unit.get("id")
+    }
+    rows: list[dict[str, Any]] = []
+    for expected in expected_links:
+        kind = expected.get("kind")
+        target = expected.get("target")
+        from_unit = expected.get("from_unit")
+        from_text = text_by_id.get(from_unit)
+        candidates = [
+            item
+            for item in observed_links
+            if isinstance(item, dict)
+            and item.get("kind") == kind
+            and item.get("target") == target
+        ]
+        target_exact = bool(candidates)
+        association_evidence = False
+        association_exact = False
+        for candidate in candidates:
+            observed_from_unit = candidate.get("from_unit")
+            observed_from_text = candidate.get("from_text")
+            if observed_from_unit is not None:
+                association_evidence = True
+                if observed_from_unit == from_unit:
+                    association_exact = True
+                    break
+            if observed_from_text is not None:
+                association_evidence = True
+                if _normalize_text(str(observed_from_text)) == from_text:
+                    association_exact = True
+                    break
+        rows.append(
+            {
+                "link_id": expected.get("id"),
+                "kind": kind,
+                "expected_target": target,
+                "from_unit": from_unit,
+                "target_exact": target_exact,
+                "association_evidence_available": association_evidence,
+                "association_exact": association_exact if association_evidence else None,
+                "candidate_count": len(candidates),
+            }
+        )
+
+    target_exact_count = sum(row["target_exact"] for row in rows)
+    association_evidence_count = sum(
+        row["association_evidence_available"] for row in rows
+    )
+    association_exact_count = sum(row["association_exact"] is True for row in rows)
+    if target_exact_count == 0 and association_evidence_count == 0:
+        status = "measured"
+    elif association_evidence_count == len(rows):
+        status = "measured"
+    else:
+        status = "partial"
+    result = {
+        "status": status,
+        "expected_count": len(rows),
+        "target_exact_count": target_exact_count,
+        "association_evidence_count": association_evidence_count,
+        "association_exact_count": association_exact_count,
+        "links": rows,
+    }
+    if status == "partial":
+        result["reason"] = (
+            "Target evidence is available for at least one gold link, but source-association "
+            "evidence is incomplete; missing association is not guessed from layout."
         )
     return result
 
@@ -348,6 +541,9 @@ def measure_b01_fixture(
 
     dimensions["hierarchy"] = _measure_hierarchy(
         reference_units, matched_blocks, match_states
+    )
+    dimensions["links"] = _measure_links(
+        gold_fixture, observation, reference_units
     )
 
     return {

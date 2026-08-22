@@ -85,6 +85,8 @@ def _bind_single_explicit_relation_to_gold(
         for value in (provider_figure, provider_relation, gold_figure, gold_relation)
     ):
         return False
+    if gold_relation.get("figure_id") != gold_figure.get("id"):
+        return False
 
     gold_caption_id = gold_relation.get("caption_unit")
     gold_caption = next(
@@ -251,17 +253,18 @@ def run_docling(
     )
     explicit_picture = map_docling_figure_evidence(raw_document)
 
-    if not _bind_single_explicit_relation_to_gold(explicit_picture, _gold()):
-        explicit_picture.setdefault("warnings", []).append(
-            {
-                "code": "docling-figure-gold-binding-ambiguous",
-                "details": (
-                    "Expected one explicit Provider picture/caption relation with exact "
-                    "authored caption text; relation remains unbound and cannot receive "
-                    "figure-caption association credit."
-                ),
-            }
-        )
+    if explicit_picture.get("status") == "success":
+        if not _bind_single_explicit_relation_to_gold(explicit_picture, _gold()):
+            explicit_picture.setdefault("warnings", []).append(
+                {
+                    "code": "docling-figure-gold-binding-ambiguous",
+                    "details": (
+                        "Expected one explicit Provider picture/caption relation with exact "
+                        "authored caption text; relation remains unbound and cannot receive "
+                        "figure-caption association credit."
+                    ),
+                }
+            )
 
     _write_figure_results(
         output,

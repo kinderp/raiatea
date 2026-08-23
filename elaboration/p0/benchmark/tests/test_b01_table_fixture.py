@@ -22,7 +22,7 @@ CANONICAL_B01_HASHES = {
     "B01-PDF-002": "fce2f6285698c63596d9fe4d42fcaff773b787e6521587c50fa23b5691f7edcc",
     "B01-PDF-003": "91c16c6d06b213123256ae4b0ad15f8aa398c2dd5e9af34fc0f27e7cb494061b",
     "B01-PDF-004": "8d4c9d3f70bc22cfe0ee7e9eabd76bc6f39d1baa98032112e44557379a34c3da",
-    "B01-PDF-005": "0a00e239f3e06473442852ee2c49b1fd032e8d840e98c2a7968c0fb33b236eb1",
+    "B01-PDF-005": "f841920e1e9b2566124c2d174bc6627ecaf5ebc96482898f163a4f3e1aa04456",
 }
 
 
@@ -50,7 +50,7 @@ class B01TableFixtureTests(unittest.TestCase):
                 self.assertEqual(hashlib.sha256(first_bytes).hexdigest(), expected_sha)
 
             table_bytes = (first / "B01-PDF-005.pdf").read_bytes()
-            self.assertEqual(len(table_bytes), 1274)
+            self.assertEqual(len(table_bytes), 1518)
             for text in (
                 b"Raiatea B01 PDF 005",
                 b"Body text before the benchmark table.",

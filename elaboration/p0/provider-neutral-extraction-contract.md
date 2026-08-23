@@ -4,7 +4,7 @@
 >
 > Assertion status: `mixed`
 >
-> Version: 0.1.0
+> Version: 0.2.0
 >
 > Last reviewed: 23 August 2026
 >
@@ -27,7 +27,7 @@ routes and downstream Raiatea capabilities.
 
 The contract must let different Providers expose different levels of evidence
 without forcing them into one Provider-shaped document schema and without
-silently upgrading missing or inferred evidence into truth.
+silently upgrading missing, partial or inferred evidence into truth.
 
 The conceptual boundary is:
 
@@ -36,6 +36,9 @@ Source / Original Artifact
           │
           ▼
    ExtractionRequest
+          │
+          ▼
+   Core policy / rights gate
           │
           ▼
      ProcessingRun
@@ -54,8 +57,9 @@ Source / Original Artifact
           NormalizedRepresentation
 ```
 
-Diagnostics, Provenance, Source Coordinates, RightsDecision references and
-ProcessingOutcome state span the whole flow.
+Diagnostics, provenance, Source Coordinates and the applicable RightsDecision
+span the flow. `ProcessingOutcome` describes technical/orchestration outcome;
+it does not become a second policy authority.
 
 This document defines a **conceptual model only**. It does not freeze JSON field
 names, Python classes, REST resources, database tables, plugin transport or a
@@ -68,11 +72,11 @@ public compatibility version.
 Raiatea Core owns:
 
 - the meaning of `SourceReference`, `OriginalArtifact`, processing attempt,
-  normalized representation, Source Coordinates, diagnostics, provenance and
-  policy outcome;
+  normalized representation, Source Coordinates, diagnostics and provenance;
 - the distinction between Provider-native facts and Raiatea-derived facts;
 - rights/policy decisions;
-- failure/degraded/partial semantics;
+- normalized failure/degraded/partial semantics;
+- orchestration-level run outcome;
 - lineage between processing stages and produced artifacts.
 
 A Provider/Adapter/ExtractorPlugin may provide:
@@ -83,7 +87,7 @@ A Provider/Adapter/ExtractorPlugin may provide:
 - content/structure/coordinate/asset evidence;
 - Provider/model/runtime provenance.
 
-It does **not** redefine Raiatea domain meaning.
+It does **not** redefine Raiatea domain meaning or authorize its own processing.
 
 The later Plugin API may define how a process advertises or transports these
 concepts, but transport is not part of this document.
@@ -114,27 +118,30 @@ Raiatea separately records its own structured `ProcessingOutcome`.
 E-04 requires this because Provider success may coexist with missing visible
 content or with malformed input that was not surfaced as degraded.
 
-### I-03 — missing evidence is explicit
+### I-03 — evidence state and evidence value are separate
 
 The absence of a serialized value must not carry several incompatible meanings.
-Raiatea must distinguish at least:
+Raiatea must distinguish whether evidence is present/partial/unavailable/etc.
+from whether the observed value itself is empty.
 
-- evidence is present;
-- evidence is partial;
-- Provider explicitly exposed an empty collection/value;
-- evidence is unavailable/not measured;
-- evidence is ambiguous/unresolved;
-- evidence itself is malformed/unusable;
-- concept is not applicable.
+A trustworthy explicit empty collection is therefore **present evidence whose
+value is empty**, not a special synonym for unavailable evidence.
 
 ### I-04 — Provider-native and Raiatea-derived facts never share an implicit basis
 
-If Raiatea aligns a Provider block to a Source unit, infers a relation from
+If Raiatea aligns a Provider block to a Source unit, derives a relation from
 explicit Provider fields, or reconciles two stages, the normalized fact records
 that basis. A derived fact must never be represented as if the Provider emitted
 it directly.
 
-### I-05 — relations require identity evidence
+### I-05 — evidence origin is separate from Provider evidence channel
+
+A fact can be Provider-native whether it was found in a convenience normalized
+view, a lossless/raw representation, metadata, stdout/stderr or another Provider
+channel. The channel helps trace the fact but does not create a different
+origin/epistemic category.
+
+### I-06 — relations require identity evidence
 
 Figure↔caption, link, table-cell, formula and other relations require explicit
 Provider evidence or an explicit Raiatea alignment/derivation basis.
@@ -142,41 +149,50 @@ Provider evidence or an explicit Raiatea alignment/derivation basis.
 List position, visual proximity, typography or cardinality alone do not create a
 Provider-native relation.
 
-### I-06 — Source Coordinates are typed by Source semantics
+### I-07 — Source Coordinates are typed by Source semantics
 
 PDF page geometry and EPUB package/logical anchors are different coordinate
 families. A future contract may add time, code-line, spreadsheet-range or other
 coordinate types without rewriting the base model.
 
-### I-07 — Raw Extraction and Normalized Representation are distinct
+### I-08 — Raw Extraction and Normalized Representation are distinct
 
 Provider evidence remains inspectable after normalization. Normalization does
 not destroy the provenance needed to explain how a Raiatea fact was produced.
 
-### I-08 — partial structure is a normal successful state
+### I-09 — partial structure is a normal successful state
 
 A route may preserve content while lacking semantic roles, coordinates,
 relations, table topology or formula structure. The base contract must allow
 sparse evidence without treating it as an exception.
 
-### I-09 — fallback is a ProcessingStage with lineage
+### I-10 — fallback is a ProcessingStage with lineage
 
 OCR or another fallback is not an invisible retry. It has its own RouteProfile,
 outcome, diagnostics, output, trigger reason and lineage.
 
-### I-10 — policy restriction is a valid terminal result
+### I-11 — policy restriction is a valid terminal result
 
-A restricted/requires-authorization result may legitimately terminate a
-ProcessingRun without a NormalizedRepresentation. The contract must not imply
-that every restriction should be retried through another route.
+A restricted/requires-authorization decision may legitimately terminate a
+ProcessingRun without a Provider stage or NormalizedRepresentation. The contract
+must not imply that every restriction should be retried through another route.
 
-### I-11 — rights evidence is not the RightsDecision
+### I-12 — rights evidence is not the RightsDecision
 
 Source/Provider/plugin rights evidence is input to policy. Raiatea Core owns the
-RightsDecision. A run references the applicable decision/context rather than
+`RightsDecision`. A run references the applicable decision/context rather than
 letting an extractor authorize itself.
 
-### I-12 — no universal quality score
+Any policy-disposition value repeated on a run is only a projection of that Core
+decision for readability and is never independently authoritative.
+
+### I-13 — stage outcomes do not mechanically determine run outcome
+
+Each stage retains its own `ProcessingOutcome`. The overall run outcome is a
+Raiatea orchestration-level assessment with an explicit derivation basis. It is
+not implicitly the last stage, the worst stage or a Provider-native aggregate.
+
+### I-14 — no universal quality score
 
 Provider/route benchmark evidence can inform routing later, but the extraction
 contract does not carry one authoritative weighted score.
@@ -191,6 +207,9 @@ OriginalArtifact ──────────────┤
                        ExtractionRequest
                                │
                                ▼
+                       RightsDecisionRef
+                               │
+                               ▼
                          ProcessingRun
                                │
              ┌─────────────────┼──────────────────┐
@@ -202,7 +221,7 @@ OriginalArtifact ──────────────┤
              ├── RouteProfileRef
              ├── Provider-native status
              ├── ProviderEvidence / RawExtractionRef
-             ├── ProcessingOutcome
+             ├── stage ProcessingOutcome
              └── stage inputs/outputs
                                │
                                ▼
@@ -258,14 +277,14 @@ for example metadata/link-only workflows. Exact storage policy is outside E-05a.
 
 > Assertion status: `provisional-decision`
 
-`ExtractionRequest` describes the authorized processing intent, not the
+`ExtractionRequest` describes the requested/authorized processing intent, not the
 Provider-specific command line.
 
 Candidate concepts:
 
 - SourceReference / OriginalArtifact input;
 - requested capability/profile constraints;
-- processing/rights decision reference;
+- RightsDecision/policy context reference or requirement;
 - optional requested evidence families;
 - resource/policy constraints;
 - correlation/idempotency context.
@@ -311,23 +330,24 @@ Conceptually:
 
 ```text
 EvidenceEnvelope<T>
-├── availability
+├── evidence_state
+├── value_state?
 ├── value? : T
-├── basis
+├── origin_basis
 ├── provider_evidence_ref?
+├── provider_channel?
 ├── provenance_ref?
 ├── diagnostics[]
-└── conflict/assessment?   # when meaningful outside benchmark-only scoring
+└── assessment/conflict?   # only when meaningful outside benchmark-only scoring
 ```
 
-### 8.1 Availability
+### 8.1 Evidence state
 
 Candidate states:
 
 ```text
 present
 partial
-explicit-empty
 unavailable
 ambiguous
 malformed
@@ -338,48 +358,76 @@ These names are provisional. Their semantic distinctions are evidence-required.
 
 Important rules:
 
-- `explicit-empty` means the producer exposed a trustworthy empty value or
-  collection; it is not the same as `unavailable`;
-- `unavailable` covers not-measured/not-exposed evidence and must not become
-  zero/success;
+- `present` means attributable evidence exists and the envelope can safely
+  describe its value;
 - `partial` means some attributable evidence exists but the complete fact is not
   established;
+- `unavailable` covers not-measured/not-exposed evidence and must not become
+  zero/success;
 - `ambiguous` preserves unresolved identity or multiple defensible mappings;
 - `malformed` means the evidence channel itself cannot be safely interpreted;
 - `not-applicable` is a semantic statement, not missing data.
 
-### 8.2 Basis
+### 8.2 Value state
 
-Candidate basis values:
+When evidence is `present` or `partial`, the value may itself be:
 
 ```text
-provider-explicit
-provider-lossless
+populated
+empty
+unknown
+```
+
+`empty` means a trustworthy producer explicitly exposed an empty value or
+collection. This is how E-04's **explicit empty != unavailable** distinction is
+preserved without making emptiness a kind of evidence availability.
+
+The exact representation can later be simplified if a machine-readable schema
+can infer `empty` unambiguously from `value`, but the semantic distinction must
+survive.
+
+### 8.3 Origin basis
+
+Candidate origin/basis values:
+
+```text
+provider-native
 raiatea-aligned
 raiatea-derived
 user-asserted
 unresolved
 ```
 
-`provider-lossless` exists because E-04 repeatedly found useful explicit fields
-in lossless/raw Provider representations that were absent from convenience
-normalized mappings.
+A Provider-native fact may be found through different channels. Channel is
+recorded separately, for example:
 
-### 8.3 Mismatch/conflict is not availability
+```text
+provider-normalized-view
+provider-lossless-raw
+provider-metadata
+provider-diagnostic-stream
+other-provider-channel
+```
+
+This preserves the E-04 lesson that useful facts can exist only in lossless/raw
+Provider output without pretending that `lossless` is a different epistemic
+origin from another Provider-native fact.
+
+### 8.4 Mismatch/conflict is not evidence state
 
 E-04 benchmark records used exact/mismatch/partial-match assessments. Production
 E-05 must not leak benchmark gold semantics into every payload.
 
 A mismatch should instead be modeled when two available facts/claims conflict,
-or in a validation/assessment object. It is not a synonym for unavailable
-evidence.
+or in a validation/assessment object. It is not a synonym for unavailable or
+partial evidence.
 
 ## 9. ProcessingRun and ProcessingStage
 
 ### 9.1 `ProcessingRun`
 
-A run represents one Raiatea-governed processing attempt and exists even when no
-normalized output is produced.
+A run represents one Raiatea-governed processing attempt and may exist even when
+no Provider stage is started or no normalized output is produced.
 
 Candidate minimum:
 
@@ -388,14 +436,22 @@ Candidate minimum:
 - ordered/related ProcessingStages;
 - start/end timestamps;
 - overall ProcessingOutcome;
+- `outcome_basis` or equivalent orchestration derivation reference;
 - diagnostics;
 - provenance;
 - produced raw/normalized/derived references;
-- RightsDecision/policy context reference.
+- authoritative RightsDecisionRef/policy context.
+
+The run outcome summarizes the orchestration result for downstream consumers. It
+must be derived explicitly from the applicable policy decision, stage outcomes,
+produced outputs and Raiatea validation/normalization evidence. It is never
+implicitly copied from the final Provider stage.
 
 ### 9.2 `ProcessingStage`
 
-A stage represents one attributable operation/route execution.
+A stage represents one attributable operation/route execution or an explicitly
+recorded stage that was not started because a prerequisite/policy gate prevented
+execution.
 
 Candidate minimum:
 
@@ -406,7 +462,7 @@ Candidate minimum:
 - stage trigger/reason, when Raiatea initiated a fallback;
 - inputs;
 - ProviderEvidence / RawExtractionRef outputs;
-- Provider-native status;
+- Provider-native status, if a Provider was invoked;
 - stage ProcessingOutcome;
 - diagnostics;
 - provenance/timing.
@@ -421,13 +477,15 @@ not freeze an exhaustive enum.
 
 A single boolean or monolithic enum cannot represent E-04 outcomes safely.
 
-The conceptual model separates at least these axes.
+The conceptual model separates technical/orchestration axes from the authoritative
+Core policy decision.
 
 ### 10.1 Execution
 
 Candidate states:
 
 ```text
+not-started
 succeeded
 failed
 rejected
@@ -440,6 +498,10 @@ unknown
 This is Raiatea's normalized execution assessment. Provider-native status remains
 separately preserved.
 
+`not-started` is provisional vocabulary for an attempt/stage intentionally not
+invoked because a prerequisite or Core policy decision prevented execution. The
+semantic distinction is useful even if the later schema chooses another name.
+
 ### 10.2 Output availability
 
 Candidate states:
@@ -448,12 +510,12 @@ Candidate states:
 present
 empty
 unavailable
-malformed
 unknown
 ```
 
-This distinguishes, for example, a restricted route known to produce no content
-from a route whose output collection is unavailable or uninterpretable.
+This axis answers only whether output exists/was observable. It deliberately does
+not encode validity. A present output may still have degraded or invalid
+integrity.
 
 ### 10.3 Completeness
 
@@ -475,15 +537,22 @@ Candidate states:
 ```text
 established
 degraded
+invalid
 not-established
+not-applicable
 ```
 
-Integrity may remain `not-established` when the Provider gave no useful signal.
-A separate validation layer may add a Raiatea-derived diagnostic/basis.
+This axis carries validity/usability assessment separately from output presence.
+For example, output may be `present` while integrity is `invalid` because the
+evidence/output cannot be safely interpreted.
 
-### 10.5 Policy
+### 10.5 Policy disposition is not an independent outcome axis
 
-Candidate states:
+The authoritative policy decision remains `RightsDecisionRef` (or a more general
+Core policy-decision reference if later requirements justify it).
+
+For downstream readability a run may expose a non-authoritative projection such
+as:
 
 ```text
 allowed
@@ -493,28 +562,27 @@ denied
 not-evaluated
 ```
 
-Policy state is orthogonal to technical execution. A protected Source without an
-authorized route may terminate as `requires-authorization` even if the Provider
-reports a generic technical failure.
+but that projection is **derived from and traceable to the Core decision**. An
+ExtractorPlugin or Provider cannot set it independently.
 
-### 10.6 Why axes, not one enum
+### 10.6 Why the technical axes remain separate
 
-The following valid combinations occurred or are required by E-04:
+The following combinations occurred or are required by E-04:
 
 ```text
 execution=succeeded
 output=present
 completeness=not-established
 integrity=not-established
-policy=allowed
+rights_decision=allowed
 ```
 
 ```text
 execution=failed
 output=empty
 completeness=not-applicable
-integrity=not-established
-policy=requires-authorization
+integrity=not-applicable
+rights_decision=requires-authorization
 ```
 
 ```text
@@ -522,11 +590,29 @@ execution=succeeded
 output=present
 completeness=partial
 integrity=established
-policy=allowed
+rights_decision=allowed
 ```
 
-The final state vocabulary is a later E-05 decision; the orthogonality is the
-important evidence-derived invariant.
+```text
+execution=not-started
+output=unavailable
+completeness=not-applicable
+integrity=not-applicable
+rights_decision=denied
+```
+
+The final state vocabulary is a later E-05 decision; the orthogonality and
+policy-ownership boundary are the evidence-derived invariants.
+
+### 10.7 Run outcome versus stage outcomes
+
+Each ProcessingStage retains its own outcome. The run-level outcome is a Core
+orchestration summary with an explicit derivation basis.
+
+For example, a native stage may `succeed` with partial completeness, an OCR stage
+may `succeed` with partial recovery, and a normalization stage may still produce
+a useful representation. The run outcome must not be generated by a hidden rule
+such as “take the worst stage” or “copy the last stage”.
 
 ## 11. ProviderEvidence / RawExtractionRef
 
@@ -541,7 +627,8 @@ Conceptually ProviderEvidence may include or reference:
 - Provider-native status;
 - Provider diagnostics/stdout/stderr where policy permits retention;
 - Provider-native object/reference ids needed for traceability;
-- explicit Provider fields mapped into evidence envelopes;
+- explicit Provider fields mapped into EvidenceEnvelopes;
+- evidence channel/locator information;
 - route/profile/runtime provenance;
 - raw-output fingerprint.
 
@@ -622,7 +709,7 @@ PdfPageRegionCoordinate
 ├── region geometry
 ├── units
 ├── origin/convention
-├── basis
+├── EvidenceEnvelope basis/provenance
 └── optional precision/diagnostic metadata
 ```
 
@@ -638,7 +725,7 @@ EpubLogicalCoordinate
 ├── resource/package reference
 ├── fragment/anchor?
 ├── spine/navigation context?
-├── basis
+├── EvidenceEnvelope basis/provenance
 └── traceability/normalization metadata?
 ```
 
@@ -656,7 +743,7 @@ line/ranges and spreadsheet cell ranges, but they remain deferred.
 
 > Assertion status: `evidence-derived draft decision`
 
-A relation connects identifiable endpoints and carries evidence basis.
+A relation connects identifiable endpoints and carries evidence state and basis.
 
 Conceptually:
 
@@ -746,7 +833,7 @@ Conceptually a Diagnostic may include:
 - message/details;
 - Provider-native diagnostic reference/message where retained;
 - affected stage/unit/relation/coordinate;
-- evidence basis;
+- evidence origin/basis;
 - provenance.
 
 Provider-specific exception strings are evidence, not the stable cross-provider
@@ -761,8 +848,9 @@ A run may conceptually look like:
 ```text
 stage native-1
   route = docling-native-no-ocr
+  outcome.execution = succeeded
+  outcome.completeness = partial/not-established
   output = ProviderEvidence A
-  completeness = not-established / partial basis
 
 stage ocr-1
   triggered_by = fallback decision derived from native evidence
@@ -775,6 +863,9 @@ stage normalize-1
   inputs = A + B
   reconciliation = unresolved where block origin cannot be proven
   output = NormalizedRepresentation C
+
+run outcome
+  derived_from = native-1 + ocr-1 + normalize-1 + applicable Core policy decision
 ```
 
 The normalizer must be allowed to preserve both A and B without destructively
@@ -791,14 +882,18 @@ For an access-controlled Source without an authorized credential route:
 
 ```text
 ProcessingRun
-├── Provider-native failure/restriction evidence
-├── execution = failed/rejected/unsupported as normalized
+├── RightsDecisionRef = requires-authorization/restricted
+├── Provider-native failure/restriction evidence, if a Provider was invoked
+├── execution = not-started/failed/rejected/unsupported as actually normalized
 ├── output = empty/unavailable/unknown as actually observed
-├── policy = requires-authorization or restricted
 ├── diagnostics
 ├── provenance
 └── NormalizedRepresentation = absent
 ```
+
+If Core policy denies Provider execution before invocation, ProviderEvidence is
+absent for the legitimate reason `not-started`; this is different from missing
+Provider evidence after an attempted run.
 
 A generic Provider failure and an explicit restriction signal are not the same
 evidence. Likewise, absence of observed side effects is not proof of unmeasured
@@ -817,8 +912,12 @@ licensed system evidence. It can be incomplete or unknown.
 
 ### RightsDecisionRef
 
-References the Raiatea Core policy decision applicable to the processing action.
-The decision may be allowed, denied, restricted or require review/authorization.
+References the authoritative Raiatea Core policy decision applicable to the
+processing action. The decision may be allowed, denied, restricted or require
+review/authorization.
+
+Any policy-disposition value shown alongside ProcessingOutcome is only a
+traceable projection of this decision and never an independent decision source.
 
 An extractor does not authorize itself by reporting a permissive license string.
 Unknown rights-sensitive state remains fail-closed according to Core policy.
@@ -832,24 +931,25 @@ Every attempted ProcessingRun should be able to trace, where applicable:
 
 - SourceReference / OriginalArtifact reference and fingerprint;
 - request/correlation id;
-- Provider id/version/revision;
-- RouteProfile id/version;
+- authoritative RightsDecisionRef/policy context;
+- Provider id/version/revision, if invoked;
+- RouteProfile id/version, if invoked;
 - backend/mode;
 - model/revision/payload fingerprint;
 - material parameters;
 - execution environment relevant to reproducibility;
 - stage kind and parent/prior stage relation;
-- start/end timestamps;
-- Provider-native status;
-- normalized ProcessingOutcome axes;
+- stage start/end timestamps or explicit `not-started` reason;
+- Provider-native status, if available;
+- stage ProcessingOutcome;
+- overall run ProcessingOutcome and its derivation basis;
 - diagnostics;
 - raw/provider evidence references and fingerprints;
 - normalized/derived output references;
-- normalization/alignment basis;
-- RightsDecisionRef/policy context when required.
+- normalization/alignment origin basis and Provider evidence channel where relevant.
 
 Provenance is required even for failed/restricted runs because the attempted
-processing itself is evidence.
+processing or policy-gated request itself is evidence.
 
 ## 24. Evidence basis and normalization lineage
 
@@ -880,10 +980,12 @@ Provider-specific fields.
 B01-PDF-007 native route:
 
 - Provider-native status: success;
+- execution: succeeded;
 - output: present;
 - native text: present;
 - visible raster target: absent;
 - completeness: partial/not-established with explicit basis;
+- applicable RightsDecision: allowed;
 - later OCR stage may be triggered.
 
 ### Scenario B — Provider success on malformed input
@@ -891,19 +993,21 @@ B01-PDF-007 native route:
 B01 NEG-001 / Tika:
 
 - Provider-native status: success;
-- output content: empty;
+- execution: succeeded;
+- output: empty;
 - Provider corruption signal: unavailable;
-- Raiatea integrity/completeness: not established;
-- benchmark/validation diagnostic: malformed negative not surfaced;
+- integrity/completeness: not established;
+- Raiatea diagnostic: malformed negative not surfaced;
 - Provider-native success is preserved but not treated as contract-level truth.
 
 ### Scenario C — restricted Source
 
 B01 NEG-002:
 
-- Provider-native failure/restriction evidence;
-- no authorized credential route supplied;
-- policy: requires-authorization/restricted;
+- authoritative RightsDecision: requires-authorization/restricted;
+- Provider-native failure/restriction evidence if an eligible Provider was invoked;
+- no unauthorized credential route supplied;
+- output: empty/unavailable as observed;
 - normalized output absent;
 - ProcessingRun + provenance still present.
 
@@ -923,7 +1027,8 @@ B01-PDF-006:
 - formula glyph surface preserved;
 - geometry partially available;
 - explicit superscript/fraction relations unavailable;
-- non-semantic grouping may be retained as Provider evidence.
+- non-semantic Provider grouping may be retained with `origin_basis=provider-native`
+  and its Provider evidence channel.
 
 ### Scenario F — EPUB text present, logical traceability partial
 
@@ -945,6 +1050,27 @@ B02 traversal-member Pandoc case:
 - broader path-safety properties remain partial/not-measured;
 - contract can retain success plus unresolved security evidence simultaneously.
 
+### Scenario H — trustworthy explicit empty versus unavailable evidence
+
+A Provider explicitly exposes an empty relation collection:
+
+```text
+evidence_state = present
+value_state = empty
+value = []
+origin_basis = provider-native
+```
+
+A route that exposes no relation collection instead records:
+
+```text
+evidence_state = unavailable
+value = absent
+```
+
+These states cannot collapse into one nullable field without losing E-04
+semantics.
+
 ## 26. Compatibility boundary with Raiatea Plugin API #147
 
 E-05 owns **domain semantics**. #147 will later define plugin mechanics.
@@ -956,7 +1082,7 @@ extract.probe
     -> one or more RouteProfile/capability descriptions
 
 extract.run
-    -> ProviderEvidence + stage/run outcome compatible with E-05 semantics
+    -> ProviderEvidence + stage/run evidence compatible with E-05 semantics
 ```
 
 The Plugin API may later define:
@@ -970,7 +1096,8 @@ The Plugin API may later define:
 - version negotiation;
 - artifact handles.
 
-It must not define a second incompatible extraction-domain model.
+It must not define a second incompatible extraction-domain model or an
+independent policy decision channel.
 
 Likewise E-05 does not require JSON-RPC, gRPC or another transport.
 
@@ -1003,8 +1130,9 @@ That child should:
 
 1. encode only concepts classified `required-by-evidence` or deliberately
    accepted `optional-when-provider-exposes`;
-2. include negative tests for evidence-state collapse, Provider/Raiatea basis
-   confusion, invalid Source Coordinate coercion and restricted-output states;
+2. include negative tests for evidence-state/value-state collapse,
+   Provider/Raiatea origin confusion, invalid Source Coordinate coercion,
+   run/stage outcome aggregation and restricted-output states;
 3. remain independent of plugin transport;
 4. demonstrate at least two existing benchmark mappers can adapt to it without
    leaking their native schemas;

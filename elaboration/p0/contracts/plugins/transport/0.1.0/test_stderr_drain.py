@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from process_harness import LocalProcessHarness
+from process_harness import LocalProcessHarness, MAX_STDERR_CAPTURE_BYTES
 
 PLUGIN_ROOT = ROOT.parents[1] / "1.0.0"
 MANIFEST_PATH = PLUGIN_ROOT / "examples" / "local-read-only-source.json"
@@ -18,7 +18,7 @@ FLOOD_PLUGIN = ROOT / "stderr_flood_plugin.py"
 
 
 class StderrDrainTests(unittest.TestCase):
-    def test_large_stderr_does_not_deadlock_handshake(self):
+    def test_large_stderr_is_drained_without_unbounded_retention_or_deadlock(self):
         manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
         harness = LocalProcessHarness([sys.executable, str(FLOOD_PLUGIN)], manifest)
         outcome: list[BaseException | dict] = []
@@ -42,7 +42,11 @@ class StderrDrainTests(unittest.TestCase):
             self.assertEqual(outcome[0]["record_type"], "handshake")
         finally:
             harness.close()
-        self.assertGreater(len(harness.stderr_text.encode("utf-8")), 256 * 1024)
+
+        retained = len(harness.stderr_text.encode("utf-8"))
+        self.assertLessEqual(retained, MAX_STDERR_CAPTURE_BYTES)
+        self.assertGreater(retained, 0)
+        self.assertTrue(harness.stderr_truncated)
         self.assertEqual(harness.diagnostics, [])
 
 

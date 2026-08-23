@@ -1,0 +1,51 @@
+{
+  "contract": {
+    "name": "raiatea-p0-benchmark-observation",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false
+  },
+  "route": "pdftohtml-xml",
+  "status": "success",
+  "warnings": [],
+  "pages": [
+    {
+      "page_index": 0,
+      "native_width": 918.0,
+      "native_height": 1188.0,
+      "native_origin": "top-left",
+      "mapped_width_points": 612.0,
+      "mapped_height_points": 792.0,
+      "scale_to_points_x": 0.6666666667,
+      "scale_to_points_y": 0.6666666667
+    }
+  ],
+  "blocks": [
+    {
+      "type": "text-block",
+      "text": "Native PDF title",
+      "page_index": 0,
+      "native_bbox": [108.0, 90.0, 360.0, 126.0],
+      "bbox_points_bottom_left": [72.0, 708.0, 240.0, 732.0]
+    },
+    {
+      "type": "text-block",
+      "text": "Provider-neutral extraction evidence.",
+      "page_index": 0,
+      "native_bbox": [108.0, 162.0, 594.0, 198.0],
+      "bbox_points_bottom_left": [72.0, 660.0, 396.0, 684.0]
+    }
+  ],
+  "links": [],
+  "native_coordinate_system": "top-left-scaled-canvas",
+  "mapped_coordinate_system": "bottom-left-points",
+  "returncode": 0,
+  "raw_output_sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+  "raw_output_bytes": 2048,
+  "command_options": ["-xml", "-hidden", "-q", "<fixture>", "<out>"],
+  "generated_files": ["out.xml"],
+  "side_effect_files": [],
+  "controlled_parent": true,
+  "os_level_sandbox": false,
+  "network_instrumentation": "not-measured"
+}

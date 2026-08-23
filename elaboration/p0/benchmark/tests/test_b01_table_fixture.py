@@ -92,7 +92,7 @@ class B01TableFixtureTests(unittest.TestCase):
         fixture = self.gold["fixtures"]["B01-PDF-005"]
         self.assertEqual(
             fixture["coordinate_semantics"],
-            "PDF page points, bottom-left origin",
+            {"kind": "pdf-page-geometry", "units": "points", "origin": "bottom-left"},
         )
         self.assertEqual(len(fixture["tables"]), 1)
         table = fixture["tables"][0]
@@ -138,7 +138,8 @@ class B01TableFixtureTests(unittest.TestCase):
     def test_table_internal_topology_is_separate_from_surrounding_reading_order(self):
         fixture = self.gold["fixtures"]["B01-PDF-005"]
         self.assertEqual(
-            fixture["reading_order"], ["title", "body-before", "body-after"]
+            fixture["reading_order"],
+            [["title", "body-before"], ["body-before", "body-after"]],
         )
         self.assertIn("table topology", fixture["reading_order_note"])
         self.assertIn("Provider-native table structure", fixture["table_intent_note"])

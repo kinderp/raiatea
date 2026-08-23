@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+from contextlib import redirect_stdout
+import io
 import json
 from pathlib import Path
 from typing import Any
@@ -49,10 +51,19 @@ def main() -> int:
             artifacts_path=args.artifacts_path.resolve(),
             cache_root=args.cache_root.resolve(),
         )
-    raw_report = raw.run(**kwargs)
+
+    # The raw runner persists its own canonical JSON file and also prints it.
+    # Suppress only that duplicate stdout so this scored CLI emits exactly one
+    # valid JSON document; raw evidence remains unchanged on disk.
+    with redirect_stdout(io.StringIO()):
+        raw_report = raw.run(**kwargs)
+
     scored = score_raw_report(raw_report)
     scored_path = output / f"b01-negative-{args.provider}-scored.json"
-    scored_path.write_text(json.dumps(scored, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    scored_path.write_text(
+        json.dumps(scored, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     print(json.dumps(scored, indent=2, ensure_ascii=False))
     return 0
 

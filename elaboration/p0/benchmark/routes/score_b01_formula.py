@@ -8,6 +8,9 @@ from __future__ import annotations
 from typing import Any
 
 
+_COLLECTION_STATES = {"measured", "partial", "not-measured"}
+
+
 def _compact(value: str) -> str:
     return "".join(value.split())
 
@@ -17,19 +20,28 @@ def _gold_formulas(gold: dict[str, Any]) -> list[dict[str, Any]]:
     return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
 
 
-def _surface_stream(observation: dict[str, Any]) -> str | None:
-    blocks = observation.get("formula_text_blocks")
-    if not isinstance(blocks, list):
+def _text_blocks_and_state(
+    observation: dict[str, Any],
+) -> tuple[list[dict[str, Any]] | None, str]:
+    if "formula_text_blocks" in observation:
+        blocks = observation.get("formula_text_blocks")
+        state = observation.get("formula_text_collection_state")
+        if state not in _COLLECTION_STATES:
+            state = "measured" if isinstance(blocks, list) else "not-measured"
+    else:
         blocks = observation.get("blocks")
-    if not isinstance(blocks, list):
-        return None
-    return _compact(
-        " ".join(
-            str(block.get("text", ""))
-            for block in blocks
-            if isinstance(block, dict)
-        )
-    )
+        state = "measured" if isinstance(blocks, list) else "not-measured"
+
+    if state == "not-measured" or not isinstance(blocks, list):
+        return None, "not-measured"
+    return [block for block in blocks if isinstance(block, dict)], str(state)
+
+
+def _surface_stream(observation: dict[str, Any]) -> tuple[str | None, str]:
+    blocks, state = _text_blocks_and_state(observation)
+    if blocks is None:
+        return None, state
+    return _compact(" ".join(str(block.get("text", "")) for block in blocks)), state
 
 
 def _expected_surface(formula: dict[str, Any]) -> str:
@@ -43,14 +55,14 @@ def _formula_surface_content(
     gold: dict[str, Any], observation: dict[str, Any]
 ) -> dict[str, Any]:
     formulas = _gold_formulas(gold)
-    stream = _surface_stream(observation)
+    stream, collection_state = _surface_stream(observation)
     if stream is None:
         return {
             "status": "not-measured",
             "expected_count": len(formulas),
             "exact_once_count": 0,
             "formulas": [],
-            "reason": "No comparable Provider text stream.",
+            "reason": "No trustworthy comparable Provider text collection.",
         }
     rows = []
     for formula in formulas:
@@ -65,7 +77,8 @@ def _formula_surface_content(
             }
         )
     return {
-        "status": "measured",
+        "status": "partial" if collection_state == "partial" else "measured",
+        "collection_state": collection_state,
         "expected_count": len(rows),
         "exact_once_count": sum(row["exact_once"] for row in rows),
         "formulas": rows,
@@ -78,13 +91,13 @@ def _formula_surface_content(
 
 def _display_order(gold: dict[str, Any], observation: dict[str, Any]) -> dict[str, Any]:
     formulas = _gold_formulas(gold)
-    stream = _surface_stream(observation)
+    stream, collection_state = _surface_stream(observation)
     if stream is None:
         return {
             "status": "not-measured",
             "expected_edges": max(0, len(formulas) - 1),
             "satisfied_edges": 0,
-            "reason": "No comparable Provider text stream.",
+            "reason": "No trustworthy comparable Provider text collection.",
         }
 
     positions: dict[str, int] = {}
@@ -113,7 +126,12 @@ def _display_order(gold: dict[str, Any], observation: dict[str, Any]) -> dict[st
         )
         edges.append({"before": before, "after": after, "satisfied": satisfied})
     return {
-        "status": "measured" if not ambiguous else "partial",
+        "status": (
+            "partial"
+            if collection_state == "partial" or ambiguous
+            else "measured"
+        ),
+        "collection_state": collection_state,
         "expected_edges": len(edges),
         "satisfied_edges": sum(row["satisfied"] for row in edges),
         "edges": edges,
@@ -143,9 +161,7 @@ def _center_in(box: list[float], region: list[float]) -> bool:
 
 
 def _token_geometry(gold: dict[str, Any], observation: dict[str, Any]) -> dict[str, Any]:
-    blocks = observation.get("formula_text_blocks")
-    if not isinstance(blocks, list):
-        blocks = observation.get("blocks")
+    blocks, collection_state = _text_blocks_and_state(observation)
     formulas = _gold_formulas(gold)
     tokens = [
         (formula, token)
@@ -153,13 +169,13 @@ def _token_geometry(gold: dict[str, Any], observation: dict[str, Any]) -> dict[s
         for token in (formula.get("tokens") or [])
         if isinstance(token, dict)
     ]
-    if not isinstance(blocks, list):
+    if blocks is None:
         return {
             "status": "not-measured",
             "expected_count": len(tokens),
             "evidence_count": 0,
             "tokens": [],
-            "reason": "No Provider text blocks.",
+            "reason": "No trustworthy Provider text-block collection.",
         }
 
     rows = []
@@ -169,8 +185,6 @@ def _token_geometry(gold: dict[str, Any], observation: dict[str, Any]) -> dict[s
         page = formula.get("page_index")
         candidates = []
         for block in blocks:
-            if not isinstance(block, dict):
-                continue
             if _compact(str(block.get("text", ""))) != text:
                 continue
             bbox = block.get("bbox_points_bottom_left")
@@ -213,14 +227,18 @@ def _token_geometry(gold: dict[str, Any], observation: dict[str, Any]) -> dict[s
         for row in rows
         if row["evidence_available"]
     ]
+    derived_status = (
+        "measured"
+        if evidence_count == len(rows)
+        else "partial"
+        if evidence_count
+        else "not-measured"
+    )
+    if collection_state == "partial" and derived_status == "measured":
+        derived_status = "partial"
     return {
-        "status": (
-            "measured"
-            if evidence_count == len(rows)
-            else "partial"
-            if evidence_count
-            else "not-measured"
-        ),
+        "status": derived_status,
+        "collection_state": collection_state,
         "expected_count": len(rows),
         "evidence_count": evidence_count,
         "bbox_exact_count": sum(row.get("bbox_exact") is True for row in rows),
@@ -233,8 +251,26 @@ def _token_geometry(gold: dict[str, Any], observation: dict[str, Any]) -> dict[s
     }
 
 
+def _relation_signature(formula_id: Any, relation: dict[str, Any]) -> tuple[Any, ...] | None:
+    kind = relation.get("kind")
+    if kind == "superscript":
+        return (
+            formula_id,
+            kind,
+            relation.get("base_token"),
+            relation.get("script_token"),
+        )
+    if kind == "fraction":
+        numerator = relation.get("numerator_tokens")
+        denominator = relation.get("denominator_tokens")
+        if not isinstance(numerator, list) or not isinstance(denominator, list):
+            return None
+        return (formula_id, kind, tuple(numerator), tuple(denominator))
+    return None
+
+
 def _explicit_math(gold: dict[str, Any], observation: dict[str, Any]) -> dict[str, Any]:
-    expected = []
+    expected: list[tuple[Any, dict[str, Any]]] = []
     for formula in _gold_formulas(gold):
         relations = formula.get("relations") if isinstance(formula.get("relations"), list) else []
         for relation in relations:
@@ -242,10 +278,15 @@ def _explicit_math(gold: dict[str, Any], observation: dict[str, Any]) -> dict[st
                 expected.append((formula.get("id"), relation))
 
     observed = observation.get("math_relations")
-    if not isinstance(observed, list):
+    collection_state = observation.get("math_relation_collection_state")
+    if collection_state not in _COLLECTION_STATES:
+        collection_state = "measured" if isinstance(observed, list) else "not-measured"
+
+    if collection_state == "not-measured" or not isinstance(observed, list):
         return {
             "status": "not-measured",
             "expected_count": len(expected),
+            "observed_count": None,
             "evidence_count": 0,
             "exact_count": 0,
             "relations": [],
@@ -256,47 +297,88 @@ def _explicit_math(gold: dict[str, Any], observation: dict[str, Any]) -> dict[st
             "visual_inference": False,
         }
 
+    attributable_observed = [
+        item
+        for item in observed
+        if isinstance(item, dict) and item.get("provider_relation_source")
+    ]
+    observed_signatures = [
+        _relation_signature(item.get("formula_id"), item)
+        for item in attributable_observed
+    ]
+
     rows = []
+    matched_observed_indexes: set[int] = set()
     for formula_id, relation in expected:
-        matches = [
-            item
-            for item in observed
-            if isinstance(item, dict)
-            and item.get("formula_id") == formula_id
-            and item.get("kind") == relation.get("kind")
-            and item.get("gold_relation_key") == relation
+        expected_signature = _relation_signature(formula_id, relation)
+        matching_indexes = [
+            index
+            for index, signature in enumerate(observed_signatures)
+            if signature is not None and signature == expected_signature
         ]
+        matched_observed_indexes.update(matching_indexes)
         rows.append(
             {
                 "formula_id": formula_id,
                 "kind": relation.get("kind"),
-                "explicit_candidate_count": len(matches),
-                "exact": len(matches) == 1,
+                "explicit_candidate_count": len(matching_indexes),
+                "exact": len(matching_indexes) == 1,
             }
         )
+
     evidence_count = sum(row["explicit_candidate_count"] > 0 for row in rows)
+    exact_count = sum(row["exact"] for row in rows)
+    ambiguous_count = sum(row["explicit_candidate_count"] > 1 for row in rows)
+    unmatched_observed_count = len(attributable_observed) - len(matched_observed_indexes)
+
+    if collection_state == "partial":
+        status = "partial"
+    elif exact_count == len(rows) and ambiguous_count == 0:
+        status = "measured"
+    elif evidence_count:
+        status = "partial"
+    else:
+        # A trustworthy explicit empty or mismatching relation collection is still
+        # measured evidence; it must not collapse into "not-measured".
+        status = "measured"
+
     return {
-        "status": (
-            "measured"
-            if evidence_count == len(rows)
-            else "partial"
-            if evidence_count
-            else "not-measured"
-        ),
+        "status": status,
+        "collection_state": collection_state,
         "expected_count": len(rows),
+        "observed_count": len(attributable_observed),
         "evidence_count": evidence_count,
-        "exact_count": sum(row["exact"] for row in rows),
+        "exact_count": exact_count,
+        "ambiguous_expected_count": ambiguous_count,
+        "unmatched_observed_count": unmatched_observed_count,
+        "explicit_empty": len(attributable_observed) == 0,
         "relations": rows,
         "visual_inference": False,
+        "policy": (
+            "only Provider-attributed explicit relation fields are compared; "
+            "authored geometry and visual layout never create math semantics"
+        ),
     }
 
 
 def _provider_group_diagnostic(observation: dict[str, Any]) -> dict[str, Any]:
     groups = observation.get("provider_formula_groups")
-    if not isinstance(groups, list):
-        return {"status": "not-measured", "observed_count": None, "groups": []}
+    collection_state = observation.get("provider_group_collection_state")
+    if collection_state not in _COLLECTION_STATES:
+        collection_state = "measured" if isinstance(groups, list) else "not-measured"
+
+    if collection_state == "not-measured" or not isinstance(groups, list):
+        return {
+            "status": "not-measured",
+            "collection_state": "not-measured",
+            "observed_count": None,
+            "groups": [],
+        }
+
     return {
-        "status": "observed-nonsemantic",
+        "status": "partial" if collection_state == "partial" else "observed-nonsemantic",
+        "collection_state": collection_state,
+        "semantic_interpretation": "nonsemantic",
         "observed_count": len(groups),
         "groups": groups,
         "policy": (

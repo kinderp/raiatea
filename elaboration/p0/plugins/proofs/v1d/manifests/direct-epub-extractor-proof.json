@@ -1,0 +1,70 @@
+{
+  "manifest_version": "1.0.0",
+  "plugin": {
+    "plugin_id": "org.raiatea.proof.direct-epub-extractor",
+    "name": "Raiatea v1d Direct EPUB Extractor Proof",
+    "version": "0.1.0"
+  },
+  "raiatea_plugin_api": {
+    "min_inclusive": "1.0.0",
+    "max_exclusive": "2.0.0"
+  },
+  "families": ["extractor"],
+  "capabilities": [
+    {
+      "capability_id": "extract.run",
+      "profiles": [
+        {
+          "profile_id": "epub-direct-stdlib",
+          "family": "extractor",
+          "input_classes": ["application/epub+zip"],
+          "output_classes": [
+            "e05-processing-run",
+            "e05-provider-evidence",
+            "e05-normalized-representation"
+          ],
+          "contracts": [
+            {
+              "contract_id": "raiatea.extraction.processing-run",
+              "version_range": {
+                "min_inclusive": "0.1.0",
+                "max_exclusive": "0.2.0"
+              },
+              "record_kinds": [
+                "ProcessingRunRecord",
+                "ProviderEvidenceRecord",
+                "NormalizedRepresentationRecord"
+              ]
+            }
+          ],
+          "backend": "python-stdlib",
+          "mode": "package-semantic"
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": [],
+    "filesystem": [
+      {
+        "root": "${V1D_PROOF_EPUB_FIXTURE_ROOT}",
+        "mode": "read"
+      }
+    ],
+    "secrets": [],
+    "temporary_workspace": false,
+    "resource_hints": {
+      "cpu_cores": 1,
+      "memory_mb": 256,
+      "timeout_seconds": 30
+    }
+  },
+  "entrypoint": {
+    "kind": "process",
+    "command": ["python", "-m", "elaboration.p0.plugins.proofs.v1d.epub_extractor_plugin"]
+  },
+  "trust_tier": "official",
+  "provenance": {
+    "publisher": "Raiatea proof harness"
+  }
+}

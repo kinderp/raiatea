@@ -24,6 +24,7 @@
       "provider_status": {
         "evidence_state": "measured",
         "value_state": "present",
+        "origin": "provider-native",
         "basis": "Tika process exit and encrypted-PDF failure evidence",
         "channel": "provider-process",
         "value": "failed"
@@ -47,7 +48,7 @@
     }
   ],
   "outcome": {
-    "execution": "restricted",
+    "execution": "failed",
     "assessments": [
       {
         "scope": "accessible-content",
@@ -56,7 +57,7 @@
         "basis": "Core rights/policy context has no authorized credential route; no bypass or alternative circumvention route is permitted"
       }
     ],
-    "derivation_basis": "Core orchestration classifies the attempted run as restricted while preserving the Provider-stage failure separately"
+    "derivation_basis": "Core orchestration records the technical attempt as failed; authoritative access restriction remains in RightsDecisionRef"
   },
   "produced": [
     {"kind": "provider-evidence", "evidence_id": "tika-neg002-failure", "channel": "process-diagnostic"}

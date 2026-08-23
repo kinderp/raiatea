@@ -30,7 +30,7 @@ jobs:
       - name: Compile candidate contract tooling
         run: python -m compileall -q elaboration/p0/contracts/extraction/0.1.0
       - name: Run semantic conformance tests
-        run: python -m unittest elaboration/p0/contracts/extraction/0.1.0/test_contract.py -v
+        run: python elaboration/p0/contracts/extraction/0.1.0/test_contract.py -v
       - name: Validate positive examples with dependency-light harness
         run: >-
           python elaboration/p0/contracts/extraction/0.1.0/validate_contract.py

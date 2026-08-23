@@ -1,7 +1,7 @@
 {
   "contract": {
     "name": "raiatea-p0-b01-negative-pdf-security-baseline",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "scope": "benchmark-evidence-only",
     "public_p0_schema": false,
     "negative_security_fixtures": true,
@@ -9,6 +9,12 @@
     "no_universal_total_score": true
   },
   "canonical_raw_evidence_source_commit": "c39fa9f22d8c15db0fb09162210eb7a3d02090bb",
+  "normalization_hardening_through_commit": "14c5b276f27d7f222fe6d238a4cb85a2e648d5c0",
+  "evidence_source_policy": {
+    "provider_facts": "Canonical Provider statuses, warnings and content observations come from the exact raw evidence source commit and workflow artifacts below.",
+    "normalization": "Later commits only harden Provider-neutral failure/security classification and evidence integrity. They do not rewrite the canonical Provider observations.",
+    "final_validation_head": "record-after-final-unchanged-head-ci-and-review"
+  },
   "fixture_setup": {
     "B01-PDF-NEG-001": {
       "sha256": "803cdada146c89d6a86169351ed7a4b0a46c0afe99f5b08ea25f813d0c8d630d",
@@ -138,17 +144,47 @@
       "invocation_audit_passed": true
     }
   ],
+  "normalization_invariants": {
+    "malformed_provider_success_without_relevant_signal": "silent-complete-success / unacceptable",
+    "malformed_provider_success_with_explicit_malformed_signal": "degraded-with-malformed-signal / acceptable negative outcome",
+    "access_controlled_success_with_explicit_restriction_and_empty_content": "safe-metadata-or-restricted-success / acceptable negative outcome",
+    "access_controlled_success_with_explicit_restriction_and_unknown_output": "restricted-success-output-unknown / fail-closed",
+    "access_controlled_success_with_explicit_restriction_and_content": "unexpected-content-under-access-control / fail-closed",
+    "access_controlled_success_without_restriction_signal": "silent-complete-success-with-inaccessible-content / unacceptable",
+    "scored_cli_stdout": "exactly one valid JSON document; raw evidence persists separately"
+  },
   "security_boundary": {
     "provider_password_supplied": false,
     "access_control_bypass_requested": false,
     "remote_provider": false,
     "normal_quality_average_inclusion": false
   },
+  "finding_log": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "status": "resolved",
+      "summary": "A Provider-native success state can hide malformed/incomplete negative input; Tika 3.3.2 accepts NEG-001 without a corruption signal."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "status": "resolved",
+      "summary": "Access-controlled success needed fail-closed distinction between trustworthy empty output, unknown output and unexpected content."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "status": "resolved",
+      "summary": "The scored CLI could emit raw and normalized JSON consecutively on stdout; raw and normalized channels are now separated."
+    }
+  ],
   "e05_implications": [
     "Provider success must be distinct from integrity/completeness-established state",
     "security-policy refusal/restricted input must be a first-class outcome",
     "generic failure and explicit access-control signal must remain distinct",
+    "unknown output and unexpected content under access control must remain fail-closed states",
     "attempted Processing Run provenance must exist even when no normalized output is produced",
-    "ExtractorPlugin must not retry protected input through bypass/circumvention behavior"
+    "ExtractorPlugin must not retry protected input through credential-override or circumvention behavior"
   ]
 }

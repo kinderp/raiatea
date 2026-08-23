@@ -142,7 +142,7 @@ class RuntimeHandleBoundsTests(unittest.TestCase):
             "handle_id": "out:1",
             "lease_id": "lease:out:1",
             "access": "write-once-output",
-            "byte_length": 10,
+            "max_byte_length": 10,
         }]
         V.validate_invocation(req, self.manifest, self.handshake)
         result = asset_result(self.manifest, req, {
@@ -161,7 +161,7 @@ class RuntimeHandleBoundsTests(unittest.TestCase):
             "handle_id": "out:1",
             "lease_id": "lease:out:1",
             "access": "write-once-output",
-            "byte_length": 10,
+            "max_byte_length": 10,
         }]
         result = asset_result(self.manifest, req, {
             "handle_id": "out:1",
@@ -178,7 +178,7 @@ class RuntimeHandleBoundsTests(unittest.TestCase):
             "handle_id": "out:1",
             "lease_id": "lease:out:1",
             "access": "write-once-output",
-            "byte_length": 10,
+            "max_byte_length": 10,
         }]
         result = asset_result(self.manifest, req, {
             "handle_id": "out:1",
@@ -216,7 +216,7 @@ class RuntimeHandleBoundsTests(unittest.TestCase):
             "lease_id": "lease:out:1",
             "access": "write-once-output",
             "media_type": "application/json",
-            "byte_length": 10,
+            "max_byte_length": 10,
             "expires_at": "2026-08-23T19:47:00Z",
         }]
         V.validate_invocation(req, self.manifest, self.handshake)

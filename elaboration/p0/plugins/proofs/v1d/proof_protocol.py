@@ -15,7 +15,7 @@ import sys
 from typing import Any, Callable
 
 HERE = Path(__file__).resolve().parent
-REPO_ROOT = HERE.parents[5]
+REPO_ROOT = HERE.parents[4]
 TRANSPORT_ROOT = REPO_ROOT / "elaboration" / "p0" / "contracts" / "plugins" / "transport" / "0.1.0"
 RUNTIME_VALIDATOR_PATH = REPO_ROOT / "elaboration" / "p0" / "contracts" / "plugins" / "runtime" / "1.0.0" / "validate_runtime.py"
 if str(TRANSPORT_ROOT) not in sys.path:

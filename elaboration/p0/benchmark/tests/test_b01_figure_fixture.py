@@ -112,10 +112,9 @@ class B01FigureFixtureTests(unittest.TestCase):
         self.assertIn("never from spatial proximity alone", gold["figure_intent_note"])
         self.assertNotIn("alt", gold)
 
-    def test_figure_fixture_closes_only_its_planned_coverage_gap(self):
+    def test_figure_fixture_keeps_its_gap_closed_as_later_fixtures_land(self):
         gaps = self.fixtures["coverage_gaps"]
         self.assertFalse(any(item.startswith("B01-PDF-004 ") for item in gaps))
-        self.assertTrue(any(item.startswith("B01-PDF-005 ") for item in gaps))
         self.assertTrue(any(item.startswith("B01-PDF-006 ") for item in gaps))
         self.assertTrue(any(item.startswith("B01-PDF-007 ") for item in gaps))
 

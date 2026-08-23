@@ -111,6 +111,18 @@ def write_output_target(handle: dict[str, Any], payload: bytes) -> dict[str, Any
     return result
 
 
+def read_core_output(handle_id: str, lease_id: str) -> bytes:
+    """Core-test-only reader for a completed proof output target."""
+    value = _load()
+    rows = value.get("output_handles")
+    _require(isinstance(rows, dict) and isinstance(rows.get(handle_id), dict), "proof-output-target-unknown")
+    row = rows[handle_id]
+    _require(row.get("lease_id") == lease_id, "proof-output-target-lease-mismatch")
+    path = _confined(OUTPUT_ROOT, row.get("relative_path"), "output-target")
+    _require(path.is_file(), "proof-output-result-missing")
+    return path.read_bytes()
+
+
 def proof_record_refs_from_bundle(bundle: dict[str, Any]) -> list[str]:
     refs = bundle.get("record_refs")
     _require(isinstance(refs, list), "proof-bundle-record-refs-required")

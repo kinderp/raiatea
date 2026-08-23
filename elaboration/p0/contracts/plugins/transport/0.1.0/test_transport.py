@@ -105,6 +105,18 @@ class ProcessHarnessTests(unittest.TestCase):
             self.assertEqual(result["status"], "failed")
             self.assertEqual(result["error"]["code"], "plugin-internal-failure")
 
+    def test_jsonrpc_error_cannot_masquerade_as_runtime_result(self):
+        with LocalProcessHarness(command("protocol-error-invoke"), self.manifest) as harness:
+            hs = harness.handshake()
+            with self.assertRaisesRegex(RemoteProtocolError, "Synthetic protocol misuse"):
+                harness.invoke(invocation(hs))
+
+    def test_invalid_v1b_runtime_result_is_rejected_after_transport_decode(self):
+        with LocalProcessHarness(command("invalid-runtime-result"), self.manifest) as harness:
+            hs = harness.handshake()
+            with self.assertRaisesRegex(HarnessError, "result-runtime-contract-invalid:provenance-plugin-id-mismatch"):
+                harness.invoke(invocation(hs))
+
     def test_diagnostic_notification_can_arrive_before_response(self):
         with LocalProcessHarness(command(), self.manifest) as harness:
             hs = harness.handshake()
@@ -126,6 +138,18 @@ class ProcessHarnessTests(unittest.TestCase):
             self.assertTrue(ack["acknowledged"])
             self.assertEqual(ack["invocation_id"], cancel["invocation_id"])
 
+    def test_malformed_cancel_ack_fails_closed(self):
+        with LocalProcessHarness(command("bad-cancel-ack"), self.manifest) as harness:
+            harness.handshake()
+            cancel = {
+                "record_type": "cancel-request",
+                "invocation_id": "invoke:transport:cancel",
+                "requested_at": "2026-08-23T20:15:10Z",
+                "reason": "test cancellation",
+            }
+            with self.assertRaisesRegex(HarnessError, "invalid-cancel-ack-record"):
+                harness.cancel(cancel)
+
     def test_harness_rejects_invoke_before_handshake_locally(self):
         with LocalProcessHarness(command(), self.manifest) as harness:
             fake_hs = {"identity": {"runtime_instance_id": "runtime:synthetic:transport:1"}}
@@ -137,6 +161,14 @@ class ProcessHarnessTests(unittest.TestCase):
             fake_hs = {"identity": {"runtime_instance_id": "runtime:synthetic:transport:1"}}
             with self.assertRaisesRegex(RemoteProtocolError, "Handshake required"):
                 harness.raw_request("raiatea.invoke", invocation(fake_hs))
+
+    def test_transport_id_reuse_as_invocation_id_is_detected(self):
+        with LocalProcessHarness(command(), self.manifest) as harness:
+            hs = harness.handshake()
+            req = invocation(hs)
+            harness._next_rpc_id = lambda: req["invocation_id"]  # type: ignore[method-assign]
+            with self.assertRaisesRegex(HarnessError, "transport-id-must-not-equal-invocation-id"):
+                harness.invoke(req)
 
     def test_unknown_method_is_transport_error(self):
         with LocalProcessHarness(command(), self.manifest) as harness:

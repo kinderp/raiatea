@@ -68,9 +68,23 @@ The harness tests and rejects accidental reuse of `invocation_id` as the transpo
 - requires a valid v1b handshake before `invoke`/`cancel` helpers;
 - accepts structured diagnostic notifications while waiting for a response;
 - detects duplicate/unexpected response ids;
-- maps process EOF/crash to `ProcessExited`, not a synthetic domain result;
+- maps process EOF/crash without inventing a domain result;
 - runs accepted v1b semantic validation after framing;
 - never upgrades stderr text into a diagnostic record.
+
+### Process-attempt versus runtime lifecycle evidence
+
+Before a valid handshake, the Core has no validated plugin `runtime_instance_id`. A child that crashes in that interval is therefore recorded only as **process-attempt/supervisor evidence** (`process-exited-before-handshake`). The harness deliberately does not fabricate a v1b `LifecycleTransition` for an identity that was never established.
+
+After the v1b handshake is validated, the runtime instance is known and the harness can generate Core-observed lifecycle evidence:
+
+```text
+starting -> ready                 validated handshake
+ready -> failed                   post-handshake process crash
+ready -> stopping -> stopped      Core-requested normal shutdown
+```
+
+The generated transitions are themselves checked by the accepted v1b lifecycle validator.
 
 ## Synthetic plugin
 

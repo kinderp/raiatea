@@ -26,7 +26,7 @@ from typing import Any
 
 NEG_MALFORMED_ID = "B01-PDF-NEG-001"
 NEG_ACCESS_CONTROLLED_ID = "B01-PDF-NEG-002"
-GENERATOR_VERSION = "0.1.0"
+GENERATOR_VERSION = "0.2.0"
 
 # Fixture-only values. They are intentionally public test inputs, not credentials
 # that any measured Provider route is allowed to receive.
@@ -34,7 +34,8 @@ FIXTURE_USER_PASSWORD = "raiatea-fixture-user"
 FIXTURE_OWNER_PASSWORD = "raiatea-fixture-owner"
 
 QPDF_GENERATOR_OPTIONS = ("--static-id", "--static-aes-iv")
-QPDF_ENCRYPT_BITS = "256"
+QPDF_ENCRYPT_BITS = "128"
+QPDF_ENCRYPT_OPTIONS = ("--use-aes=y",)
 
 
 def _pdf_object(number: int, payload: bytes) -> bytes:
@@ -83,12 +84,7 @@ def build_valid_source_pdf() -> bytes:
 
 
 def build_malformed_pdf() -> bytes:
-    """Return a deterministic, inert, visibly truncated PDF container.
-
-    The source is cut inside the content object before `endstream`, xref,
-    trailer and EOF. This is intentionally malformed but contains no script,
-    external reference, attachment or exploit payload.
-    """
+    """Return a deterministic, inert, visibly truncated PDF container."""
     source = build_valid_source_pdf()
     marker = b"endstream"
     index = source.find(marker)
@@ -108,6 +104,7 @@ def access_controlled_qpdf_command(
         FIXTURE_USER_PASSWORD,
         FIXTURE_OWNER_PASSWORD,
         QPDF_ENCRYPT_BITS,
+        *QPDF_ENCRYPT_OPTIONS,
         "--",
         str(source),
         str(output),
@@ -119,10 +116,11 @@ def generate_access_controlled_pdf(
 ) -> tuple[bytes, dict[str, Any]]:
     """Generate NEG-002 twice and require byte-for-byte reproducibility.
 
-    This function is fixture generation only. It supplies the public fixture
-    password to qpdf *only while creating* the encrypted document. Provider
-    benchmark routes must not call this function and must not receive the
-    password.
+    AES-128 is used explicitly for this fixture because, with the qpdf test-only
+    static document ID and static AES IV, the small test file can be reproduced
+    byte-for-byte. This is *not* production cryptographic guidance. The measured
+    benchmark routes receive neither the fixture password nor these generator
+    options.
     """
     plain = build_valid_source_pdf()
     with tempfile.TemporaryDirectory(prefix="raiatea-b01-neg-access-") as tmp:
@@ -162,6 +160,7 @@ def generate_access_controlled_pdf(
             "generator": "qpdf",
             "generator_options": list(QPDF_GENERATOR_OPTIONS),
             "encryption_bits": int(QPDF_ENCRYPT_BITS),
+            "encryption_options": list(QPDF_ENCRYPT_OPTIONS),
             "fixture_password_supplied_to_generator_only": True,
             "provider_password_policy": "must-not-be-supplied",
             "provider_bypass_policy": "must-not-be-used",
@@ -192,11 +191,7 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--qpdf", default="qpdf")
-    parser.add_argument(
-        "--include-access-controlled",
-        action="store_true",
-        help="Generate NEG-002 with qpdf in addition to dependency-free NEG-001.",
-    )
+    parser.add_argument("--include-access-controlled", action="store_true")
     args = parser.parse_args()
 
     output = args.output.resolve()

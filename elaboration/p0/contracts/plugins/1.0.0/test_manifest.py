@@ -90,6 +90,12 @@ class PluginManifestTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATOR.ManifestError, "entrypoint-command-not-structural"):
             VALIDATOR.validate(value)
 
+    def test_entrypoint_working_directory_is_deferred(self):
+        value = load_example("local-read-only-source.json")
+        value["entrypoint"]["working_directory"] = "/tmp/plugin"
+        with self.assertRaisesRegex(VALIDATOR.ManifestError, "entrypoint-extra-runtime-field-forbidden"):
+            VALIDATOR.validate(value)
+
     def test_trust_tier_cannot_be_rights_authority(self):
         value = load_example("local-read-only-source.json")
         value["rights_decision"] = "allow"

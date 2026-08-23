@@ -1,7 +1,7 @@
 {
   "contract": {
     "name": "raiatea-p0-b01-negative-pdf-gold",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "scope": "benchmark-evidence-only",
     "public_p0_schema": false,
     "negative_security_fixtures": true,
@@ -12,7 +12,7 @@
       "source_family": "B-01",
       "traits": ["malformed", "truncated-container"],
       "generator": "b01_pdf_negative_fixtures.py",
-      "generator_version": "0.1.0",
+      "generator_version": "0.2.0",
       "sha256": "803cdada146c89d6a86169351ed7a4b0a46c0afe99f5b08ea25f813d0c8d630d",
       "bytes": 376,
       "corruption": {
@@ -50,10 +50,28 @@
       "source_family": "B-01",
       "traits": ["access-controlled", "password-encrypted"],
       "generator": "b01_pdf_negative_fixtures.py + pinned qpdf fixture-generation utility",
-      "generator_version": "0.1.0",
-      "sha256": null,
-      "bytes": null,
-      "identity_state": "pending-qpdf-reproducibility-gate-before-provider-measurement",
+      "generator_version": "0.2.0",
+      "sha256": "c277faaffe74c38b0e01b18d30e2573614f97377aacbb5e74eadd012a528029f",
+      "bytes": 1079,
+      "identity_state": "frozen-after-two-independent-byte-identical-generations",
+      "generator_reference": {
+        "workflow_run_id": 32634632517,
+        "artifact_id": 9491972910,
+        "artifact_digest": "sha256:0a72745dd79f100fb59b4dc24e97956f834563e12f0b950ec3964d1410adfd9d",
+        "os": "ubuntu-24.04",
+        "qpdf_cli_version": "11.9.0",
+        "qpdf_package": "11.9.0-1.1ubuntu0.1",
+        "qpdf_architecture": "amd64",
+        "qpdf_executable_sha256": "10fc302c4ca9860f24b8d2cb7f8a4cc454ba59d4a91e7a8e40f6b2c229486df7",
+        "encryption_bits": 128,
+        "encryption_options": ["--use-aes=y"],
+        "generator_only_test_options": ["--static-id", "--static-aes-iv"],
+        "requires_password_query_without_password": {
+          "command_shape": ["qpdf", "--requires-password", "<fixture.pdf>"],
+          "exit_code": 0,
+          "meaning": "password-required"
+        }
+      },
       "access_control": {
         "kind": "password-encrypted-pdf",
         "fixture_password_is_public_test_input": true,
@@ -86,7 +104,8 @@
       ],
       "generator_only_test_options": [
         "--static-id",
-        "--static-aes-iv"
+        "--static-aes-iv",
+        "--use-aes=y"
       ],
       "target_dimensions": [
         "restricted-unsupported-failure-state",

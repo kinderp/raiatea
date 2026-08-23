@@ -76,6 +76,9 @@ class DoclingFormulaEvidenceTests(unittest.TestCase):
         }
         evidence = DOCLING.map_docling_formula_evidence(document)
         self.assertEqual(evidence["status"], "success")
+        self.assertEqual(evidence["formula_text_collection_state"], "measured")
+        self.assertEqual(evidence["provider_group_collection_state"], "measured")
+        self.assertEqual(evidence["math_relation_collection_state"], "not-measured")
         self.assertEqual(len(evidence["formula_text_blocks"]), 2)
         self.assertEqual(len(evidence["provider_formula_groups"]), 1)
         group = evidence["provider_formula_groups"][0]
@@ -85,9 +88,13 @@ class DoclingFormulaEvidenceTests(unittest.TestCase):
         self.assertFalse(evidence["formula_enrichment_enabled"])
         self.assertIsNone(evidence["math_relations"])
 
-    def test_missing_picture_collection_is_visible_not_empty_success(self):
-        evidence = DOCLING.map_docling_formula_evidence({"texts": [], "pages": {}})
+    def test_missing_picture_collection_is_not_measured_not_empty_success(self):
+        evidence = DOCLING.map_docling_formula_evidence(
+            {"texts": [], "pages": {}}
+        )
+        self.assertEqual(evidence["status"], "degraded")
         self.assertEqual(evidence["provider_formula_groups"], [])
+        self.assertEqual(evidence["provider_group_collection_state"], "not-measured")
         self.assertTrue(
             any(
                 warning["code"] == "docling-formula-groups-unavailable"
@@ -95,7 +102,48 @@ class DoclingFormulaEvidenceTests(unittest.TestCase):
             )
         )
 
-    def test_unresolved_picture_child_stays_visible(self):
+    def test_valid_empty_picture_collection_is_measured_empty(self):
+        evidence = DOCLING.map_docling_formula_evidence(
+            {"texts": [], "pictures": [], "pages": {}}
+        )
+        self.assertEqual(evidence["status"], "success")
+        self.assertEqual(evidence["formula_text_collection_state"], "measured")
+        self.assertEqual(evidence["provider_group_collection_state"], "measured")
+        self.assertEqual(evidence["provider_formula_groups"], [])
+
+    def test_missing_text_collection_is_not_measured_not_zero(self):
+        evidence = DOCLING.map_docling_formula_evidence(
+            {"pictures": [], "pages": {}}
+        )
+        self.assertEqual(evidence["status"], "degraded")
+        self.assertEqual(evidence["formula_text_blocks"], [])
+        self.assertEqual(evidence["formula_text_collection_state"], "not-measured")
+        self.assertTrue(
+            any(
+                warning["code"] == "docling-formula-texts-unavailable"
+                for warning in evidence["warnings"]
+            )
+        )
+
+    def test_malformed_text_item_makes_collection_partial(self):
+        evidence = DOCLING.map_docling_formula_evidence(
+            {
+                "texts": [{"text": "E = mc"}, "bad-item"],
+                "pictures": [],
+                "pages": {},
+            }
+        )
+        self.assertEqual(evidence["status"], "degraded")
+        self.assertEqual(evidence["formula_text_collection_state"], "partial")
+        self.assertEqual(len(evidence["formula_text_blocks"]), 1)
+        self.assertTrue(
+            any(
+                warning["code"] == "docling-formula-text-invalid-item"
+                for warning in evidence["warnings"]
+            )
+        )
+
+    def test_unresolved_picture_child_marks_group_collection_partial(self):
         evidence = DOCLING.map_docling_formula_evidence(
             {
                 "texts": [],
@@ -105,13 +153,30 @@ class DoclingFormulaEvidenceTests(unittest.TestCase):
                 ],
             }
         )
+        self.assertEqual(evidence["status"], "degraded")
+        self.assertEqual(evidence["provider_group_collection_state"], "partial")
         self.assertTrue(
             any(
                 warning["code"] == "docling-formula-group-unresolved-child"
                 for warning in evidence["warnings"]
             )
         )
-        self.assertFalse(evidence["provider_formula_groups"][0]["mathematical_semantics"])
+        self.assertFalse(
+            evidence["provider_formula_groups"][0]["mathematical_semantics"]
+        )
+
+    def test_invalid_picture_collection_shape_is_not_measured(self):
+        evidence = DOCLING.map_docling_formula_evidence(
+            {"texts": [], "pictures": {"not": "a-list"}, "pages": {}}
+        )
+        self.assertEqual(evidence["status"], "degraded")
+        self.assertEqual(evidence["provider_group_collection_state"], "not-measured")
+        self.assertTrue(
+            any(
+                warning["code"] == "docling-formula-groups-invalid"
+                for warning in evidence["warnings"]
+            )
+        )
 
 
 if __name__ == "__main__":

@@ -85,6 +85,61 @@ class DoclingTableEvidenceTests(unittest.TestCase):
             ],
         )
 
+    def test_table_descendant_text_is_preserved_without_repairing_cell_topology(self):
+        document = {
+            "pages": {
+                "1": {"page_no": 1, "size": {"width": 612.0, "height": 792.0}}
+            },
+            "groups": [
+                {
+                    "self_ref": "#/groups/0",
+                    "children": [
+                        {"$ref": "#/texts/0"},
+                        {"$ref": "#/texts/1"},
+                        {"$ref": "#/texts/2"},
+                        {"$ref": "#/texts/3"},
+                    ],
+                }
+            ],
+            "texts": [
+                {"self_ref": "#/texts/0", "text": "Item"},
+                {"self_ref": "#/texts/1", "text": "Qty"},
+                {"self_ref": "#/texts/2", "text": "Alpha"},
+                {"self_ref": "#/texts/3", "text": "2"},
+            ],
+            "tables": [
+                {
+                    "self_ref": "#/tables/0",
+                    "children": [{"$ref": "#/groups/0"}],
+                    "data": {
+                        "num_rows": 1,
+                        "num_cols": 1,
+                        "table_cells": [
+                            {
+                                **_cell(0, 0, ""),
+                                "ref": {"$ref": "#/groups/0"},
+                            }
+                        ],
+                    },
+                }
+            ],
+        }
+        evidence = DOCLING.map_docling_table_evidence(document)
+        self.assertEqual(
+            [block["text"] for block in evidence["unbound_table_text_blocks"]],
+            ["Item", "Qty", "Alpha", "2"],
+        )
+        self.assertTrue(
+            all(
+                block["binding"] == "explicit-table-descendant-unbound-to-cell"
+                for block in evidence["unbound_table_text_blocks"]
+            )
+        )
+        table = evidence["tables"][0]
+        self.assertEqual((table["row_count"], table["column_count"]), (1, 1))
+        self.assertEqual(table["cells"][0]["text"], "")
+        self.assertEqual((table["cells"][0]["row"], table["cells"][0]["column"]), (0, 0))
+
     def test_missing_table_collection_is_degraded_not_zero(self):
         evidence = DOCLING.map_docling_table_evidence({"pages": {}})
         self.assertEqual(evidence["status"], "degraded")
@@ -97,11 +152,10 @@ class DoclingTableEvidenceTests(unittest.TestCase):
         )
 
     def test_explicit_empty_table_collection_is_known_zero(self):
-        evidence = DOCLING.map_docling_table_evidence(
-            {"pages": {}, "tables": []}
-        )
+        evidence = DOCLING.map_docling_table_evidence({"pages": {}, "tables": []})
         self.assertEqual(evidence["status"], "success")
         self.assertEqual(evidence["tables"], [])
+        self.assertEqual(evidence["unbound_table_text_blocks"], [])
 
     def test_malformed_table_item_makes_collection_identity_unknown(self):
         evidence = DOCLING.map_docling_table_evidence(

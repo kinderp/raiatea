@@ -27,7 +27,8 @@ class E05bConformanceTests(unittest.TestCase):
         VALIDATE.validate(value)
         self.assertEqual(value["stages"], [])
         self.assertEqual(value["produced"], [])
-        self.assertEqual(value["outcome"]["execution"], "restricted")
+        self.assertEqual(value["outcome"]["execution"], "not-started")
+        self.assertIn("rights_decision_ref", value)
 
     def test_boolean_success_is_rejected(self):
         value = self._load("poppler-native-pdf.json")
@@ -61,11 +62,68 @@ class E05bConformanceTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATE.ContractError, "not-measured-must-have-unknown-value"):
             VALIDATE.validate(value)
 
-    def test_explicit_empty_is_not_unavailable(self):
+    def test_not_measured_evidence_origin_is_unresolved(self):
+        evidence = {
+            "evidence_state": "not-measured",
+            "value_state": "unknown",
+            "origin": "provider-native",
+            "basis": "Provider did not expose the field",
+        }
+        with self.assertRaisesRegex(VALIDATE.ContractError, "not-measured-origin-must-be-unresolved"):
+            VALIDATE._validate_evidence(evidence, "candidate")
+
+    def test_explicit_empty_is_present_evidence_not_unavailable(self):
+        evidence = {
+            "evidence_state": "measured",
+            "value_state": "explicit-empty",
+            "origin": "provider-native",
+            "basis": "Provider explicitly emitted an empty collection",
+            "channel": "provider-lossless-raw",
+            "value": [],
+        }
+        VALIDATE._validate_evidence(evidence, "candidate")
+        self.assertEqual(evidence["value"], [])
+
+    def test_mismatch_is_assessment_not_value_state(self):
+        evidence = {
+            "evidence_state": "measured",
+            "value_state": "present",
+            "origin": "provider-native",
+            "basis": "Provider exposed the observed fact",
+            "channel": "provider-lossless-raw",
+            "value": "TARGET OCR 2026",
+            "assessment": {
+                "state": "mismatch",
+                "basis": "comparison against an explicit authoritative expectation",
+                "compared_to_ref": "expectation:ocr-target",
+            },
+        }
+        VALIDATE._validate_evidence(evidence, "candidate")
+        evidence["value_state"] = "explicit-mismatch"
+        with self.assertRaisesRegex(VALIDATE.ContractError, "bad-value-state"):
+            VALIDATE._validate_evidence(evidence, "candidate")
+
+    def test_mismatch_assessment_requires_available_observed_value(self):
+        evidence = {
+            "evidence_state": "not-measured",
+            "value_state": "unknown",
+            "origin": "unresolved",
+            "basis": "field unavailable",
+            "assessment": {
+                "state": "mismatch",
+                "basis": "invalid synthetic comparison",
+            },
+        }
+        with self.assertRaisesRegex(VALIDATE.ContractError, "assessment-requires-available-evidence"):
+            VALIDATE._validate_evidence(evidence, "candidate")
+
+    def test_provider_channel_does_not_replace_epistemic_origin(self):
         value = self._load("poppler-native-pdf.json")
         status = value["stages"][0]["provider_status"]
-        status.update({"evidence_state": "measured", "value_state": "explicit-empty", "value": []})
-        VALIDATE.validate(value)
+        del status["origin"]
+        self.assertIn("channel", status)
+        with self.assertRaisesRegex(VALIDATE.ContractError, "bad-evidence-origin"):
+            VALIDATE.validate(value)
 
     def test_ocr_stage_requires_trigger_and_preceding_parent(self):
         value = self._load("docling-rapidocr-staged.json")
@@ -79,6 +137,12 @@ class E05bConformanceTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATE.ContractError, "processing-outcome-must-not-own-policy"):
             VALIDATE.validate(value)
 
+    def test_policy_restriction_is_not_technical_execution_state(self):
+        value = self._load("restricted-before-provider.json")
+        value["outcome"]["execution"] = "restricted"
+        with self.assertRaisesRegex(VALIDATE.ContractError, "bad-execution-state"):
+            VALIDATE.validate(value)
+
     def test_provider_stage_requires_provider_status(self):
         value = self._load("poppler-native-pdf.json")
         del value["stages"][0]["provider_status"]
@@ -90,6 +154,7 @@ class E05bConformanceTests(unittest.TestCase):
         value["stages"][1]["provider_status"] = {
             "evidence_state": "measured",
             "value_state": "present",
+            "origin": "provider-native",
             "basis": "invalid test input",
             "value": "success",
         }
@@ -143,6 +208,7 @@ class E05bConformanceTests(unittest.TestCase):
             {
                 "evidence_state": "measured",
                 "value_state": "explicit-empty",
+                "origin": "provider-native",
                 "basis": "Provider explicitly exposed no coordinate",
                 "value": {},
             }

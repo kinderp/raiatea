@@ -1,10 +1,10 @@
 # Provider-neutral Extraction Contract — Conceptual Model
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.6.0
+> Version: 1.0.0
 >
 > Last reviewed: 23 August 2026
 >
@@ -62,13 +62,13 @@ or rights decision span the flow. `ProcessingOutcome` describes technical and
 orchestration outcome; it is not a second policy authority and it is not a
 replacement for field-level evidence state.
 
-This document defines a **conceptual model only**. It does not freeze JSON field
-names, Python classes, REST resources, database tables, plugin transport or a
-public compatibility version.
+This accepted document defines a **conceptual model only**. It does not freeze
+JSON field names, Python classes, REST resources, database tables, plugin
+transport or a public compatibility version.
 
 ## 2. Ownership boundary
 
-> Assertion status: `evidence-derived draft decision`
+> Assertion status: `evidence-derived accepted conceptual decision`
 
 Raiatea Core owns:
 
@@ -258,7 +258,7 @@ The machine-readable union is deferred.
 
 ## 5. SourceReference, OriginalArtifact and ExtractionRequest
 
-> Assertion status: `provisional-decision constrained by glossary/E-04`
+> Assertion status: `accepted conceptual boundary; concrete representation provisional`
 
 ### SourceReference
 
@@ -317,7 +317,7 @@ Provider/RouteProfile combinations.
 
 ## 7. EvidenceEnvelope<T>
 
-> Assertion status: `provisional-decision; representation not frozen`
+> Assertion status: `accepted conceptual semantics; machine representation provisional`
 
 E-04 requires explicit semantics for optional/partial evidence.
 
@@ -451,7 +451,7 @@ Stage vocabulary remains extensible; E-05a does not freeze an exhaustive enum.
 
 ## 9. ProcessingOutcome = execution + scoped result assessments
 
-> Assertion status: `evidence-derived draft decision`
+> Assertion status: `evidence-derived accepted conceptual decision`
 
 A single boolean or monolithic enum cannot represent E-04 outcomes safely.
 ProcessingOutcome carries technical/orchestration assessment; field-level output
@@ -488,9 +488,10 @@ timeout
 unknown
 ```
 
-Provider-native status remains separately preserved. `not-started` is provisional
-vocabulary for an attempt/stage intentionally not invoked because a prerequisite
-or Core decision prevented execution.
+Provider-native status remains separately preserved. `not-started` is accepted
+conceptually as the distinction for an attempt/stage intentionally not invoked
+because a prerequisite or Core decision prevented execution; exact machine
+vocabulary remains provisional.
 
 ### 9.2 Scoped result assessment
 
@@ -550,7 +551,7 @@ produce a useful representation. Hidden rules such as “take worst stage” or
 
 ## 10. ProviderEvidence / RawExtractionRef and NormalizedRepresentation
 
-> Assertion status: `evidence-derived draft decision`
+> Assertion status: `evidence-derived accepted conceptual decision`
 
 ### ProviderEvidence / RawExtractionRef
 
@@ -625,7 +626,7 @@ a Raiatea normalization decision with basis.
 
 ## 12. SourceCoordinate family
 
-> Assertion status: `evidence-derived family; representation provisional`
+> Assertion status: `evidence-derived accepted family; machine representation provisional`
 
 ### PDF geometric coordinate
 
@@ -827,7 +828,7 @@ the attempted processing/request evaluation is itself evidence.
 
 ## 19. Benchmark truth vs production assessment
 
-> Assertion status: `evidence-derived boundary`
+> Assertion status: `evidence-derived accepted boundary`
 
 E-04 benchmark gold provides authoritative truth **inside the benchmark only**.
 It proves that the production contract needs certain states; it is not a hidden
@@ -849,8 +850,8 @@ relation or fallback-required claim must identify an explicit runtime basis.
 
 ## 20. Scenario validation
 
-The model must represent accepted E-04 evidence without Provider-specific
-contract fields.
+The accepted conceptual model represents E-04 evidence without
+Provider-specific contract fields.
 
 ### A — Provider success, scoped completeness not established
 
@@ -976,10 +977,10 @@ E-05a intentionally does not decide:
 - first-slice promotion;
 - redistribution rights under #131.
 
-## 23. Next E-05 child after conceptual acceptance
+## 23. Next E-05 child
 
-Only after E-05a survives review should E-05 create a bounded child for a
-**candidate machine-readable contract** and conformance tests.
+With E-05a accepted, a later bounded child may define a **candidate
+machine-readable contract** and conformance tests.
 
 That child should:
 

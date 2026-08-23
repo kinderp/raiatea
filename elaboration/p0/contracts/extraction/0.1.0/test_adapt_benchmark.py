@@ -61,7 +61,10 @@ class E05bBenchmarkAdaptationTests(unittest.TestCase):
             bundle["run"]["outcome"]["assessments"][0]["completeness"],
             "unknown",
         )
-        coordinate = bundle["normalized_representation"]["units"][0]["coordinate"]["value"]
+        first_unit = bundle["normalized_representation"]["units"][0]
+        self.assertEqual(first_unit["surface"]["origin"], "provider-native")
+        self.assertEqual(first_unit["coordinate"]["origin"], "raiatea-aligned")
+        coordinate = first_unit["coordinate"]["value"]
         self.assertEqual(coordinate["kind"], "pdf-geometric")
         serialized = json.dumps(bundle["normalized_representation"], sort_keys=True)
         self.assertNotIn("native_bbox", serialized)
@@ -82,10 +85,12 @@ class E05bBenchmarkAdaptationTests(unittest.TestCase):
         self._assert_provider_then_core_normalization(
             bundle["run"], "python-stdlib", "direct-epub-stdlib"
         )
-        coordinates = [
-            unit["coordinate"]["value"]
+        coordinate_envelopes = [
+            unit["coordinate"]
             for unit in bundle["normalized_representation"]["units"]
         ]
+        self.assertTrue(all(item["origin"] == "provider-native" for item in coordinate_envelopes))
+        coordinates = [item["value"] for item in coordinate_envelopes]
         self.assertTrue(all(item["kind"] == "epub-logical" for item in coordinates))
         self.assertTrue(all("page_index" not in item for item in coordinates))
         self.assertEqual(coordinates[0]["resource"], "OEBPS/ch1.xhtml")
@@ -105,10 +110,11 @@ class E05bBenchmarkAdaptationTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATE.ContractError, "epub-must-not-use-pdf-fields"):
             VALIDATE.validate_representation(value)
 
-    def test_restricted_attempt_retains_run_without_normalized_output(self):
+    def test_access_control_attempt_retains_evidence_without_normalized_output(self):
         value = self._example("restricted-access-controlled.json")
         VALIDATE.validate(value)
-        self.assertEqual(value["outcome"]["execution"], "restricted")
+        self.assertEqual(value["outcome"]["execution"], "failed")
+        self.assertIn("rights_decision_ref", value)
         self.assertTrue(value["produced"])
         self.assertTrue(all(item["kind"] == "provider-evidence" for item in value["produced"]))
         self.assertFalse(
@@ -147,6 +153,7 @@ class E05bBenchmarkAdaptationTests(unittest.TestCase):
         evidence["native_status"] = {
             "evidence_state": "malformed-evidence",
             "value_state": "unknown",
+            "origin": "provider-native",
             "basis": "Provider result collection was structurally malformed",
             "channel": "benchmark-normalized-view",
         }

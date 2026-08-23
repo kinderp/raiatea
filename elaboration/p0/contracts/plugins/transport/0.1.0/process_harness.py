@@ -28,6 +28,8 @@ RUNTIME = importlib.util.module_from_spec(_RUNTIME_SPEC)
 assert _RUNTIME_SPEC.loader is not None
 _RUNTIME_SPEC.loader.exec_module(RUNTIME)
 
+MAX_STDERR_CAPTURE_BYTES = 64 * 1024
+
 
 class HarnessError(RuntimeError):
     pass
@@ -52,7 +54,7 @@ def _now() -> str:
 
 
 class LocalProcessHarness:
-    """Small synchronous protocol harness with concurrent non-authoritative stderr draining."""
+    """Small synchronous protocol harness with bounded concurrent stderr draining."""
 
     def __init__(self, command: Sequence[str], manifest: dict[str, Any]):
         self.command = [str(item) for item in command]
@@ -66,7 +68,8 @@ class LocalProcessHarness:
         self._rpc_counter = 0
         self._seen_response_ids: set[str | int | None] = set()
         self.last_transport_id: str | int | None = None
-        self._stderr_chunks: list[bytes] = []
+        self._stderr_capture = bytearray()
+        self.stderr_truncated = False
         self._stderr_thread: threading.Thread | None = None
 
     def _drain_stderr(self, pipe: BinaryIO) -> None:
@@ -77,7 +80,11 @@ class LocalProcessHarness:
                 return
             if not chunk:
                 return
-            self._stderr_chunks.append(chunk)
+            remaining = MAX_STDERR_CAPTURE_BYTES - len(self._stderr_capture)
+            if remaining > 0:
+                self._stderr_capture.extend(chunk[:remaining])
+            if len(chunk) > max(remaining, 0):
+                self.stderr_truncated = True
 
     def start(self) -> None:
         if self.process is not None:
@@ -299,7 +306,7 @@ class LocalProcessHarness:
 
     @property
     def stderr_text(self) -> str:
-        return b"".join(self._stderr_chunks).decode("utf-8", errors="replace")
+        return bytes(self._stderr_capture).decode("utf-8", errors="replace")
 
     def __enter__(self) -> "LocalProcessHarness":
         self.start()

@@ -13,7 +13,7 @@ from typing import Any
 from . import proof_broker as BROKER
 
 HERE = Path(__file__).resolve().parent
-REPO_ROOT = HERE.parents[5]
+REPO_ROOT = HERE.parents[4]
 GENERATOR_PATH = REPO_ROOT / "elaboration" / "p0" / "benchmark" / "generate_fixtures.py"
 SOURCE_MANIFEST_PATH = HERE / "manifests" / "local-read-only-source-proof.json"
 EXTRACTOR_MANIFEST_PATH = HERE / "manifests" / "direct-epub-extractor-proof.json"

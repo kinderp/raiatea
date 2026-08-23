@@ -7,7 +7,8 @@ import importlib.util
 from pathlib import Path
 import subprocess
 import sys
-from typing import Any, Sequence
+import threading
+from typing import Any, BinaryIO, Sequence
 
 ROOT = Path(__file__).resolve().parent
 if str(ROOT) not in sys.path:
@@ -51,7 +52,7 @@ def _now() -> str:
 
 
 class LocalProcessHarness:
-    """Small synchronous harness; it validates semantics independently of framing."""
+    """Small synchronous protocol harness with concurrent non-authoritative stderr draining."""
 
     def __init__(self, command: Sequence[str], manifest: dict[str, Any]):
         self.command = [str(item) for item in command]
@@ -65,7 +66,18 @@ class LocalProcessHarness:
         self._rpc_counter = 0
         self._seen_response_ids: set[str | int | None] = set()
         self.last_transport_id: str | int | None = None
-        self._stderr_cache = ""
+        self._stderr_chunks: list[bytes] = []
+        self._stderr_thread: threading.Thread | None = None
+
+    def _drain_stderr(self, pipe: BinaryIO) -> None:
+        while True:
+            try:
+                chunk = pipe.read(8192)
+            except OSError:
+                return
+            if not chunk:
+                return
+            self._stderr_chunks.append(chunk)
 
     def start(self) -> None:
         if self.process is not None:
@@ -76,6 +88,15 @@ class LocalProcessHarness:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+        if self.process.stderr is None:
+            raise HarnessError("plugin-stderr-unavailable")
+        self._stderr_thread = threading.Thread(
+            target=self._drain_stderr,
+            args=(self.process.stderr,),
+            name="raiatea-plugin-stderr-drain",
+            daemon=True,
+        )
+        self._stderr_thread.start()
         self.process_events.append({"event": "process-started", "observed_at": _now()})
 
     def _require_process(self) -> subprocess.Popen[bytes]:
@@ -272,16 +293,13 @@ class LocalProcessHarness:
             process.wait(timeout=2)
         if self.handshake_record is not None and self._runtime_state == "stopping":
             self._transition("stopped", "child process terminated after Core shutdown request")
-        if process.stderr is not None:
-            try:
-                self._stderr_cache += process.stderr.read().decode("utf-8", errors="replace")
-            except OSError:
-                pass
+        if self._stderr_thread is not None:
+            self._stderr_thread.join(timeout=2)
         self.process = None
 
     @property
     def stderr_text(self) -> str:
-        return self._stderr_cache
+        return b"".join(self._stderr_chunks).decode("utf-8", errors="replace")
 
     def __enter__(self) -> "LocalProcessHarness":
         self.start()

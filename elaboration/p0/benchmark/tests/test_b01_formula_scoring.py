@@ -3,16 +3,26 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+import sys
 import unittest
 
 BENCH_DIR = Path(__file__).resolve().parents[1]
 ROUTES = BENCH_DIR / "routes"
-SPEC = importlib.util.spec_from_file_location(
+sys.path.insert(0, str(ROUTES))
+
+SCORE_SPEC = importlib.util.spec_from_file_location(
     "p0_score_b01_formula", ROUTES / "score_b01_formula.py"
 )
-SCORE = importlib.util.module_from_spec(SPEC)
-assert SPEC.loader is not None
-SPEC.loader.exec_module(SCORE)
+SCORE = importlib.util.module_from_spec(SCORE_SPEC)
+assert SCORE_SPEC.loader is not None
+SCORE_SPEC.loader.exec_module(SCORE)
+
+POST_SPEC = importlib.util.spec_from_file_location(
+    "p0_postprocess_b01_formula", ROUTES / "postprocess_b01_formula_evidence.py"
+)
+POST = importlib.util.module_from_spec(POST_SPEC)
+assert POST_SPEC.loader is not None
+POST_SPEC.loader.exec_module(POST)
 
 
 class B01FormulaScoringTests(unittest.TestCase):
@@ -181,6 +191,32 @@ class B01FormulaScoringTests(unittest.TestCase):
         self.assertEqual(dimensions["formula_surface_content"]["exact_once_count"], 3)
         self.assertEqual(dimensions["formula_display_order"]["status"], "partial")
 
+    def test_malformed_formula_text_item_marks_collection_partial(self):
+        dimensions = SCORE.measure_b01_formula_dimensions(
+            {
+                "formula_text_blocks": [
+                    {"text": "E = mc 2"},
+                    {"text": "x 2 + y 2 = z 2"},
+                    {"text": "( a + b ) c"},
+                    "bad-item",
+                ]
+            },
+            self.gold,
+        )
+        self.assertEqual(dimensions["formula_surface_content"]["status"], "partial")
+        self.assertEqual(dimensions["formula_surface_content"]["exact_once_count"], 3)
+        self.assertEqual(dimensions["formula_display_order"]["status"], "partial")
+
+    def test_malformed_explicit_relation_item_marks_collection_partial(self):
+        relations = SCORE.measure_b01_formula_dimensions(
+            {"math_relations": ["bad-item"]}, self.gold
+        )["explicit_math_relations"]
+        self.assertEqual(relations["status"], "partial")
+        self.assertEqual(relations["collection_state"], "partial")
+        self.assertEqual(relations["malformed_observed_count"], 1)
+        self.assertEqual(relations["observed_count"], 0)
+        self.assertFalse(relations["explicit_empty"])
+
     def test_unavailable_provider_group_collection_is_not_empty_measurement(self):
         diagnostic = SCORE.measure_b01_formula_dimensions(
             {
@@ -191,6 +227,32 @@ class B01FormulaScoringTests(unittest.TestCase):
         )["provider_group_diagnostic"]
         self.assertEqual(diagnostic["status"], "not-measured")
         self.assertIsNone(diagnostic["observed_count"])
+
+    def test_malformed_provider_group_item_marks_collection_partial(self):
+        diagnostic = SCORE.measure_b01_formula_dimensions(
+            {
+                "provider_formula_groups": [
+                    {
+                        "provider_ref": "#/pictures/0",
+                        "provider_label": "picture",
+                        "mathematical_semantics": False,
+                    },
+                    "bad-item",
+                ]
+            },
+            self.gold,
+        )["provider_group_diagnostic"]
+        self.assertEqual(diagnostic["status"], "partial")
+        self.assertEqual(diagnostic["collection_state"], "partial")
+        self.assertEqual(diagnostic["observed_count"], 1)
+        self.assertEqual(diagnostic["malformed_group_count"], 1)
+
+    def test_postprocessor_malformed_blocks_fail_closed_without_exception(self):
+        row = POST._score({"route": "synthetic", "status": "success", "blocks": None})
+        dimensions = row["dimensions"]
+        self.assertEqual(dimensions["formula_surface_content"]["status"], "not-measured")
+        self.assertEqual(dimensions["formula_display_order"]["status"], "not-measured")
+        self.assertEqual(dimensions["token_geometry"]["status"], "not-measured")
 
     def test_missing_provider_text_is_not_scored_as_zero_fidelity(self):
         dimensions = SCORE.measure_b01_formula_dimensions({}, self.gold)

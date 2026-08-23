@@ -16,11 +16,7 @@
       "id": "B01-PDF-001",
       "version": "0.1.0",
       "source_family": "SF-01",
-      "traits": [
-        "born-digital",
-        "paginated",
-        "single-column"
-      ],
+      "traits": ["born-digital", "paginated", "single-column"],
       "generator": "pdf_single_column",
       "output": "B01-PDF-001.pdf",
       "expected_outcome": "success",
@@ -41,11 +37,7 @@
       "id": "B01-PDF-002",
       "version": "0.1.0",
       "source_family": "SF-01",
-      "traits": [
-        "born-digital",
-        "paginated",
-        "multi-column"
-      ],
+      "traits": ["born-digital", "paginated", "multi-column"],
       "generator": "pdf_two_column",
       "output": "B01-PDF-002.pdf",
       "expected_outcome": "success",
@@ -160,13 +152,44 @@
       }
     },
     {
+      "id": "B01-PDF-006",
+      "version": "0.1.0",
+      "source_family": "SF-01",
+      "profile": "normal-quality",
+      "traits": [
+        "born-digital",
+        "paginated",
+        "single-column",
+        "mathematical-formula",
+        "positioned-superscript",
+        "fraction-bar"
+      ],
+      "generator": "pdf_formula_fidelity",
+      "output": "B01-PDF-006.pdf",
+      "expected_outcome": "success",
+      "dimensions": {
+        "content": "target",
+        "reading_order": "target",
+        "source_coordinates": "target",
+        "formula_tokens": "target",
+        "formula_presence": "target",
+        "formula_structure": "target",
+        "formula_geometry": "target",
+        "token_geometry": "target"
+      },
+      "rights": {
+        "origin": "project-created",
+        "redistribution": "not-established",
+        "public_rights_safe": false,
+        "remote_provider": "denied",
+        "decision_issue": 131
+      }
+    },
+    {
       "id": "B02-EPUB-001",
       "version": "0.1.0",
       "source_family": "SF-03",
-      "traits": [
-        "reflowable",
-        "multi-resource-package"
-      ],
+      "traits": ["reflowable", "multi-resource-package"],
       "generator": "epub_spine",
       "output": "B02-EPUB-001.epub",
       "expected_outcome": "success",
@@ -188,12 +211,7 @@
       "id": "B02-EPUB-002",
       "version": "0.1.0",
       "source_family": "SF-03",
-      "traits": [
-        "reflowable",
-        "multi-resource-package",
-        "deep-hierarchy",
-        "links"
-      ],
+      "traits": ["reflowable", "multi-resource-package", "deep-hierarchy", "links"],
       "generator": "epub_navigation",
       "output": "B02-EPUB-002.epub",
       "expected_outcome": "success",
@@ -215,18 +233,11 @@
       "id": "B02-EPUB-NEG-001",
       "version": "0.1.0",
       "source_family": "SF-03",
-      "traits": [
-        "reflowable",
-        "multi-resource-package",
-        "script-capable"
-      ],
+      "traits": ["reflowable", "multi-resource-package", "script-capable"],
       "generator": "epub_inert_active_content",
       "output": "B02-EPUB-NEG-001.epub",
       "expected_outcome": "degraded-with-warning-or-safe-success",
-      "dimensions": {
-        "security_outcome": "target",
-        "content": "excluded"
-      },
+      "dimensions": {"security_outcome": "target", "content": "excluded"},
       "rights": {
         "origin": "project-created",
         "redistribution": "not-established",
@@ -238,19 +249,11 @@
       "id": "B02-EPUB-NEG-002",
       "version": "0.1.0",
       "source_family": "SF-03",
-      "traits": [
-        "reflowable",
-        "multi-resource-package",
-        "archive-container",
-        "hostile-path"
-      ],
+      "traits": ["reflowable", "multi-resource-package", "archive-container", "hostile-path"],
       "generator": "epub_unsafe_path",
       "output": "B02-EPUB-NEG-002.epub",
       "expected_outcome": "rejected-or-degraded-with-warning",
-      "dimensions": {
-        "security_outcome": "target",
-        "content": "excluded"
-      },
+      "dimensions": {"security_outcome": "target", "content": "excluded"},
       "rights": {
         "origin": "project-created",
         "redistribution": "not-established",
@@ -260,7 +263,6 @@
     }
   ],
   "coverage_gaps": [
-    "B01-PDF-006 formula fidelity beyond the code/preformatted coverage in B01-PDF-003",
     "B01-PDF-007 defective native text",
     "B01-PDF negative malformed/access-controlled cases",
     "B02-EPUB-003 through B02-EPUB-007 semantic feature coverage",

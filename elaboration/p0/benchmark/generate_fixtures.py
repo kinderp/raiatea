@@ -15,7 +15,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 MANIFEST_PATH = HERE / "manifests" / "fixtures.json"
-GENERATOR_VERSION = "0.4.0"
+GENERATOR_VERSION = "0.5.0"
 ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 
 
@@ -232,6 +232,55 @@ def _build_table_structure_pdf() -> bytes:
     return _serialize_pdf_objects(objects)
 
 
+def _build_formula_fidelity_pdf() -> bytes:
+    """Build B01-PDF-006 with separately positioned math glyphs and fraction bar.
+
+    The PDF intentionally embeds no semantic math tags. Superscript and fraction
+    relations live only in authored gold; Providers are credited for structure
+    only when they expose explicit evidence rather than visual inference.
+    """
+    stream_parts = [
+        _text_cmd("Raiatea B01 PDF 006", 72, 730, 20),
+        _text_cmd("Body text before the benchmark formulas.", 72, 665, 12),
+        # E = mc^2: the exponent is a distinct, smaller, raised glyph.
+        _text_cmd("E", 108, 610, 16),
+        _text_cmd("=", 126, 610, 16),
+        _text_cmd("m", 144, 610, 16),
+        _text_cmd("c", 156, 610, 16),
+        _text_cmd("2", 166, 622, 9),
+        # x^2 + y^2 = z^2: three distinct raised exponent glyphs.
+        _text_cmd("x", 108, 555, 16),
+        _text_cmd("2", 118, 567, 9),
+        _text_cmd("+", 132, 555, 16),
+        _text_cmd("y", 150, 555, 16),
+        _text_cmd("2", 160, 567, 9),
+        _text_cmd("=", 174, 555, 16),
+        _text_cmd("z", 192, 555, 16),
+        _text_cmd("2", 202, 567, 9),
+        # (a + b) / c: numerator glyphs, authored fraction bar, denominator.
+        _text_cmd("(", 108, 495, 14),
+        _text_cmd("a", 116, 495, 14),
+        _text_cmd("+", 128, 495, 14),
+        _text_cmd("b", 142, 495, 14),
+        _text_cmd(")", 152, 495, 14),
+        "0.8 w\n108 486 m 164 486 l S\n",
+        _text_cmd("c", 132, 462, 14),
+        _text_cmd("Body text after the benchmark formulas.", 72, 405, 12),
+    ]
+    stream = "".join(stream_parts).encode("ascii")
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"endstream",
+    ]
+    return _serialize_pdf_objects(objects)
+
+
 def generate_pdf_single_column(path: Path) -> None:
     path.write_bytes(
         _build_pdf(
@@ -268,6 +317,10 @@ def generate_pdf_figure_caption(path: Path) -> None:
 
 def generate_pdf_table_structure(path: Path) -> None:
     path.write_bytes(_build_table_structure_pdf())
+
+
+def generate_pdf_formula_fidelity(path: Path) -> None:
+    path.write_bytes(_build_formula_fidelity_pdf())
 
 
 def _zip_write_text(zf: zipfile.ZipFile, name: str, text: str, compress: bool = False) -> None:
@@ -387,6 +440,7 @@ GENERATORS = {
     "pdf_semantic_structure": generate_pdf_semantic_structure,
     "pdf_figure_caption": generate_pdf_figure_caption,
     "pdf_table_structure": generate_pdf_table_structure,
+    "pdf_formula_fidelity": generate_pdf_formula_fidelity,
     "epub_spine": generate_epub_spine,
     "epub_navigation": generate_epub_navigation,
     "epub_inert_active_content": generate_epub_inert_active_content,

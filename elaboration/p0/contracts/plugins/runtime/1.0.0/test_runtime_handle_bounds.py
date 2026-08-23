@@ -97,6 +97,20 @@ class RuntimeHandleBoundsTests(unittest.TestCase):
         with self.assertRaisesRegex(V.RuntimeContractError, "input-handle-lease-expires-before-deadline"):
             V.validate_invocation(value, self.manifest, self.handshake)
 
+    def test_handle_expiry_requires_timezone(self):
+        value = copy.deepcopy(self.request)
+        value["inputs"] = [{
+            "kind": "asset-handle",
+            "handle": {
+                "handle_id": "in:1",
+                "lease_id": "lease:in:1",
+                "access": "read",
+                "expires_at": "2026-08-23T19:47:00",
+            },
+        }]
+        with self.assertRaisesRegex(V.RuntimeContractError, "input-handle-expires-at-timezone-required"):
+            V.validate_invocation(value, self.manifest, self.handshake)
+
     def test_output_target_lease_must_cover_invocation_deadline(self):
         value = copy.deepcopy(self.request)
         value["output_targets"] = [{
@@ -156,6 +170,24 @@ class RuntimeHandleBoundsTests(unittest.TestCase):
             "byte_length": 5,
         })
         with self.assertRaisesRegex(V.RuntimeContractError, "output-handle-fingerprint-required"):
+            V.validate_result(result, req, self.manifest)
+
+    def test_completed_output_asset_rejects_malformed_sha256(self):
+        req = copy.deepcopy(self.request)
+        req["output_targets"] = [{
+            "handle_id": "out:1",
+            "lease_id": "lease:out:1",
+            "access": "write-once-output",
+            "byte_length": 10,
+        }]
+        result = asset_result(self.manifest, req, {
+            "handle_id": "out:1",
+            "lease_id": "lease:out:1",
+            "access": "write-once-output",
+            "byte_length": 5,
+            "fingerprint": "sha256:not-a-digest",
+        })
+        with self.assertRaisesRegex(V.RuntimeContractError, "output-handle-fingerprint-invalid"):
             V.validate_result(result, req, self.manifest)
 
     def test_plugin_cannot_extend_output_lease_metadata(self):

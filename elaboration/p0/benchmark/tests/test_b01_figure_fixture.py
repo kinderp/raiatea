@@ -115,8 +115,8 @@ class B01FigureFixtureTests(unittest.TestCase):
     def test_figure_fixture_keeps_its_gap_closed_as_later_fixtures_land(self):
         gaps = self.fixtures["coverage_gaps"]
         self.assertFalse(any(item.startswith("B01-PDF-004 ") for item in gaps))
-        self.assertTrue(any(item.startswith("B01-PDF-006 ") for item in gaps))
         self.assertTrue(any(item.startswith("B01-PDF-007 ") for item in gaps))
+        self.assertTrue(any("malformed/access-controlled" in item for item in gaps))
 
 
 if __name__ == "__main__":

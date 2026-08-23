@@ -1,0 +1,153 @@
+{
+  "schema_version": "0.1.0",
+  "representation_id": "norm-direct-epub-001",
+  "source_ref": {
+    "source_id": "B02-EPUB-001",
+    "source_class": "B-02",
+    "fingerprint": "sha256:8a013c2e95ec99e07a29a09072872abe0c7e2fc0ba92378db9088817230be933"
+  },
+  "units": [
+    {
+      "unit_id": "intro",
+      "surface": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "direct EPUB mapper block text",
+        "channel": "benchmark-normalized-view",
+        "value": "Introduction"
+      },
+      "semantic_role": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "explicit XHTML h1 element",
+        "channel": "benchmark-normalized-view",
+        "value": {"type": "heading", "level": 1}
+      },
+      "coordinate": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "EPUB package resource and authored fragment id",
+        "channel": "benchmark-normalized-view",
+        "value": {
+          "kind": "epub-logical",
+          "resource": "OEBPS/ch1.xhtml",
+          "fragment": "intro",
+          "spine_index": 0
+        }
+      }
+    },
+    {
+      "unit_id": "intro-p",
+      "surface": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "direct EPUB mapper block text",
+        "channel": "benchmark-normalized-view",
+        "value": "The first chapter establishes the package order."
+      },
+      "semantic_role": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "explicit XHTML p element",
+        "channel": "benchmark-normalized-view",
+        "value": {"type": "paragraph"}
+      },
+      "coordinate": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "EPUB package resource and authored fragment id",
+        "channel": "benchmark-normalized-view",
+        "value": {
+          "kind": "epub-logical",
+          "resource": "OEBPS/ch1.xhtml",
+          "fragment": "intro-text",
+          "spine_index": 0
+        }
+      }
+    },
+    {
+      "unit_id": "next",
+      "surface": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "direct EPUB mapper block text",
+        "channel": "benchmark-normalized-view",
+        "value": "Next Chapter"
+      },
+      "semantic_role": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "explicit XHTML h1 element",
+        "channel": "benchmark-normalized-view",
+        "value": {"type": "heading", "level": 1}
+      },
+      "coordinate": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "EPUB package resource and authored fragment id",
+        "channel": "benchmark-normalized-view",
+        "value": {
+          "kind": "epub-logical",
+          "resource": "OEBPS/ch2.xhtml",
+          "fragment": "next",
+          "spine_index": 1
+        }
+      }
+    },
+    {
+      "unit_id": "next-p",
+      "surface": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "direct EPUB mapper block text",
+        "channel": "benchmark-normalized-view",
+        "value": "The second chapter follows the first in the spine."
+      },
+      "semantic_role": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "explicit XHTML p element",
+        "channel": "benchmark-normalized-view",
+        "value": {"type": "paragraph"}
+      },
+      "coordinate": {
+        "evidence_state": "measured",
+        "value_state": "present",
+        "basis": "EPUB package resource and authored fragment id",
+        "channel": "benchmark-normalized-view",
+        "value": {
+          "kind": "epub-logical",
+          "resource": "OEBPS/ch2.xhtml",
+          "fragment": "next-text",
+          "spine_index": 1
+        }
+      }
+    }
+  ],
+  "relations": [
+    {
+      "relation_id": "reading-order-1",
+      "kind": "reading-order-next",
+      "from_ref": "intro",
+      "to_ref": "intro-p",
+      "evidence_origin": "raiatea-derived",
+      "basis": "preserved direct-parser block order within the authored EPUB spine"
+    },
+    {
+      "relation_id": "reading-order-2",
+      "kind": "reading-order-next",
+      "from_ref": "intro-p",
+      "to_ref": "next",
+      "evidence_origin": "raiatea-derived",
+      "basis": "preserved direct-parser resource order plus EPUB spine order"
+    },
+    {
+      "relation_id": "reading-order-3",
+      "kind": "reading-order-next",
+      "from_ref": "next",
+      "to_ref": "next-p",
+      "evidence_origin": "raiatea-derived",
+      "basis": "preserved direct-parser block order within the authored EPUB spine"
+    }
+  ]
+}

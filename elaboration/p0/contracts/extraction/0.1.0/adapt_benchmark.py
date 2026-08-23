@@ -29,8 +29,8 @@ def _present(
     origin: str = "provider-native",
 ) -> dict[str, Any]:
     return {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": origin,
         "basis": basis,
         "channel": channel,
@@ -40,7 +40,7 @@ def _present(
 
 def _unknown(basis: str, channel: str | None = None) -> dict[str, Any]:
     result: dict[str, Any] = {
-        "evidence_state": "not-measured",
+        "evidence_state": "unavailable",
         "value_state": "unknown",
         "origin": "unresolved",
         "basis": basis,
@@ -161,7 +161,7 @@ def adapt_poppler_observation(
     execution = _execution_from_status(status)
     native_status = _present(
         status,
-        "E-04 Poppler mapper observation status",
+        "E-04 Poppler mapper observation status translated at the E-05 boundary",
         "benchmark-normalized-view",
         origin="provider-native",
     )
@@ -325,7 +325,7 @@ def adapt_direct_epub_observation(
     execution = _execution_from_status(status)
     native_status = _present(
         status,
-        "E-04 direct EPUB mapper observation status",
+        "E-04 direct EPUB mapper observation status translated at the E-05 boundary",
         "benchmark-normalized-view",
         origin="provider-native",
     )

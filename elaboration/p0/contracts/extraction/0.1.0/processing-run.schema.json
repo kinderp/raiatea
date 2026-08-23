@@ -84,10 +84,10 @@
       }
     },
     "EvidenceState": {
-      "enum": ["measured", "partial", "not-measured", "malformed-evidence", "ambiguous", "not-applicable"]
+      "enum": ["present", "partial", "unavailable", "ambiguous", "malformed", "not-applicable"]
     },
     "ValueState": {
-      "enum": ["present", "explicit-empty", "unknown"]
+      "enum": ["populated", "empty", "unknown"]
     },
     "EvidenceOrigin": {
       "enum": ["provider-native", "raiatea-aligned", "raiatea-derived", "user-asserted", "unresolved"]
@@ -117,11 +117,11 @@
       },
       "allOf": [
         {
-          "if": {"properties": {"value_state": {"const": "present"}}},
+          "if": {"properties": {"value_state": {"const": "populated"}}},
           "then": {"required": ["value"]}
         },
         {
-          "if": {"properties": {"value_state": {"const": "explicit-empty"}}},
+          "if": {"properties": {"value_state": {"const": "empty"}}},
           "then": {"required": ["value"]}
         }
       ]
@@ -183,14 +183,14 @@
       },
       "allOf": [
         {
-          "if": {"properties": {"value_state": {"const": "present"}}},
+          "if": {"properties": {"value_state": {"const": "populated"}}},
           "then": {
             "required": ["value"],
             "properties": {"value": {"$ref": "#/$defs/SourceCoordinate"}}
           }
         },
         {
-          "if": {"properties": {"value_state": {"const": "explicit-empty"}}},
+          "if": {"properties": {"value_state": {"const": "empty"}}},
           "then": {
             "required": ["value"],
             "properties": {"value": {"type": "null"}}

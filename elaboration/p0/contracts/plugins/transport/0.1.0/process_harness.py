@@ -29,6 +29,7 @@ assert _RUNTIME_SPEC.loader is not None
 _RUNTIME_SPEC.loader.exec_module(RUNTIME)
 
 MAX_STDERR_CAPTURE_BYTES = 64 * 1024
+MAX_NOTIFICATIONS_BEFORE_RESPONSE = 64
 
 
 class HarnessError(RuntimeError):
@@ -199,9 +200,13 @@ class LocalProcessHarness:
         request_id = self._next_rpc_id()
         self.last_transport_id = request_id
         self._write_message(request_message(request_id, method, params))
+        notifications = 0
         while True:
             message = self._read_message(method)
             if "method" in message and "id" not in message:
+                notifications += 1
+                if notifications > MAX_NOTIFICATIONS_BEFORE_RESPONSE:
+                    raise HarnessError("too-many-notifications-before-response")
                 self._handle_notification(message)
                 continue
 

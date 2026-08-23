@@ -32,7 +32,8 @@ def _score(
     from score_b01_formula import measure_b01_formula_dimensions
 
     combined = dict(observation)
-    combined["blocks"] = list(observation.get("blocks", []))
+    raw_blocks = observation.get("blocks")
+    combined["blocks"] = list(raw_blocks) if isinstance(raw_blocks, list) else raw_blocks
     if explicit_diagnostic is not None:
         for key in (
             "formula_text_collection_state",

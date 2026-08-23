@@ -1,0 +1,52 @@
+{
+  "manifest_version": "1.0.0",
+  "plugin": {
+    "plugin_id": "org.raiatea.proof.local-source",
+    "name": "Raiatea v1d Local Read-Only Source Proof",
+    "version": "0.1.0"
+  },
+  "raiatea_plugin_api": {
+    "min_inclusive": "1.0.0",
+    "max_exclusive": "2.0.0"
+  },
+  "families": ["source"],
+  "capabilities": [
+    {
+      "capability_id": "source.discover",
+      "profiles": [
+        {
+          "profile_id": "local-read-only",
+          "family": "source",
+          "input_classes": ["local-filesystem-scope"],
+          "output_classes": ["source-reference-proof-bundle"],
+          "contracts": [],
+          "mode": "enumerate-and-reference"
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": [],
+    "filesystem": [
+      {
+        "root": "${V1D_PROOF_AUTHORIZED_SOURCE_ROOT}",
+        "mode": "read"
+      }
+    ],
+    "secrets": [],
+    "temporary_workspace": false,
+    "resource_hints": {
+      "cpu_cores": 1,
+      "memory_mb": 128,
+      "timeout_seconds": 30
+    }
+  },
+  "entrypoint": {
+    "kind": "process",
+    "command": ["python", "-m", "elaboration.p0.plugins.proofs.v1d.local_source_plugin"]
+  },
+  "trust_tier": "official",
+  "provenance": {
+    "publisher": "Raiatea proof harness"
+  }
+}

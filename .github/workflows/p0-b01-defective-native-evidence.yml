@@ -25,8 +25,10 @@ jobs:
           python-version: "3.12.14"
       - name: Compile benchmark tooling
         run: python -m compileall -q elaboration/p0/benchmark
-      - name: Run defective-native fixture tests
-        run: python -m unittest elaboration/p0/benchmark/tests/test_b01_defective_native_fixture.py -v
+      - name: Run defective-native fixture and scoring tests
+        run: |
+          python -m unittest elaboration/p0/benchmark/tests/test_b01_defective_native_fixture.py -v
+          python -m unittest elaboration/p0/benchmark/tests/test_b01_defective_native_scoring.py -v
       - name: Verify deterministic standalone fixture
         run: |
           mkdir -p "${RUNNER_TEMP}/raiatea-b01-defective-native"
@@ -65,7 +67,7 @@ jobs:
           echo "${EXPECTED_PDFTOTEXT_SHA256}  /usr/bin/pdftotext" | sha256sum -c -
           echo "${EXPECTED_PDFTOHTML_SHA256}  /usr/bin/pdftohtml" | sha256sum -c -
           echo "${EXPECTED_PDFINFO_SHA256}  /usr/bin/pdfinfo" | sha256sum -c -
-      - name: Run raw native B01-PDF-007 measurement
+      - name: Run native and scored B01-PDF-007 measurement
         run: |
           OUT="${RUNNER_TEMP}/raiatea-b01-defective-poppler"
           mkdir -p "${OUT}"
@@ -73,7 +75,11 @@ jobs:
             --output "${OUT}" \
             --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
             > "${OUT}/stdout-report.json"
+          python elaboration/p0/benchmark/routes/postprocess_b01_defective_native_evidence.py poppler \
+            --output "${OUT}" \
+            > "${OUT}/stdout-scored-report.json"
           test -s "${OUT}/b01-defective-native-raw.json"
+          test -s "${OUT}/b01-defective-native-scored.json"
           test -s "${OUT}/observations/B01-PDF-007__pdftotext-bbox-layout.json"
           test -s "${OUT}/observations/B01-PDF-007__pdftohtml-xml.json"
       - uses: actions/upload-artifact@v4
@@ -114,7 +120,7 @@ jobs:
           curl --fail --location --retry 3 --retry-delay 2 "${TIKA_URL}" \
             --output "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar"
           echo "${TIKA_SHA512}  ${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" | sha512sum -c -
-      - name: Run raw native B01-PDF-007 measurement
+      - name: Run native and scored B01-PDF-007 measurement
         run: |
           OUT="${RUNNER_TEMP}/raiatea-b01-defective-tika"
           mkdir -p "${OUT}"
@@ -124,7 +130,11 @@ jobs:
             --config elaboration/p0/benchmark/config/tika-pdf-native-no-ocr.xml \
             --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
             > "${OUT}/stdout-report.json"
+          python elaboration/p0/benchmark/routes/postprocess_b01_defective_native_evidence.py tika \
+            --output "${OUT}" \
+            > "${OUT}/stdout-scored-report.json"
           test -s "${OUT}/b01-defective-native-raw.json"
+          test -s "${OUT}/b01-defective-native-scored.json"
           test -s "${OUT}/observations/B01-PDF-007__tika-app-3.3.2-xhtml.json"
       - uses: actions/upload-artifact@v4
         with:
@@ -180,7 +190,7 @@ jobs:
             --model-lock "${DOCLING_MODEL_LOCK}" \
             --artifacts-path "${RUNNER_TEMP}/docling-models" \
             --output "${RUNNER_TEMP}/docling-reference-verification.json"
-      - name: Run raw native B01-PDF-007 measurement offline
+      - name: Run native and scored B01-PDF-007 measurement offline
         env:
           HF_HUB_OFFLINE: "1"
           TRANSFORMERS_OFFLINE: "1"
@@ -196,7 +206,11 @@ jobs:
             --cache-root "${CACHE}" \
             --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
             > "${OUT}/stdout-report.json"
+          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/postprocess_b01_defective_native_evidence.py docling \
+            --output "${OUT}" \
+            > "${OUT}/stdout-scored-report.json"
           test -s "${OUT}/b01-defective-native-raw.json"
+          test -s "${OUT}/b01-defective-native-scored.json"
           test -s "${OUT}/observations/B01-PDF-007__docling.json"
       - uses: actions/upload-artifact@v4
         if: always()

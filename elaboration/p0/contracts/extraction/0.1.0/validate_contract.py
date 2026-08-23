@@ -24,12 +24,19 @@ EVIDENCE_STATES = {
     "ambiguous",
     "not-applicable",
 }
-VALUE_STATES = {"present", "explicit-empty", "explicit-mismatch", "unknown"}
+VALUE_STATES = {"present", "explicit-empty", "unknown"}
+EVIDENCE_ORIGINS = {
+    "provider-native",
+    "raiatea-aligned",
+    "raiatea-derived",
+    "user-asserted",
+    "unresolved",
+}
+ASSESSMENT_STATES = {"consistent", "mismatch", "unresolved"}
 EXECUTION_STATES = {
     "not-started",
     "completed",
     "failed",
-    "restricted",
     "rejected",
     "unsupported",
     "cancelled",
@@ -58,13 +65,30 @@ def _validate_evidence(value: Any, label: str) -> None:
     _require(isinstance(value, dict), f"{label}-must-be-object")
     evidence_state = value.get("evidence_state")
     value_state = value.get("value_state")
+    origin = value.get("origin")
     _require(evidence_state in EVIDENCE_STATES, f"{label}-bad-evidence-state")
     _require(value_state in VALUE_STATES, f"{label}-bad-value-state")
+    _require(origin in EVIDENCE_ORIGINS, f"{label}-bad-evidence-origin")
     _require(bool(value.get("basis")), f"{label}-basis-required")
     if value_state in {"present", "explicit-empty"}:
         _require("value" in value, f"{label}-value-required-for-{value_state}")
     if evidence_state == "not-measured":
         _require(value_state == "unknown", f"{label}-not-measured-must-have-unknown-value")
+        _require(origin == "unresolved", f"{label}-not-measured-origin-must-be-unresolved")
+    if evidence_state == "not-applicable":
+        _require(origin == "unresolved", f"{label}-not-applicable-origin-must-be-unresolved")
+
+    assessment = value.get("assessment")
+    if assessment is not None:
+        _require(isinstance(assessment, dict), f"{label}-assessment-must-be-object")
+        _require(assessment.get("state") in ASSESSMENT_STATES, f"{label}-assessment-bad-state")
+        _require(bool(assessment.get("basis")), f"{label}-assessment-basis-required")
+        if assessment.get("state") in {"consistent", "mismatch"}:
+            _require(
+                evidence_state not in {"not-measured", "not-applicable", "malformed-evidence"},
+                f"{label}-assessment-requires-available-evidence",
+            )
+            _require(value_state != "unknown", f"{label}-assessment-requires-observed-value")
 
 
 def _validate_coordinate(value: Any, label: str) -> None:

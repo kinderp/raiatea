@@ -4,7 +4,7 @@
 >
 > Assertion status: `mixed`
 >
-> Version: 0.3.0
+> Version: 0.4.0
 >
 > Last reviewed: 23 August 2026
 >
@@ -109,7 +109,7 @@ Those gaps must remain visible.
 | Requirement | Classification | Evidence | E-05 consequence |
 | --- | --- | --- | --- |
 | Provider and route/profile identity are separate | `required-by-evidence` | Poppler controls differ; Docling native and Docling+RapidOCR differ | Preserve ProviderRef and RouteProfileRef independently with material mode/model/backend identity |
-| Provider-native status is not Raiatea outcome truth | `required-by-evidence` | native B01-PDF-007 succeeds while visible content is missing; Tika succeeds on malformed NEG-001 | Preserve Provider status as evidence; normalize Raiatea execution/completeness/integrity separately |
+| Provider-native status is not Raiatea outcome truth | `required-by-evidence` | native B01-PDF-007 succeeds while visible content is missing; Tika succeeds on malformed NEG-001 | Preserve Provider status as evidence; normalize Raiatea execution and scoped result assessments separately |
 | ProcessingOutcome and produced-output evidence are separate | `required-by-evidence` | negative routes may emit diagnostics/raw evidence while content collections are empty/unavailable; normalization may produce no representation | Run/stage carry explicit produced-output references/evidence; global outcome does not encode collection cardinality |
 | Evidence state and evidence value are separate | `required-by-evidence` | E-04 distinguishes not-measured from trustworthy explicit-empty collections | Explicit empty = present evidence with empty value; unavailable evidence is distinct |
 | Missing evidence is not zero or success | `required-by-evidence` | figure/table/formula/coordinate dimensions are often unavailable on otherwise successful routes | Preserve unavailable/partial/ambiguous/malformed/not-applicable states explicitly |
@@ -126,12 +126,13 @@ Those gaps must remain visible.
 | OCR/fallback is an explicit stage | `required-by-evidence` | native stage incomplete; locked RapidOCR gives partial reordered recovery | Native/OCR stages retain trigger, route/profile and lineage |
 | Native/OCR reconciliation may be unresolved | `required-by-evidence` | measured output does not prove per-block native/OCR origin | No destructive merge without identity evidence |
 | Exact and partial recovery are separate | `required-by-evidence` | RapidOCR token multiset right, authored order wrong | Partial/mismatch evidence stays useful without becoming exact recovery |
+| Completeness and integrity are scoped, not universal | `required-by-evidence` | text may be preserved while figures/table/formula/coordinate dimensions are unavailable/degraded | ProcessingOutcome uses scoped assessments tied to declared request/capability/evidence-family scope and runtime basis |
 | Restricted/requires-authorization is a valid terminal Core decision | `required-by-evidence` | access-controlled route evidence + accepted rights boundary | Core policy can terminate processing; refusal is not an extractor retry hint |
 | Core policy authority and technical ProcessingOutcome are separate | `required-by-evidence` | E-01/E-03/#131 authority boundary; E-04 technical failures may merely reflect restriction | ProcessingOutcome stays technical/orchestration; authoritative disposition comes from RightsDecisionRef/Core policy |
 | Security evidence may be partial/unavailable | `required-by-evidence` | B02 traversal case has no observed side effect but cannot prove all safety properties | Preserve measured scope; absence of observation is not proof |
 | ProcessingRun may exist without Provider stage/NormalizedRepresentation | `required-by-evidence` plus accepted rights boundary | failed/restricted attempts retain provenance; Core can deny before invocation | Record not-started/equivalent reason and policy context without fabricating ProviderEvidence |
 | Stage outcome and run outcome are distinct | `required-by-evidence` | native+OCR+normalization can have different outcomes | Run outcome is explicit Core orchestration assessment, never implicit last/worst-stage aggregation |
-| Benchmark truth is not production runtime knowledge | `required-by-evidence` | E-04 gold identifies malformed/incomplete fixtures; production does not automatically possess that gold | Gold shapes contract/conformance tests; runtime complete/degraded/invalid claims need explicit runtime basis |
+| Benchmark truth is not production runtime knowledge | `required-by-evidence` | E-04 gold identifies malformed/incomplete fixtures; production does not automatically possess that gold | Gold shapes contract/conformance tests; runtime completeness/integrity claims need explicit runtime basis |
 | Rights evidence and RightsDecision are separate | `required-by-evidence` | E-01/E-03/#131 | Provider/plugin/source may report evidence; Core owns decision |
 | No universal extraction quality score | `required-by-evidence` | E-04 keeps quality/security/resource dimensions separate | Contract carries facts/outcomes, not one Provider score |
 | Route quality may reference benchmark evidence | `provisional/deferred` | versioned E-04 observations exist while selection gates remain open | Future routing may reference QualityProfile evidence; base payload does not embed benchmark score fields |
@@ -164,12 +165,12 @@ The contract needs separate answers to:
 3. For each evidence collection/fact, is evidence present, partial, unavailable,
    ambiguous or malformed?
 4. If evidence exists, is the observed value populated or explicitly empty?
-5. Is completeness established, partial or not established?
-6. Is the intended result's integrity established, degraded, invalid or not
-   established?
+5. For each declared result scope, is completeness complete/partial/not
+   established and integrity established/degraded/invalid/not established?
+6. What runtime basis supports each scoped result assessment?
 7. What authoritative Core RightsDecision/policy context applies?
 
-`ProcessingOutcome` addresses technical/orchestration assessment. Output
+`ProcessingOutcome` addresses execution plus scoped result assessments. Output
 cardinality and field-level evidence remain in produced-output references and
 EvidenceEnvelopes. One `success` boolean cannot represent these questions.
 
@@ -201,7 +202,28 @@ unresolved
 Provider-native evidence may come from normalized view, lossless/raw output,
 metadata or diagnostics. Channel is provenance, not a different origin.
 
-### 5.5 Stage outcome and run outcome are different
+### 5.5 Scoped result assessments prevent universal completeness/integrity
+
+A ProcessingOutcome may contain multiple assessments, conceptually:
+
+```text
+scope = text-surface
+completeness = complete
+integrity = established
+basis = <runtime validator/evidence>
+```
+
+while another scope in the same run remains:
+
+```text
+scope = table-topology
+completeness = not-established
+integrity = not-established
+```
+
+No global complete/established flag upgrades sparse EvidenceEnvelopes.
+
+### 5.6 Stage outcome and run outcome are different
 
 Each stage retains an outcome. The run outcome is a Core orchestration assessment
 with explicit derivation basis from stage outcomes, produced outputs,
@@ -209,7 +231,7 @@ normalization/validation evidence and applicable policy.
 
 No hidden “copy last stage” or “take worst stage” rule is allowed.
 
-### 5.6 Benchmark truth and runtime truth are different
+### 5.7 Benchmark truth and runtime truth are different
 
 E-04 gold proves representation requirements. It does not create runtime facts.
 
@@ -218,11 +240,10 @@ E-04 gold proves representation requirements. It does not create runtime facts.
 - B01-PDF-007 proves the model must represent incomplete/partial processing; it
   does not imply Provider identity is a production fallback detector.
 
-Production claims such as complete, degraded, invalid, exact relation or
-fallback-required need an explicit runtime basis. Without it, use
-`not-established`/unavailable rather than benchmark history.
+Production scoped assessments and claims such as degraded, invalid, exact
+relation or fallback-required need explicit runtime basis.
 
-### 5.7 Partial structure is normal
+### 5.8 Partial structure is normal
 
 Successful extraction may yield text without roles, table text without cell
 identity, formula surface without math relations, figures without associations,
@@ -262,7 +283,7 @@ native extraction
                  │
                  ├── separate RouteProfile
                  ├── ProviderEvidence
-                 ├── partial/exact evidence
+                 ├── scoped partial/exact assessment when runtime evidence exists
                  └── stage lineage
                  │
                  ▼
@@ -328,7 +349,10 @@ ProvenanceRecord
 RightsDecisionRef
 ```
 
-They are not accepted API resource names.
+`ProducedRef` in the companion model is only a conceptual union/reference over
+actual produced object references, not an additional domain entity.
+
+The names above are not accepted API resource names.
 
 [`provider-neutral-extraction-contract.md`](provider-neutral-extraction-contract.md)
 contains the candidate conceptual model. A machine-readable schema belongs to a

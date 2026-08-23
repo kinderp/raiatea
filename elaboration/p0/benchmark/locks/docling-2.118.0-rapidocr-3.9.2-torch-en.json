@@ -1,0 +1,43 @@
+{
+  "contract": {
+    "name": "raiatea-p0-rapidocr-model-payload-lock",
+    "version": "0.1.0",
+    "scope": "benchmark-reference-only"
+  },
+  "profile_id": "docling-2.118.0-rapidocr-3.9.2-torch-en-default",
+  "rapidocr_version": "3.9.2",
+  "backend": "torch",
+  "language": "en",
+  "file_count": 4,
+  "bytes": 32238329,
+  "manifest_sha256": "131b40647a9d3d67f7573adc717faa7e9b07048baaef318f1c94dc3bb150b3dc",
+  "files": [
+    {
+      "path": "PP-OCRv6_det_small.pth",
+      "bytes": 10248727,
+      "sha256": "fbdc74c97ea7b770ab22cbdc1bba01a52bdf1975efcf3442057356d622b05d54"
+    },
+    {
+      "path": "PP-OCRv6_rec_small.pth",
+      "bytes": 21326017,
+      "sha256": "0107b2ad694ccc9b1db7cf9ed3ffbc93d1795d9e08d9cf823127243a87bce516"
+    },
+    {
+      "path": "ch_ptocr_mobile_v2.0_cls_mobile.pth",
+      "bytes": 588638,
+      "sha256": "bfe13860824b3365c0c7f7ccfcddc8ff11645c60051739ff18bc9913f60c98e1"
+    },
+    {
+      "path": "ppocrv6_dict.txt",
+      "bytes": 74947,
+      "sha256": "b5f2bfe2bdd9448429e3e82b51c789775d9b42f2403d082b00662eb77e401c5d"
+    }
+  ],
+  "provenance": {
+    "source_workflow_run": 32631738668,
+    "source_artifact": 9491269853,
+    "source_artifact_digest": "sha256:2fcf64cd1e308c454b2affa01e8c8e9b432d75d9c009ec921ee77d8303614628",
+    "source_commit": "1e10103f2b7a23f3d3a52638c3470cbdf85b5312",
+    "materialization": "docling-tools models download rapidocr --rapidocr-backend-lang torch:en"
+  }
+}

@@ -4,9 +4,14 @@ Benchmark-only. Native-text preservation, raster-visible text recovery, visible
 page coverage, source coordinates, Provider outcome/warnings and the gold-informed
 fallback verdict are independent dimensions. The fallback verdict is evidence for
 E-05 routing design; it is not a production heuristic or public schema.
+
+Raster-region alignment is also kept separate from exact text recovery. It may
+show that an OCR route produced a plausible but imperfect surface (for example
+all expected tokens in the wrong order) without granting exact recovery credit.
 """
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any
 
 
@@ -97,6 +102,120 @@ def _bbox_inside(inner: list[float], outer: list[float]) -> bool:
         and float(inner[2]) <= float(outer[2])
         and float(inner[3]) <= float(outer[3])
     )
+
+
+def _bbox_area(box: list[float]) -> float:
+    return max(0.0, float(box[2]) - float(box[0])) * max(
+        0.0, float(box[3]) - float(box[1])
+    )
+
+
+def _intersection_area(a: list[float], b: list[float]) -> float:
+    left = max(float(a[0]), float(b[0]))
+    bottom = max(float(a[1]), float(b[1]))
+    right = min(float(a[2]), float(b[2]))
+    top = min(float(a[3]), float(b[3]))
+    return max(0.0, right - left) * max(0.0, top - bottom)
+
+
+def _raster_region_alignment(
+    gold: dict[str, Any], observation: dict[str, Any], unit_ids: list[str]
+) -> dict[str, Any]:
+    """Record OCR-like text in authored raster regions without granting exact credit.
+
+    Geometry is used only as inspectable benchmark alignment against authored gold.
+    It is never promoted into a production routing heuristic and does not turn a
+    wrong text sequence into an exact recovery.
+    """
+    refs = _reference_by_id(gold)
+    expected_units = [refs[item_id] for item_id in unit_ids if item_id in refs]
+    blocks, collection_state = _blocks_and_state(observation)
+    if blocks is None:
+        return {
+            "status": "not-measured",
+            "collection_state": "not-measured",
+            "expected_count": len(expected_units),
+            "candidate_count": 0,
+            "units": [],
+            "reason": "The route exposes no trustworthy text-block collection.",
+        }
+
+    units: list[dict[str, Any]] = []
+    total_candidates = 0
+    exact_candidates = 0
+    token_multiset_exact = 0
+    partial_candidates = 0
+    for unit in expected_units:
+        region = unit.get("region")
+        expected_text = _normalize(str(unit.get("text", "")))
+        expected_tokens = expected_text.split()
+        expected_counter = Counter(expected_tokens)
+        rows: list[dict[str, Any]] = []
+        if isinstance(region, list) and len(region) == 4:
+            gold_area = _bbox_area(region)
+            for block in blocks:
+                bbox = block.get("bbox_points_bottom_left")
+                if block.get("page_index") != unit.get("page_index"):
+                    continue
+                if not isinstance(bbox, list) or len(bbox) != 4:
+                    continue
+                intersection = _intersection_area(bbox, region)
+                if intersection <= 0.0:
+                    continue
+                text = _normalize(str(block.get("text", "")))
+                observed_tokens = text.split()
+                observed_counter = Counter(observed_tokens)
+                shared = sum((expected_counter & observed_counter).values())
+                exact = text == expected_text
+                multiset_exact = observed_counter == expected_counter
+                order_exact = observed_tokens == expected_tokens
+                partial_surface = not exact and shared > 0
+                rows.append(
+                    {
+                        "observed_text": text,
+                        "observed_bbox_points_bottom_left": bbox,
+                        "intersection_area_points2": intersection,
+                        "intersection_over_gold_region": (
+                            intersection / gold_area if gold_area > 0.0 else None
+                        ),
+                        "exact_text": exact,
+                        "token_order_exact": order_exact,
+                        "token_multiset_exact": multiset_exact,
+                        "shared_token_count": shared,
+                        "expected_token_count": len(expected_tokens),
+                        "observed_token_count": len(observed_tokens),
+                        "partial_surface_evidence": partial_surface,
+                    }
+                )
+        total_candidates += len(rows)
+        exact_candidates += sum(row["exact_text"] for row in rows)
+        token_multiset_exact += sum(row["token_multiset_exact"] for row in rows)
+        partial_candidates += sum(row["partial_surface_evidence"] for row in rows)
+        units.append(
+            {
+                "unit_id": unit.get("id"),
+                "expected_text": expected_text,
+                "expected_region_points_bottom_left": region,
+                "candidate_count": len(rows),
+                "candidates": rows,
+            }
+        )
+
+    return {
+        "status": "partial" if collection_state == "partial" else "measured",
+        "collection_state": collection_state,
+        "expected_count": len(expected_units),
+        "candidate_count": total_candidates,
+        "exact_candidate_count": exact_candidates,
+        "token_multiset_exact_candidate_count": token_multiset_exact,
+        "partial_surface_candidate_count": partial_candidates,
+        "units": units,
+        "policy": (
+            "benchmark-only authored-region alignment; spatial overlap may expose partial OCR "
+            "surface evidence but never grants exact text recovery or production fallback semantics"
+        ),
+        "production_routing_heuristic": False,
+    }
 
 
 def _coordinate_dimension(
@@ -223,11 +342,63 @@ def _provider_outcome(observation: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _native_ocr_reconciliation(observation: dict[str, Any]) -> dict[str, Any]:
+    """Measure overlap only when Provider evidence attributes blocks to native/OCR stages."""
+    blocks, collection_state = _blocks_and_state(observation)
+    if blocks is None:
+        return {
+            "status": "not-measured",
+            "reason": "No trustworthy text-block collection is available for reconciliation evidence.",
+            "destructive_merge_allowed": False,
+        }
+
+    attributed: list[tuple[str, str]] = []
+    unattributed = 0
+    for block in blocks:
+        stage = block.get("extraction_stage")
+        if stage not in {"native", "ocr"}:
+            unattributed += 1
+            continue
+        attributed.append((str(stage), _normalize(str(block.get("text", "")))))
+
+    if not attributed:
+        return {
+            "status": "not-measured",
+            "collection_state": collection_state,
+            "reason": (
+                "The measured Provider-normalized blocks do not attribute text to native vs OCR "
+                "stages; overlap/dedup identity therefore cannot be claimed."
+            ),
+            "attributed_block_count": 0,
+            "unattributed_block_count": len(blocks),
+            "destructive_merge_allowed": False,
+            "policy": "unknown provenance never becomes an implicit no-overlap result",
+        }
+
+    native_texts = {text for stage, text in attributed if stage == "native"}
+    ocr_texts = {text for stage, text in attributed if stage == "ocr"}
+    overlap = sorted(native_texts & ocr_texts)
+    status = "partial" if unattributed or collection_state == "partial" else "measured"
+    return {
+        "status": status,
+        "collection_state": collection_state,
+        "attributed_block_count": len(attributed),
+        "unattributed_block_count": unattributed,
+        "native_distinct_text_count": len(native_texts),
+        "ocr_distinct_text_count": len(ocr_texts),
+        "exact_text_overlap_count": len(overlap),
+        "exact_text_overlap": overlap,
+        "destructive_merge_allowed": False,
+        "policy": "overlap remains inspectable evidence; no irreversible merge is performed",
+    }
+
+
 def _fallback_verdict(
     native: dict[str, Any],
     raster: dict[str, Any],
     coverage: dict[str, Any],
     provider_outcome: dict[str, Any],
+    raster_alignment: dict[str, Any],
 ) -> dict[str, Any]:
     if (
         native.get("status") == "not-measured"
@@ -247,15 +418,26 @@ def _fallback_verdict(
         provider_outcome.get("route_status") == "success"
         and coverage.get("complete") is False
     )
+    partial_surface = int(raster_alignment.get("partial_surface_candidate_count", 0)) > 0
+    token_set_exact_order_mismatch = (
+        int(raster_alignment.get("token_multiset_exact_candidate_count", 0)) > 0
+        and int(raster_alignment.get("exact_candidate_count", 0)) == 0
+    )
     return {
         "status": "partial"
-        if native.get("status") == "partial" or raster.get("status") == "partial"
+        if native.get("status") == "partial"
+        or raster.get("status") == "partial"
+        or raster_alignment.get("status") == "partial"
         else "measured",
         "required": required,
         "raster_visible_target_missing": raster_missing,
+        "raster_region_partial_surface_evidence": partial_surface,
+        "raster_region_token_set_exact_order_mismatch": token_set_exact_order_mismatch,
         "nominal_provider_success_with_material_visible_gap": nominal_success_gap,
         "reason": (
-            "Gold-known raster-visible Source content is absent from the measured text evidence."
+            "Exact gold text is absent, but the authored raster region contains partial OCR surface evidence."
+            if required and partial_surface
+            else "Gold-known raster-visible Source content is absent from the measured text evidence."
             if required
             else "All gold-known raster-visible Source content is present in the measured text evidence."
         ),
@@ -280,6 +462,7 @@ def measure_b01_defective_native_dimensions(
     raster_content = _content_dimension(
         gold, observation, raster_ids, "raster_visible_text_content"
     )
+    raster_alignment = _raster_region_alignment(gold, observation, raster_ids)
     native_coordinates = _coordinate_dimension(
         gold, observation, native_ids, "native_text_coordinates"
     )
@@ -288,14 +471,19 @@ def measure_b01_defective_native_dimensions(
     )
     coverage = _visible_page_coverage(gold, native_content, raster_content)
     outcome = _provider_outcome(observation)
-    fallback = _fallback_verdict(native_content, raster_content, coverage, outcome)
+    reconciliation = _native_ocr_reconciliation(observation)
+    fallback = _fallback_verdict(
+        native_content, raster_content, coverage, outcome, raster_alignment
+    )
 
     return {
         "native_text_content": native_content,
         "raster_visible_text_content": raster_content,
+        "raster_region_alignment": raster_alignment,
         "visible_page_coverage": coverage,
         "native_text_coordinates": native_coordinates,
         "raster_visible_text_coordinates": raster_coordinates,
         "provider_outcome": outcome,
+        "native_ocr_reconciliation": reconciliation,
         "benchmark_fallback_verdict": fallback,
     }

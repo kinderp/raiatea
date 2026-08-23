@@ -4,7 +4,7 @@
 >
 > Assertion status: `mixed`
 >
-> Version: 0.3.0
+> Version: 0.4.0
 >
 > Last reviewed: 23 August 2026
 >
@@ -57,9 +57,10 @@ Source / Original Artifact
           NormalizedRepresentation
 ```
 
-Diagnostics, provenance, Source Coordinates and the authoritative policy/rights
-decision span the flow. `ProcessingOutcome` describes technical/orchestration
-outcome; it is not a second policy authority.
+Diagnostics, provenance, Source Coordinates and the authoritative Core policy
+or rights decision span the flow. `ProcessingOutcome` describes technical and
+orchestration outcome; it is not a second policy authority and it is not a
+replacement for field-level evidence state.
 
 This document defines a **conceptual model only**. It does not freeze JSON field
 names, Python classes, REST resources, database tables, plugin transport or a
@@ -73,7 +74,7 @@ Raiatea Core owns:
 
 - the meaning of SourceReference, processing attempt, NormalizedRepresentation,
   Source Coordinates, diagnostics and provenance;
-- the distinction between Provider-native facts and Raiatea-derived facts;
+- the distinction between Provider-native and Raiatea-derived facts;
 - normalized failure/degraded/partial semantics;
 - orchestration-level run outcome;
 - policy/rights decisions and their authority;
@@ -169,7 +170,18 @@ Each stage retains its outcome. The overall run outcome is a Raiatea
 orchestration-level assessment with explicit derivation basis; it is not
 implicitly the last stage or the worst stage.
 
-### I-14 — benchmark truth is not automatic production knowledge
+### I-14 — ProcessingOutcome does not encode output collection cardinality
+
+Stage/run outputs are explicit evidence-bearing references. Whether an observed
+collection is populated, empty, unavailable or malformed belongs to the relevant
+`EvidenceEnvelope`, ProviderEvidence or NormalizedRepresentation—not to a global
+`output=empty` outcome flag.
+
+This matters because a Provider stage may produce a Raw/ProviderEvidence artifact
+whose block collection is explicitly empty, while a failed run may produce no
+NormalizedRepresentation but still retain diagnostics and provenance.
+
+### I-15 — benchmark truth is not automatic production knowledge
 
 E-04 gold can prove that a fixture is malformed, incomplete or mismatched because
 the benchmark owns authored truth. A production run may assert such a condition
@@ -181,7 +193,7 @@ tests**, not hidden production detectors. Without runtime evidence,
 completeness/integrity remains `not-established` rather than importing benchmark
 gold truth.
 
-### I-15 — no universal quality score
+### I-16 — no universal quality score
 
 Provider/route benchmark evidence may inform later routing, but the extraction
 contract does not carry one authoritative weighted score.
@@ -211,7 +223,7 @@ OriginalArtifact ──────────────┤
              ├── Provider-native status
              ├── ProviderEvidence / RawExtractionRef
              ├── stage ProcessingOutcome
-             └── stage inputs/outputs
+             └── produced_outputs : EvidenceEnvelope<List<OutputRef>>
                                │
                                ▼
                    Raiatea normalization
@@ -254,8 +266,8 @@ for example metadata/link-only workflows. Storage policy is outside E-05a.
 
 Describes requested processing intent, not a Provider command line. Candidate
 information includes input reference, requested capability/profile constraints,
-applicable policy/rights context, optional requested evidence families,
-resource constraints and correlation/idempotency context.
+applicable policy/rights context, optional requested evidence families, resource
+constraints and correlation/idempotency context.
 
 Provider-specific parameters belong to the selected RouteProfile/ProcessingStage
 provenance unless Raiatea later defines a stable cross-provider option.
@@ -317,7 +329,8 @@ not-applicable
 ```
 
 - `present`: attributable evidence exists and can safely describe its value;
-- `partial`: some attributable evidence exists but the fact is incomplete;
+- `partial`: some attributable evidence exists but the complete fact is not
+  established;
 - `unavailable`: not measured/not exposed; never becomes zero/success;
 - `ambiguous`: identity/mapping has multiple defensible interpretations;
 - `malformed`: the evidence channel itself cannot be safely interpreted;
@@ -368,12 +381,12 @@ Mismatch belongs to validation/conflict/assessment between available facts. It
 is not a synonym for missing or partial evidence and benchmark gold semantics do
 not automatically become production payload fields.
 
-## 8. ProcessingRun and ProcessingStage
+## 8. ProcessingRun, ProcessingStage and produced outputs
 
 ### ProcessingRun
 
 A run is one Raiatea-governed processing attempt and may exist even when no
-Provider stage starts or no normalized output is produced.
+Provider stage starts or no NormalizedRepresentation is produced.
 
 Candidate minimum:
 
@@ -382,8 +395,8 @@ Candidate minimum:
 - start/end timestamps;
 - overall ProcessingOutcome;
 - explicit run-outcome derivation basis;
+- `produced_outputs` or equivalent evidence-bearing output references;
 - diagnostics and provenance;
-- produced raw/normalized/derived references;
 - authoritative RightsDecisionRef/policy context.
 
 Run outcome summarizes orchestration for downstream consumers. It is derived
@@ -402,10 +415,16 @@ Candidate minimum:
 - parent/prior stage relation;
 - ProviderRef + RouteProfileRef where Provider-backed;
 - trigger/reason for fallback or orchestration transition;
-- inputs and raw outputs;
+- inputs;
+- `produced_outputs : EvidenceEnvelope<List<OutputRef>>` or equivalent;
 - Provider-native status if invoked;
 - stage ProcessingOutcome;
 - diagnostics and provenance/timing.
+
+A Provider stage may produce a ProviderEvidence reference whose internal content
+collection is `present + empty`; a normalization stage may legitimately produce
+no NormalizedRepresentation. Those facts live in output/evidence references and
+are not collapsed into ProcessingOutcome.
 
 Stage vocabulary remains extensible; E-05a does not freeze an exhaustive enum.
 
@@ -414,7 +433,8 @@ Stage vocabulary remains extensible; E-05a does not freeze an exhaustive enum.
 > Assertion status: `evidence-derived draft decision`
 
 A single boolean or monolithic enum cannot represent E-04 outcomes safely.
-Technical/orchestration state is separate from authoritative Core policy.
+ProcessingOutcome carries technical/orchestration assessment; field-level output
+and evidence cardinality stays in EvidenceEnvelope/produced-output records.
 
 ### 9.1 Execution
 
@@ -432,24 +452,10 @@ unknown
 ```
 
 Provider-native status remains separately preserved. `not-started` is provisional
-vocabulary for a stage/run intentionally not invoked because a prerequisite or
-Core decision prevented execution.
+vocabulary for an attempt/stage intentionally not invoked because a prerequisite
+or Core decision prevented execution.
 
-### 9.2 Output availability
-
-Candidate states:
-
-```text
-present
-empty
-unavailable
-unknown
-```
-
-This axis answers only whether output exists/was observable. It does not encode
-validity: output can be `present` while integrity is degraded or invalid.
-
-### 9.3 Completeness
+### 9.2 Completeness
 
 Candidate states:
 
@@ -460,10 +466,11 @@ not-established
 not-applicable
 ```
 
-Completeness claims require an explicit production basis. Provider success alone
-cannot establish completeness.
+Completeness applies to the stage/run's intended semantic result when meaningful.
+Claims require an explicit production basis. Provider success alone cannot
+establish completeness.
 
-### 9.4 Integrity
+### 9.3 Integrity
 
 Candidate states:
 
@@ -475,10 +482,12 @@ not-established
 not-applicable
 ```
 
-Integrity is independent from output presence. A present output may be invalid or
-degraded; without validation evidence it may remain not-established.
+Integrity applies to the trustworthiness/usability of the intended result, not
+to whether a raw artifact happened to be emitted. A produced result can be
+present while integrity is degraded/invalid; without validation evidence it may
+remain not-established.
 
-### 9.5 Core policy disposition
+### 9.4 Core policy disposition
 
 Authoritative policy remains in `RightsDecisionRef` or a later more general Core
 policy-decision reference if evidence justifies one.
@@ -496,15 +505,15 @@ not-evaluated
 but the projection must be derived from and traceable to the Core decision. A
 Provider or ExtractorPlugin cannot set it independently.
 
-### 9.6 Run outcome versus stage outcomes
+### 9.5 Run outcome versus stage outcomes
 
 Each stage retains its own outcome. The run-level outcome is a Core orchestration
 summary with explicit derivation basis.
 
-A native stage can succeed with partial/not-established completeness, an OCR
-stage can succeed with partial recovery, and normalization can still produce a
-useful representation. Hidden rules such as “take worst stage” or “copy last
-stage” are forbidden.
+A native stage can succeed with not-established completeness, an OCR stage can
+succeed with partial recovery, and normalization can still produce a useful
+representation. Hidden rules such as “take worst stage” or “copy last stage” are
+forbidden.
 
 ## 10. ProviderEvidence / RawExtractionRef and NormalizedRepresentation
 
@@ -525,6 +534,22 @@ Candidate evidence includes or references:
 - Provider evidence channel/locator;
 - route/profile/runtime provenance;
 - raw-output fingerprint.
+
+A Provider content/block collection is itself evidence-bearing. Thus these are
+distinct:
+
+```text
+blocks.evidence_state = present
+blocks.value_state = empty
+blocks.value = []
+```
+
+and:
+
+```text
+blocks.evidence_state = unavailable
+blocks.value = absent
+```
 
 Large raw artifacts should be referenced by handle/ref; storage/streaming is
 outside E-05a.
@@ -668,19 +693,19 @@ B01-PDF-007 requires explicit multi-stage lineage:
 stage native-1
   route = docling-native-no-ocr
   provider_status = success
-  output = ProviderEvidence A
+  produced_outputs = [ProviderEvidence A]
   completeness = not-established unless runtime evidence establishes more
 
 stage ocr-1
   triggered_by = explicit Raiatea routing decision/basis
   route = docling-rapidocr-locked
-  output = ProviderEvidence B
+  produced_outputs = [ProviderEvidence B]
   recovery evidence = partial
 
 stage normalize-1
   inputs = A + B
   reconciliation = unresolved where block origin cannot be proven
-  output = NormalizedRepresentation C
+  produced_outputs = [NormalizedRepresentation C]
 
 run outcome
   derived_from = stage outcomes + produced outputs + runtime validation + Core policy
@@ -705,7 +730,7 @@ ProcessingRun
 ├── authoritative RightsDecisionRef / policy decision
 ├── Provider-native failure/restriction evidence, if a Provider was invoked
 ├── execution = not-started/failed/rejected/unsupported as actually normalized
-├── output = empty/unavailable/unknown as actually observed
+├── produced_outputs = explicit evidence-bearing references
 ├── diagnostics
 ├── provenance
 └── NormalizedRepresentation = absent
@@ -714,6 +739,11 @@ ProcessingRun
 If Core policy prevents Provider execution, ProviderEvidence is absent for the
 legitimate reason `not-started`; this differs from unavailable Provider evidence
 after an attempted run.
+
+If a Provider was invoked and exposes a content collection, `present+empty`,
+`unavailable` and `present+unexpected-content` remain field-level evidence
+states/values inside ProviderEvidence. They do not become global ProcessingOutcome
+output states.
 
 A generic Provider failure and explicit restriction signal are different
 evidence. Absence of observed side effects is not proof of unmeasured security
@@ -750,6 +780,7 @@ Every attempted ProcessingRun should be able to trace, where applicable:
 - stage timestamps or explicit not-started reason;
 - Provider-native status if available;
 - each stage ProcessingOutcome;
+- produced-output evidence/references for each stage/run;
 - overall run ProcessingOutcome + derivation basis;
 - diagnostics;
 - raw/provider evidence references/fingerprints;
@@ -764,52 +795,51 @@ the attempted processing/request evaluation is itself evidence.
 > Assertion status: `evidence-derived boundary`
 
 E-04 benchmark gold provides authoritative truth **inside the benchmark only**.
-It is used to prove that the production contract needs certain representational
-states; it is not a hidden runtime information source.
+It proves that the production contract needs certain states; it is not a hidden
+runtime information source.
 
 Examples:
 
 - NEG-001 tells the benchmark that Tika returned Provider-native success on a
   malformed fixture. In production, absent an independent validator, Raiatea can
   conclude only that integrity/completeness is `not-established`; it cannot
-  manufacture the fact `malformed` from benchmark history.
+  manufacture `malformed` from benchmark history.
 - B01-PDF-007 tells the benchmark that native extraction missed raster-visible
   authored text. In production, a fallback decision requires its own detector,
   policy or evidence basis; Provider brand does not imply incompleteness.
 - benchmark exact/mismatch scores validate contract behavior but are not
-  automatically serialized into every production ContentUnit or relation.
+  automatically serialized into production ContentUnits or relations.
 
 A production assessment such as `complete`, `degraded`, `invalid`, exact relation
 or fallback-required must therefore identify an explicit runtime basis.
 
 ## 20. Scenario validation
 
-The conceptual model must represent accepted E-04 evidence without
-Provider-specific contract fields.
+The model must represent accepted E-04 evidence without Provider-specific
+contract fields.
 
 ### A — Provider success, completeness not established
 
-A native extraction stage can record Provider-native success and output present
-while completeness remains not-established. If a runtime validator later finds
-partial coverage, it may set `partial` with that validator as basis.
+A native stage records Provider-native success and ProviderEvidence present while
+completeness remains not-established. A runtime validator may later establish
+partial/complete state with that validator as basis.
 
 ### B — benchmark-known malformed input not surfaced by Provider
 
 For Tika NEG-001, benchmark evidence records Provider-native success and no
 relevant corruption diagnostic. This proves Provider success cannot establish
-integrity. A production run without independent validation remains
-`integrity=not-established`; benchmark gold does not become a production
-malformed detector.
+integrity. Production without independent validation remains
+`integrity=not-established`; gold does not become a runtime malformed detector.
 
 ### C — restricted Source
 
-A Core decision may be requires-authorization/restricted, normalized output may
-be absent, and ProcessingRun/provenance still exists. Provider evidence is
-present only if an authorized/eligible Provider stage was actually invoked.
+A Core decision may be requires-authorization/restricted, NormalizedRepresentation
+may be absent, and ProcessingRun/provenance still exists. ProviderEvidence exists
+only if an eligible Provider stage was actually invoked.
 
 ### D — text complete, structure partial
 
-Table text may be present while table topology/cell binding is unavailable. No
+Table text may be present while topology/cell binding is unavailable. No
 row/column identity is invented.
 
 ### E — surface math present, semantics unavailable
@@ -849,7 +879,23 @@ value = absent
 
 The later schema must not collapse those states into one nullable field.
 
-### I — stage/run outcome aggregation
+### I — empty Provider content without an “empty outcome” axis
+
+A Provider stage can produce ProviderEvidence while its content collection is
+explicitly empty:
+
+```text
+stage.execution = succeeded
+stage.produced_outputs = [ProviderEvidence P]
+P.blocks.evidence_state = present
+P.blocks.value_state = empty
+P.blocks.value = []
+```
+
+This remains distinguishable from a stage where `P.blocks` is unavailable and
+from a run that never produced a NormalizedRepresentation.
+
+### J — stage/run outcome aggregation
 
 A native stage may succeed with not-established completeness, OCR may succeed
 with partial recovery, and normalization may produce useful output. The run
@@ -904,8 +950,9 @@ That child should:
 
 1. encode only evidence-required or deliberately accepted optional concepts;
 2. include negative tests for evidence-state/value-state collapse,
-   Provider/Raiatea origin confusion, coordinate coercion, hidden run/stage
-   aggregation, benchmark-gold leakage and restricted-output states;
+   Provider/Raiatea origin confusion, coordinate coercion, output-evidence
+   collapse, hidden run/stage aggregation, benchmark-gold leakage and
+   restricted-output states;
 3. remain independent of plugin transport;
 4. demonstrate at least two existing benchmark mappers can adapt without leaking
    native Provider schemas;

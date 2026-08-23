@@ -56,7 +56,9 @@ V1a forbids wildcard network hosts. Later runtime work must state which declarat
 
 ## Entrypoint
 
-`entrypoint.kind=process` plus a command is only launch metadata for future runtime binding. It intentionally does not choose stdio/JSON-RPC, HTTP, gRPC or any protocol.
+`entrypoint.kind=process` is only structural launch metadata for future runtime binding. V1a accepts either a single executable target or the structural Python module form `python -m package.module`; arbitrary command-line arguments are deliberately rejected. Credentials, runtime flags, authorized paths and injected secret values belong to the later runtime/protocol layer and must not be embedded in the manifest.
+
+This entrypoint metadata intentionally does not choose stdio/JSON-RPC, HTTP, gRPC or any other protocol.
 
 ## Examples
 
@@ -66,7 +68,7 @@ V1a forbids wildcard network hosts. Later runtime work must state which declarat
 
 ## Validation
 
-`validate_manifest.py` enforces cross-field invariants that are awkward or overly speculative to encode only in JSON Schema: API range intersection, family/capability consistency, unique capability/profile identity, E-05 reference rules, wildcard-network rejection, secret-value rejection and separation of trust/rights authority.
+`validate_manifest.py` enforces cross-field invariants that are awkward or overly speculative to encode only in JSON Schema: API range intersection, family/capability consistency, unique capability/profile identity, E-05 reference rules, wildcard-network rejection, secret-value rejection, structural entrypoint restrictions and separation of trust/rights authority.
 
 `test_manifest.py` contains positive and negative conformance tests. Dedicated CI also validates the schema and examples with pinned JSON Schema Draft 2020-12 support on Linux/Windows and Python 3.10/3.12.
 
@@ -75,6 +77,7 @@ V1a forbids wildcard network hosts. Later runtime work must state which declarat
 - transport and request/response envelopes;
 - process lifecycle/supervisor;
 - timeout/cancellation protocol;
+- runtime arguments and secret injection;
 - OS/container/WASM sandboxing;
 - signature PKI/marketplace;
 - plugin installation/update repository;

@@ -1,0 +1,59 @@
+{
+  "manifest_version": "1.0.0",
+  "plugin": {
+    "plugin_id": "org.raiatea.identity-transformer",
+    "name": "Deterministic Identity Transformer",
+    "version": "0.1.0"
+  },
+  "raiatea_plugin_api": {
+    "min_inclusive": "1.0.0",
+    "max_exclusive": "2.0.0"
+  },
+  "families": ["transformer"],
+  "capabilities": [
+    {
+      "capability_id": "transform.plan",
+      "profiles": [
+        {
+          "profile_id": "identity-plan",
+          "family": "transformer",
+          "input_classes": ["raiatea-managed-artifact"],
+          "output_classes": ["transformation-plan"],
+          "contracts": []
+        }
+      ]
+    },
+    {
+      "capability_id": "transform.run",
+      "profiles": [
+        {
+          "profile_id": "identity-copy",
+          "family": "transformer",
+          "input_classes": ["raiatea-managed-artifact"],
+          "output_classes": ["derived-artifact", "transformation-record"],
+          "contracts": [],
+          "mode": "deterministic-copy"
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": [],
+    "filesystem": [],
+    "secrets": [],
+    "temporary_workspace": true,
+    "resource_hints": {
+      "cpu_cores": 1,
+      "memory_mb": 128,
+      "timeout_seconds": 10
+    }
+  },
+  "entrypoint": {
+    "kind": "process",
+    "command": ["raiatea-identity-transformer"]
+  },
+  "trust_tier": "official",
+  "provenance": {
+    "publisher": "Raiatea"
+  }
+}

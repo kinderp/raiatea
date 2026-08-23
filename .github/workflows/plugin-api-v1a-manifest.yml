@@ -1,0 +1,79 @@
+name: Plugin API v1a manifest contract
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/contracts/plugins/**"
+      - ".github/workflows/plugin-api-v1a-manifest.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/contracts/plugins/**"
+      - ".github/workflows/plugin-api-v1a-manifest.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  semantic:
+    name: Plugin manifest semantic conformance / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile manifest tooling
+        run: python -m compileall -q elaboration/p0/contracts/plugins/1.0.0
+      - name: Run semantic tests
+        run: python elaboration/p0/contracts/plugins/1.0.0/test_manifest.py -v
+      - name: Validate examples
+        run: >-
+          python elaboration/p0/contracts/plugins/1.0.0/validate_manifest.py
+          elaboration/p0/contracts/plugins/1.0.0/examples/local-read-only-source.json
+          elaboration/p0/contracts/plugins/1.0.0/examples/benchmark-backed-extractor.json
+          elaboration/p0/contracts/plugins/1.0.0/examples/minimal-transformer.json
+
+  json-schema-reference:
+    name: Plugin manifest JSON Schema reference validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Install pinned validator
+        run: python -m pip install --disable-pip-version-check "jsonschema==4.26.0"
+      - name: Validate schema, examples and negative entrypoint case
+        run: |
+          python - <<'PY'
+          import copy
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+
+          root = Path("elaboration/p0/contracts/plugins/1.0.0")
+          schema = json.loads((root / "plugin-manifest.schema.json").read_text(encoding="utf-8"))
+          Draft202012Validator.check_schema(schema)
+          validator = Draft202012Validator(schema)
+
+          examples = {}
+          for name in ("local-read-only-source.json", "benchmark-backed-extractor.json", "minimal-transformer.json"):
+              value = json.loads((root / "examples" / name).read_text(encoding="utf-8"))
+              examples[name] = value
+              errors = sorted(validator.iter_errors(value), key=lambda e: list(e.path))
+              if errors:
+                  raise SystemExit("\n".join(f"{name}: {list(e.path)}: {e.message}" for e in errors))
+              print("PASS", name)
+
+          bad = copy.deepcopy(examples["benchmark-backed-extractor.json"])
+          bad["entrypoint"]["command"] = ["raiatea-benchmark-extractor", "--token=secret"]
+          errors = list(validator.iter_errors(bad))
+          if not errors:
+              raise SystemExit("free-form entrypoint arguments unexpectedly passed JSON Schema")
+          print("PASS negative free-form entrypoint rejected")
+          PY

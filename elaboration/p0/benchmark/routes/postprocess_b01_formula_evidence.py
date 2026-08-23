@@ -34,6 +34,14 @@ def _score(
     combined = dict(observation)
     combined["blocks"] = list(observation.get("blocks", []))
     if explicit_diagnostic is not None:
+        for key in (
+            "formula_text_collection_state",
+            "provider_group_collection_state",
+            "math_relation_collection_state",
+        ):
+            if key in explicit_diagnostic:
+                combined[key] = explicit_diagnostic[key]
+
         if isinstance(explicit_diagnostic.get("formula_text_blocks"), list):
             combined["formula_text_blocks"] = explicit_diagnostic["formula_text_blocks"]
         if isinstance(explicit_diagnostic.get("provider_formula_groups"), list):

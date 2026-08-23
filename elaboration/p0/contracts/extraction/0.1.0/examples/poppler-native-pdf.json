@@ -21,8 +21,8 @@
       },
       "input_refs": [],
       "provider_status": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "process exit and parsed XML",
         "channel": "normalized-provider-view",

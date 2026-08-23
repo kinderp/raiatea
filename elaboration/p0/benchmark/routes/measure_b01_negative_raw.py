@@ -34,6 +34,8 @@ FIXTURE_IDS = (fixtures.NEG_MALFORMED_ID, fixtures.NEG_ACCESS_CONTROLLED_ID)
 FORBIDDEN_PROVIDER_OPTION_PREFIXES = (
     "-nodrm",
     "--password",
+    "--password-file",
+    "--password-is-hex-key",
     "--decrypt",
     "--remove-restrictions",
 )
@@ -167,9 +169,6 @@ def run_docling(
         source = source_root / f"{fixture_id}.pdf"
         fixture_cache = cache_root / fixture_id
         observation = run_docling_pdf_json(source, artifacts_path, fixture_cache)
-        # Raw exported Provider data is useful evidence but duplicated inside the
-        # observation. Keep it in this raw report; the later compact durable
-        # baseline will fingerprint rather than reproduce large payloads.
         rows.append(_result_row(fixture_id, observation))
     return rows
 

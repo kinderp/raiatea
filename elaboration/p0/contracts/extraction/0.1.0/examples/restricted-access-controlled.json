@@ -22,8 +22,8 @@
       },
       "input_refs": [],
       "provider_status": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "Tika process exit and encrypted-PDF failure evidence",
         "channel": "provider-process",

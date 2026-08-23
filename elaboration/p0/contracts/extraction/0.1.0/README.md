@@ -34,16 +34,48 @@ Core-owned `normalization` / `alignment` stages consume explicit previously prod
 
 The run-level `ProcessingOutcome` remains a Core orchestration assessment with its own derivation basis. A run with no stages and no produced outputs is valid, for example when an authoritative Core rights gate terminates processing before Provider selection.
 
+## EvidenceEnvelope semantics
+
+Evidence availability, observed value, epistemic origin and Provider channel are separate axes.
+
+Candidate machine states:
+
+```text
+EvidenceState:
+  measured | partial | not-measured | malformed-evidence | ambiguous | not-applicable
+
+ValueState:
+  present | explicit-empty | unknown
+
+EvidenceOrigin:
+  provider-native | raiatea-aligned | raiatea-derived | user-asserted | unresolved
+```
+
+`channel` describes where Provider evidence was observed (`lossless/raw`, normalized Provider view, diagnostic stream, etc.); it never substitutes for `origin`.
+
+A trustworthy empty collection is `evidence_state=measured`, `value_state=explicit-empty`, with its actual empty value. For a singular SourceCoordinate the explicit empty value is `null`.
+
+**Mismatch is not a ValueState.** When two available facts are compared, mismatch/consistency belongs to an optional `EvidenceAssessment` carrying its own basis and optional compared-to reference. An unavailable or malformed fact cannot be declared a proven mismatch.
+
+## Policy and technical outcome are separate
+
+`ProcessingOutcome.execution` is technical/orchestration state (`not-started`, `completed`, `failed`, `rejected`, `unsupported`, `cancelled`, `timeout`, `unknown`). It does not contain a `restricted` policy state.
+
+Authoritative permission/restriction remains Core-owned through `RightsDecisionRef`. Therefore:
+
+- a run stopped by policy before Provider invocation is technically `not-started` plus a RightsDecisionRef;
+- a Provider attempt that fails on an access-controlled artifact remains technically `failed`, while the RightsDecisionRef/diagnostics preserve the authorization boundary;
+- no extractor or ProcessingOutcome becomes a second rights-policy authority.
+
 ## Required distinctions
 
 - `ProviderRef` and `RouteProfileRef` are structurally separate;
 - Provider/route identity is stage/evidence scoped, not unconditional run identity;
 - Provider-native status, stage outcome and run outcome are three distinct concepts;
-- evidence availability (`measured`, `partial`, `not-measured`, ...) is separate from observed value state (`present`, `explicit-empty`, `explicit-mismatch`, `unknown`);
-- explicit empty is present evidence with an empty value; for a singular SourceCoordinate it is represented as `value: null`;
+- evidence availability, observed value, epistemic origin, channel and comparison assessment are distinct concepts;
 - produced Provider evidence and normalized representations are explicit references outside `ProcessingOutcome`;
-- stage `input_refs` must refer to outputs of earlier stages, making derivation inspectable;
-- `RightsDecisionRef` is a reference to Core-owned policy authority, not a second policy decision inside extraction outcome;
+- stage `input_refs` must refer to outputs of earlier stages, making normalization derivation inspectable;
+- `RightsDecisionRef` is a reference to Core-owned policy authority, not a policy field inside extraction outcome;
 - `SourceCoordinate` is a typed union. PDF geometric and EPUB logical/package coordinates are incompatible variants;
 - OCR/fallback is an explicit Provider-backed stage with trigger basis, parent-stage lineage and reconciliation state;
 - relations may be Provider-explicit or Raiatea-derived, but both require an explicit basis;
@@ -57,7 +89,9 @@ The run-level `ProcessingOutcome` remains a Core orchestration assessment with i
 | provider/core stage executor distinction | required by accepted E-05a ownership boundary | Raiatea Core owns normalization/alignment; Providers own route execution evidence |
 | stage outcome distinct from Provider status | required-by-evidence | Provider native `success` may coexist with Raiatea-invalid/degraded assessment |
 | run outcome distinct from stage outcome | required-by-evidence | overall orchestration is not last-stage/worst-stage aggregation |
-| evidence state + value state | required-by-evidence | E-04 distinguishes unavailable, partial, explicit-empty, mismatch and malformed evidence |
+| evidence state + value state | required-by-evidence | E-04 distinguishes unavailable, partial and explicit-empty evidence |
+| evidence origin separate from channel | required by E-05a I-04/I-05 | Provider-native facts may be read through different channels; Raiatea may align/derive others |
+| mismatch as assessment | required by E-05a §7.4 | comparison/conflict is not evidence availability or value cardinality |
 | Provider evidence channel/locator | required-by-evidence / optional locator | lossless/raw, normalized Provider views and diagnostics expose different facts |
 | normalized content units | required-by-evidence | measured Providers segment the same source differently |
 | semantic role | optional-when-provider-exposes | several routes preserve surface text without semantic roles |
@@ -87,8 +121,8 @@ EPUB content cannot acquire synthetic rendered page numbers merely to fit the PD
 - `examples/poppler-native-pdf.json` — Provider extraction followed by explicit Core normalization;
 - `examples/docling-rapidocr-staged.json` — native Provider stage, OCR fallback Provider stage, then Core normalization with unresolved reconciliation;
 - `examples/direct-epub-normalized.json` — EPUB logical/package coordinates with no page-number coercion;
-- `examples/restricted-access-controlled.json` — Provider invocation fails on access-controlled input; run-level Core outcome is restricted and no normalization occurs;
-- `examples/restricted-before-provider.json` — Core rights gate terminates a run before any Provider stage starts.
+- `examples/restricted-access-controlled.json` — Provider invocation technically fails on access-controlled input; RightsDecisionRef preserves the authorization boundary and no normalization occurs;
+- `examples/restricted-before-provider.json` — technical execution is `not-started` because the Core rights gate terminates the run before any Provider stage starts.
 
 These examples are contract tests, not production routing policy and not benchmark gold promoted into runtime knowledge.
 
@@ -101,9 +135,11 @@ These examples are contract tests, not production routing policy and not benchma
 
 Representative mapper-shaped inputs live under `adapter_inputs/`. The adaptation deliberately drops Provider-native implementation fields such as Poppler `native_bbox` and EPUB container/spine bookkeeping from normalized records. It never reads benchmark gold, so source-level completeness remains `unknown` unless runtime evidence independently supports a stronger claim.
 
+For Poppler, the text surface remains `origin=provider-native`, while conversion from Poppler's native top-left scaled coordinates into canonical bottom-left PDF points is explicitly `origin=raiatea-aligned`. This demonstrates why origin and Provider channel cannot be the same field.
+
 ## Validation
 
-`validate_contract.py` is dependency-light and enforces cross-field semantic invariants for run, Provider evidence and normalized representation records. It also checks stage ordering, single producer identity, prior-output input references, Core normalization lineage and Provider/Core executor boundaries.
+`validate_contract.py` is dependency-light and enforces cross-field semantic invariants for run, Provider evidence and normalized representation records. It also checks stage ordering, single producer identity, prior-output input references, Core normalization lineage, Provider/Core executor boundaries, evidence origin semantics and mismatch-assessment validity.
 
 `test_contract.py` and `test_adapt_benchmark.py` cover positive and negative cases. Dedicated CI additionally validates the JSON Schema with pinned `jsonschema==4.26.0` Draft 2020-12 support and validates both mapper-adaptation outputs against the same schema definitions.
 

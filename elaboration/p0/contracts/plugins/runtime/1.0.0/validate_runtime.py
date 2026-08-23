@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from datetime import datetime
 import hashlib
 import json
 from typing import Any
@@ -30,6 +31,14 @@ MAX_PARAMETERS_JSON_BYTES = 64 * 1024
 def _require(condition: bool, message: str) -> None:
     if not condition:
         raise RuntimeContractError(message)
+
+
+def _timestamp(value: Any, label: str) -> datetime:
+    _require(isinstance(value, str) and value, f"{label}-required")
+    try:
+        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise RuntimeContractError(f"{label}-invalid") from exc
 
 
 def canonical_manifest_fingerprint(manifest: dict[str, Any]) -> str:
@@ -108,17 +117,30 @@ def _input_ref_ids(request: dict[str, Any]) -> list[str]:
     return refs
 
 
-def _known_output_targets(request: dict[str, Any]) -> dict[str, str]:
-    targets: dict[str, str] = {}
+def _validate_handle_lease(handle: dict[str, Any], deadline: datetime, label: str) -> None:
+    handle_id = handle.get("handle_id")
+    lease_id = handle.get("lease_id")
+    _require(isinstance(handle_id, str) and handle_id, f"{label}-handle-id-required")
+    _require(isinstance(lease_id, str) and lease_id, f"{label}-lease-id-required")
+    if handle.get("expires_at") is not None:
+        expiry = _timestamp(handle.get("expires_at"), f"{label}-expires-at")
+        _require(expiry >= deadline, f"{label}-lease-expires-before-deadline")
+
+
+def _known_output_targets(request: dict[str, Any], deadline: datetime | None = None) -> dict[str, dict[str, Any]]:
+    targets: dict[str, dict[str, Any]] = {}
     for handle in request.get("output_targets", []):
         _require(isinstance(handle, dict), "output-target-must-be-handle")
         _require(handle.get("access") == "write-once-output", "output-target-must-be-write-once")
         handle_id = handle.get("handle_id")
-        lease_id = handle.get("lease_id")
         _require(isinstance(handle_id, str) and handle_id, "output-target-handle-id-required")
-        _require(isinstance(lease_id, str) and lease_id, "output-target-lease-id-required")
         _require(handle_id not in targets, "duplicate-output-target-handle")
-        targets[handle_id] = lease_id
+        if deadline is not None:
+            _validate_handle_lease(handle, deadline, "output-target")
+        max_bytes = handle.get("byte_length")
+        if max_bytes is not None:
+            _require(isinstance(max_bytes, int) and max_bytes >= 0, "output-target-byte-limit-invalid")
+        targets[handle_id] = handle
     return targets
 
 
@@ -133,12 +155,17 @@ def validate_invocation(request: dict[str, Any], manifest: dict[str, Any], hands
     advertised = {(row.get("capability_id"), row.get("profile_id")) for row in handshake.get("advertised_profiles", []) if isinstance(row, dict)}
     _require(key in advertised, "invocation-profile-not-advertised-by-runtime")
 
+    deadline = _timestamp(request.get("deadline_at"), "invocation-deadline")
+    observed_at = _timestamp(handshake.get("observed_at"), "handshake-observed-at")
+    _require(deadline > observed_at, "invocation-deadline-not-after-handshake")
+
     parameters = request.get("parameters")
     _require(isinstance(parameters, dict), "invocation-parameters-must-be-object")
     encoded = json.dumps(parameters, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
     _require(len(encoded) <= MAX_PARAMETERS_JSON_BYTES, "control-plane-parameters-too-large")
     _scan_parameters(parameters)
 
+    input_handle_ids: set[str] = set()
     for item in request.get("inputs", []):
         _require(isinstance(item, dict), "invocation-input-must-be-object")
         _require(item.get("kind") in {"asset-handle", "record-ref"}, "inline-or-unknown-input-forbidden")
@@ -147,8 +174,13 @@ def validate_invocation(request: dict[str, Any], manifest: dict[str, Any], hands
             handle = item.get("handle")
             _require(isinstance(handle, dict), "input-handle-required")
             _require(handle.get("access") == "read", "input-asset-handle-must-be-read")
+            _validate_handle_lease(handle, deadline, "input-handle")
+            handle_id = str(handle.get("handle_id"))
+            _require(handle_id not in input_handle_ids, "duplicate-input-handle")
+            input_handle_ids.add(handle_id)
 
-    _known_output_targets(request)
+    output_targets = _known_output_targets(request, deadline)
+    _require(not (input_handle_ids & set(output_targets)), "handle-cannot-be-input-and-output-target")
 
     runtime_context = request.get("runtime_context")
     _require(isinstance(runtime_context, dict), "runtime-context-required")
@@ -204,9 +236,22 @@ def validate_result(
             _require(isinstance(handle, dict), "output-handle-required")
             _require(handle.get("access") == "write-once-output", "output-asset-handle-must-be-write-once")
             handle_id = handle.get("handle_id")
-            lease_id = handle.get("lease_id")
             _require(handle_id in authorized_targets, "plugin-minted-output-handle-forbidden")
-            _require(authorized_targets.get(handle_id) == lease_id, "output-handle-lease-mismatch")
+            target = authorized_targets[str(handle_id)]
+            _require(target.get("lease_id") == handle.get("lease_id"), "output-handle-lease-mismatch")
+            if target.get("expires_at") is None:
+                _require(handle.get("expires_at") is None, "output-handle-cannot-extend-lease-metadata")
+            else:
+                _require(handle.get("expires_at") == target.get("expires_at"), "output-handle-expiry-mismatch")
+            if target.get("media_type") is not None:
+                _require(handle.get("media_type") == target.get("media_type"), "output-handle-media-type-mismatch")
+            actual_bytes = handle.get("byte_length")
+            _require(isinstance(actual_bytes, int) and actual_bytes >= 0, "output-handle-byte-length-required")
+            max_bytes = target.get("byte_length")
+            if isinstance(max_bytes, int):
+                _require(actual_bytes <= max_bytes, "output-handle-exceeds-authorized-byte-limit")
+            fingerprint = handle.get("fingerprint")
+            _require(isinstance(fingerprint, str) and fingerprint.startswith("sha256:"), "output-handle-fingerprint-required")
             output_ids.append(str(handle_id))
         elif output.get("kind") == "record-ref":
             ref = output.get("record_ref")

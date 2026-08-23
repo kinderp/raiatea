@@ -91,13 +91,13 @@ class B01FormulaScoringTests(unittest.TestCase):
         self.assertEqual(dimensions["explicit_math_relations"]["status"], "not-measured")
 
     def test_explicit_provider_math_relation_can_be_credited_exactly(self):
-        gold_relation = self.gold["formulas"][0]["relations"][0]
         observation = {
             "math_relations": [
                 {
                     "formula_id": "formula-energy",
                     "kind": "superscript",
-                    "gold_relation_key": gold_relation,
+                    "base_token": "f1-c",
+                    "script_token": "f1-exp2",
                     "provider_relation_source": "provider-explicit-math-relation",
                 }
             ]
@@ -106,20 +106,19 @@ class B01FormulaScoringTests(unittest.TestCase):
             observation, self.gold
         )["explicit_math_relations"]
         self.assertEqual(relations["status"], "partial")
+        self.assertEqual(relations["observed_count"], 1)
         self.assertEqual(relations["evidence_count"], 1)
         self.assertEqual(relations["exact_count"], 1)
         self.assertFalse(relations["visual_inference"])
 
-    def test_wrong_explicit_relation_does_not_receive_credit(self):
-        gold_relation = self.gold["formulas"][0]["relations"][0]
-        wrong = dict(gold_relation)
-        wrong["base_token"] = "f1-m"
+    def test_wrong_explicit_relation_is_measured_mismatch_not_unknown(self):
         observation = {
             "math_relations": [
                 {
                     "formula_id": "formula-energy",
                     "kind": "superscript",
-                    "gold_relation_key": wrong,
+                    "base_token": "f1-m",
+                    "script_token": "f1-exp2",
                     "provider_relation_source": "provider-explicit-math-relation",
                 }
             ]
@@ -127,9 +126,71 @@ class B01FormulaScoringTests(unittest.TestCase):
         relations = SCORE.measure_b01_formula_dimensions(
             observation, self.gold
         )["explicit_math_relations"]
-        self.assertEqual(relations["status"], "not-measured")
+        self.assertEqual(relations["status"], "measured")
+        self.assertEqual(relations["observed_count"], 1)
         self.assertEqual(relations["evidence_count"], 0)
         self.assertEqual(relations["exact_count"], 0)
+        self.assertEqual(relations["unmatched_observed_count"], 1)
+        self.assertFalse(relations["explicit_empty"])
+
+    def test_explicit_empty_relation_collection_is_measured_zero(self):
+        relations = SCORE.measure_b01_formula_dimensions(
+            {"math_relations": []}, self.gold
+        )["explicit_math_relations"]
+        self.assertEqual(relations["status"], "measured")
+        self.assertEqual(relations["observed_count"], 0)
+        self.assertEqual(relations["evidence_count"], 0)
+        self.assertTrue(relations["explicit_empty"])
+
+    def test_relation_collection_marked_unavailable_stays_not_measured(self):
+        relations = SCORE.measure_b01_formula_dimensions(
+            {
+                "math_relations": [],
+                "math_relation_collection_state": "not-measured",
+            },
+            self.gold,
+        )["explicit_math_relations"]
+        self.assertEqual(relations["status"], "not-measured")
+        self.assertIsNone(relations["observed_count"])
+
+    def test_unavailable_formula_text_collection_does_not_become_measured_zero(self):
+        dimensions = SCORE.measure_b01_formula_dimensions(
+            {
+                "formula_text_blocks": [],
+                "formula_text_collection_state": "not-measured",
+            },
+            self.gold,
+        )
+        self.assertEqual(dimensions["formula_surface_content"]["status"], "not-measured")
+        self.assertEqual(dimensions["formula_display_order"]["status"], "not-measured")
+        self.assertEqual(dimensions["token_geometry"]["status"], "not-measured")
+
+    def test_partial_formula_text_collection_propagates_partial_state(self):
+        dimensions = SCORE.measure_b01_formula_dimensions(
+            {
+                "formula_text_blocks": [
+                    {"text": "E = mc 2"},
+                    {"text": "x 2 + y 2 = z 2"},
+                    {"text": "( a + b ) c"},
+                ],
+                "formula_text_collection_state": "partial",
+            },
+            self.gold,
+        )
+        self.assertEqual(dimensions["formula_surface_content"]["status"], "partial")
+        self.assertEqual(dimensions["formula_surface_content"]["exact_once_count"], 3)
+        self.assertEqual(dimensions["formula_display_order"]["status"], "partial")
+
+    def test_unavailable_provider_group_collection_is_not_empty_measurement(self):
+        diagnostic = SCORE.measure_b01_formula_dimensions(
+            {
+                "provider_formula_groups": [],
+                "provider_group_collection_state": "not-measured",
+            },
+            self.gold,
+        )["provider_group_diagnostic"]
+        self.assertEqual(diagnostic["status"], "not-measured")
+        self.assertIsNone(diagnostic["observed_count"])
 
     def test_missing_provider_text_is_not_scored_as_zero_fidelity(self):
         dimensions = SCORE.measure_b01_formula_dimensions({}, self.gold)

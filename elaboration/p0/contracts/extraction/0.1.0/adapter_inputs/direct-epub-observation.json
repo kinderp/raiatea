@@ -1,0 +1,26 @@
+{
+  "contract": {
+    "name": "raiatea-p0-benchmark-observation",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false
+  },
+  "route": "direct-epub-stdlib",
+  "status": "success",
+  "warnings": [],
+  "spine": ["ch1", "ch2"],
+  "resources": [
+    {"id": "ch1", "resource": "OEBPS/ch1.xhtml", "media_type": "application/xhtml+xml"},
+    {"id": "ch2", "resource": "OEBPS/ch2.xhtml", "media_type": "application/xhtml+xml"}
+  ],
+  "blocks": [
+    {"type": "heading", "level": 1, "text": "Introduction", "resource": "OEBPS/ch1.xhtml", "fragment": "intro"},
+    {"type": "paragraph", "level": null, "text": "The first chapter establishes the package order.", "resource": "OEBPS/ch1.xhtml", "fragment": "intro-text"},
+    {"type": "heading", "level": 1, "text": "Next Chapter", "resource": "OEBPS/ch2.xhtml", "fragment": "next"},
+    {"type": "paragraph", "level": null, "text": "The second chapter follows the first in the spine.", "resource": "OEBPS/ch2.xhtml", "fragment": "next-text"}
+  ],
+  "navigation": [],
+  "links": [],
+  "active_content": [],
+  "duration_seconds": 0.001
+}

@@ -26,6 +26,7 @@ FORBIDDEN_PARAMETER_KEYS = {
     "blob", "base64", "secret", "password", "token", "credential", "api_key",
 }
 MAX_PARAMETERS_JSON_BYTES = 64 * 1024
+HEX = frozenset("0123456789abcdef")
 
 
 def _require(condition: bool, message: str) -> None:
@@ -36,9 +37,17 @@ def _require(condition: bool, message: str) -> None:
 def _timestamp(value: Any, label: str) -> datetime:
     _require(isinstance(value, str) and value, f"{label}-required")
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:
         raise RuntimeContractError(f"{label}-invalid") from exc
+    _require(parsed.tzinfo is not None and parsed.utcoffset() is not None, f"{label}-timezone-required")
+    return parsed
+
+
+def _require_sha256(value: Any, label: str) -> None:
+    _require(isinstance(value, str) and value.startswith("sha256:"), f"{label}-required")
+    digest = value[7:]
+    _require(len(digest) == 64 and all(char in HEX for char in digest), f"{label}-invalid")
 
 
 def canonical_manifest_fingerprint(manifest: dict[str, Any]) -> str:
@@ -250,8 +259,7 @@ def validate_result(
             max_bytes = target.get("byte_length")
             if isinstance(max_bytes, int):
                 _require(actual_bytes <= max_bytes, "output-handle-exceeds-authorized-byte-limit")
-            fingerprint = handle.get("fingerprint")
-            _require(isinstance(fingerprint, str) and fingerprint.startswith("sha256:"), "output-handle-fingerprint-required")
+            _require_sha256(handle.get("fingerprint"), "output-handle-fingerprint")
             output_ids.append(str(handle_id))
         elif output.get("kind") == "record-ref":
             ref = output.get("record_ref")

@@ -24,6 +24,7 @@
       "provider_status": {
         "evidence_state": "measured",
         "value_state": "present",
+        "origin": "provider-native",
         "basis": "Docling conversion status",
         "channel": "provider-normalized",
         "value": "success"
@@ -61,12 +62,11 @@
         }
       },
       "parent_stage_id": "native-1",
-      "input_refs": [
-        {"kind": "provider-evidence", "evidence_id": "native-raw", "channel": "lossless-json"}
-      ],
+      "input_refs": [],
       "provider_status": {
         "evidence_state": "measured",
         "value_state": "present",
+        "origin": "provider-native",
         "basis": "Docling conversion status",
         "channel": "provider-normalized",
         "value": "success"

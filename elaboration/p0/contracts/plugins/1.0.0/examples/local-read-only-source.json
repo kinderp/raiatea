@@ -1,0 +1,64 @@
+{
+  "manifest_version": "1.0.0",
+  "plugin": {
+    "plugin_id": "org.raiatea.local-source",
+    "name": "Local Read-Only Source",
+    "version": "0.1.0"
+  },
+  "raiatea_plugin_api": {
+    "min_inclusive": "1.0.0",
+    "max_exclusive": "2.0.0"
+  },
+  "families": ["source"],
+  "capabilities": [
+    {
+      "capability_id": "source.discover",
+      "profiles": [
+        {
+          "profile_id": "local-read-only",
+          "family": "source",
+          "input_classes": ["local-filesystem-scope"],
+          "output_classes": ["source-candidate", "source-reference"],
+          "contracts": [],
+          "mode": "enumerate-and-reference"
+        }
+      ]
+    },
+    {
+      "capability_id": "source.metadata",
+      "profiles": [
+        {
+          "profile_id": "local-file-metadata",
+          "family": "source",
+          "input_classes": ["local-file"],
+          "output_classes": ["source-metadata-evidence"],
+          "contracts": []
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": [],
+    "filesystem": [
+      {
+        "root": "${AUTHORIZED_SOURCE_ROOT}",
+        "mode": "read"
+      }
+    ],
+    "secrets": [],
+    "temporary_workspace": false,
+    "resource_hints": {
+      "cpu_cores": 1,
+      "memory_mb": 128,
+      "timeout_seconds": 30
+    }
+  },
+  "entrypoint": {
+    "kind": "process",
+    "command": ["python", "-m", "raiatea_local_source"]
+  },
+  "trust_tier": "official",
+  "provenance": {
+    "publisher": "Raiatea"
+  }
+}

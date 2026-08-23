@@ -60,11 +60,29 @@ class B01NegativePdfFixtureTests(unittest.TestCase):
         self.assertTrue(fixture["quality_dimensions_excluded"])
         self.assertEqual(fixture["forbidden_interpretation"], "silent-complete-success")
 
-    def test_neg002_gold_is_pending_qpdf_gate_before_provider_measurement(self):
+    def test_neg002_gold_identity_is_frozen_before_provider_measurement(self):
         fixture = self.gold["fixtures"][NEG.NEG_ACCESS_CONTROLLED_ID]
-        self.assertIsNone(fixture["sha256"])
-        self.assertIsNone(fixture["bytes"])
-        self.assertIn("pending-qpdf-reproducibility", fixture["identity_state"])
+        self.assertEqual(
+            fixture["sha256"],
+            "c277faaffe74c38b0e01b18d30e2573614f97377aacbb5e74eadd012a528029f",
+        )
+        self.assertEqual(fixture["bytes"], 1079)
+        self.assertIn("frozen", fixture["identity_state"])
+        self.assertEqual(fixture["generator_version"], NEG.GENERATOR_VERSION)
+        generator = fixture["generator_reference"]
+        self.assertEqual(generator["qpdf_cli_version"], "11.9.0")
+        self.assertEqual(generator["qpdf_package"], "11.9.0-1.1ubuntu0.1")
+        self.assertEqual(
+            generator["qpdf_executable_sha256"],
+            "10fc302c4ca9860f24b8d2cb7f8a4cc454ba59d4a91e7a8e40f6b2c229486df7",
+        )
+        self.assertEqual(
+            generator["requires_password_query_without_password"]["exit_code"], 0
+        )
+        self.assertEqual(
+            generator["requires_password_query_without_password"]["meaning"],
+            "password-required",
+        )
         self.assertFalse(fixture["access_control"]["provider_password_supplied"])
         self.assertFalse(fixture["access_control"]["bypass_allowed"])
         self.assertTrue(fixture["quality_dimensions_excluded"])

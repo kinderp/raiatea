@@ -17,14 +17,14 @@ class ContractError(ValueError):
 
 
 EVIDENCE_STATES = {
-    "measured",
+    "present",
     "partial",
-    "not-measured",
-    "malformed-evidence",
+    "unavailable",
     "ambiguous",
+    "malformed",
     "not-applicable",
 }
-VALUE_STATES = {"present", "explicit-empty", "unknown"}
+VALUE_STATES = {"populated", "empty", "unknown"}
 EVIDENCE_ORIGINS = {
     "provider-native",
     "raiatea-aligned",
@@ -70,11 +70,11 @@ def _validate_evidence(value: Any, label: str) -> None:
     _require(value_state in VALUE_STATES, f"{label}-bad-value-state")
     _require(origin in EVIDENCE_ORIGINS, f"{label}-bad-evidence-origin")
     _require(bool(value.get("basis")), f"{label}-basis-required")
-    if value_state in {"present", "explicit-empty"}:
+    if value_state in {"populated", "empty"}:
         _require("value" in value, f"{label}-value-required-for-{value_state}")
-    if evidence_state == "not-measured":
-        _require(value_state == "unknown", f"{label}-not-measured-must-have-unknown-value")
-        _require(origin == "unresolved", f"{label}-not-measured-origin-must-be-unresolved")
+    if evidence_state == "unavailable":
+        _require(value_state == "unknown", f"{label}-unavailable-must-have-unknown-value")
+        _require(origin == "unresolved", f"{label}-unavailable-origin-must-be-unresolved")
     if evidence_state == "not-applicable":
         _require(origin == "unresolved", f"{label}-not-applicable-origin-must-be-unresolved")
 
@@ -85,7 +85,7 @@ def _validate_evidence(value: Any, label: str) -> None:
         _require(bool(assessment.get("basis")), f"{label}-assessment-basis-required")
         if assessment.get("state") in {"consistent", "mismatch"}:
             _require(
-                evidence_state not in {"not-measured", "not-applicable", "malformed-evidence"},
+                evidence_state not in {"unavailable", "not-applicable", "malformed"},
                 f"{label}-assessment-requires-available-evidence",
             )
             _require(value_state != "unknown", f"{label}-assessment-requires-observed-value")
@@ -94,13 +94,13 @@ def _validate_evidence(value: Any, label: str) -> None:
 def _validate_coordinate(value: Any, label: str) -> None:
     _validate_evidence(value, label)
     value_state = value.get("value_state")
-    if value_state == "explicit-empty":
-        _require(value.get("value") is None, f"{label}-explicit-empty-must-use-null")
+    if value_state == "empty":
+        _require(value.get("value") is None, f"{label}-empty-must-use-null")
         return
-    if value_state != "present":
+    if value_state != "populated":
         return
     coordinate = value.get("value")
-    _require(isinstance(coordinate, dict), f"{label}-present-coordinate-must-be-object")
+    _require(isinstance(coordinate, dict), f"{label}-populated-coordinate-must-be-object")
     kind = coordinate.get("kind")
     if kind == "pdf-geometric":
         _require(isinstance(coordinate.get("page_index"), int), f"{label}-pdf-page-index-required")

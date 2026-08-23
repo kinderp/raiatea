@@ -1,0 +1,137 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-pdf-006-formula-fidelity-baseline",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "evidence_source_commit": "6440da9b69c5ab50370db3999bccc8ceb8146cd5",
+  "fixture": {
+    "id": "B01-PDF-006",
+    "sha256": "f3b711f45bcff702fedb2abdf8efa013b8b074eaa9e0adf555618e9342a488ba",
+    "bytes": 1621,
+    "authored_formula_count": 3,
+    "authored_token_count": 19,
+    "authored_relation_count": 5,
+    "rights": {
+      "redistribution": "not-established",
+      "decision_issue": 131,
+      "public_rights_safe": false,
+      "remote_provider": "denied"
+    }
+  },
+  "ci_evidence": {
+    "formula_workflow_run_id": 32627418501,
+    "formula_workflow_status": "success",
+    "artifacts": {
+      "poppler": {
+        "id": 9490114603,
+        "digest": "sha256:d033353048e2cebcad2d7cf26c298ac0fafb4bfa523954dd1f4795b2a3ce8fcb"
+      },
+      "tika": {
+        "id": 9490109129,
+        "digest": "sha256:62676c16967184957f348b4cce1c4b477e8fc846edefbe9988649071b0e18c19"
+      },
+      "docling": {
+        "id": 9490153938,
+        "digest": "sha256:4d75cdd3c3b3d1d7a846c496c0dcc8963e9ded26d57da6868a627e2cf1062e7e"
+      }
+    },
+    "regression_runs": {
+      "benchmark_harness": 32627418549,
+      "semantic_docling": 32627418585,
+      "figure_evidence": 32627418540,
+      "table_evidence": 32627418473
+    }
+  },
+  "results": {
+    "pdftotext-bbox-layout": {
+      "formula_surface_content": "1/3",
+      "formula_display_order": "0/2; partial",
+      "token_geometry": {
+        "status": "partial",
+        "evidence": "6/19",
+        "max_observed_edge_error_points": 7.511999999999944
+      },
+      "explicit_math_relations": {
+        "status": "not-measured",
+        "evidence": "0/5"
+      },
+      "provider_group_diagnostic": "not-measured",
+      "raw_output_sha256": "67aacea317b49602d9f8ada8ffcd9b77ff920cb68c17103b2ab229844fe4e8fb",
+      "raw_output_bytes": 6451
+    },
+    "pdftohtml-xml": {
+      "formula_surface_content": "3/3",
+      "formula_display_order": "2/2",
+      "token_geometry": {
+        "status": "partial",
+        "evidence": "6/19",
+        "max_observed_edge_error_points": 7.3333333333332575
+      },
+      "explicit_math_relations": {
+        "status": "not-measured",
+        "evidence": "0/5"
+      },
+      "provider_group_diagnostic": "not-measured",
+      "raw_output_sha256": "47d490016beba54ada923d646838535938f68ac5bc3aaa385724e10423556e52",
+      "raw_output_bytes": 1546
+    },
+    "tika-app-3.3.2-xhtml": {
+      "formula_surface_content": "3/3",
+      "formula_display_order": "2/2",
+      "token_geometry": {
+        "status": "not-measured",
+        "evidence": "0/19"
+      },
+      "explicit_math_relations": {
+        "status": "not-measured",
+        "evidence": "0/5"
+      },
+      "provider_group_diagnostic": "not-measured",
+      "raw_output_sha256": "89a102360fea1618fc233fd20793c78cf54c3930e937a4d0740353cedb0204bd",
+      "raw_output_bytes": 1578
+    },
+    "docling-2.118.0-standard-pdf-native-no-ocr": {
+      "formula_surface_content": "3/3",
+      "formula_display_order": "2/2",
+      "token_geometry": {
+        "status": "partial",
+        "evidence": "6/19",
+        "max_observed_edge_error_points": 7.511999999999944
+      },
+      "explicit_math_relations": {
+        "status": "not-measured",
+        "evidence": "0/5"
+      },
+      "provider_group_diagnostic": {
+        "status": "observed-nonsemantic",
+        "observed_count": 2,
+        "provider_label": "picture",
+        "formula_enrichment_enabled": false
+      },
+      "raw_output_sha256": "8e92a41bc904a522633037e7eb5b7cd01b9df65cf440134951aa32c9f3f2fbb4",
+      "raw_output_bytes": 5083
+    }
+  },
+  "measurement_policy": {
+    "surface": "whitespace-insensitive visible-glyph sequence only",
+    "geometry": "geometry binds already-explicit exact glyph blocks; no geometry-to-semantics promotion",
+    "math_relations": "superscript/fraction/grouping credited only from explicit Provider relation evidence",
+    "docling_grouping": "picture groups retained as non-semantic diagnostics only",
+    "visual_inference": false
+  },
+  "comparison_boundary": {
+    "provider_selected": false,
+    "first_slice_promoted": false,
+    "g02_satisfied": false,
+    "g04_satisfied": false,
+    "g05_satisfied": false,
+    "formula_enriched_profile_selected": false,
+    "remaining_b01_gaps": [
+      "defective native text / OCR fallback",
+      "malformed/access-controlled negative PDFs"
+    ]
+  }
+}

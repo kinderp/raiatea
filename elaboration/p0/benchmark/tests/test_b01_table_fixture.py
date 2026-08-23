@@ -147,8 +147,8 @@ class B01TableFixtureTests(unittest.TestCase):
     def test_table_coverage_gap_is_closed_without_hiding_later_b01_gaps(self):
         gaps = self.fixtures_manifest["coverage_gaps"]
         self.assertFalse(any("B01-PDF-005" in gap for gap in gaps))
-        self.assertTrue(any("B01-PDF-006" in gap for gap in gaps))
         self.assertTrue(any("B01-PDF-007" in gap for gap in gaps))
+        self.assertTrue(any("malformed/access-controlled" in gap for gap in gaps))
 
 
 if __name__ == "__main__":

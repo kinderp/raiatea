@@ -203,7 +203,9 @@ class LocalProcessHarness:
         notifications = 0
         while True:
             message = self._read_message(method)
-            if "method" in message and "id" not in message:
+            if "method" in message:
+                if "id" in message:
+                    raise HarnessError("plugin-initiated-jsonrpc-request-forbidden")
                 notifications += 1
                 if notifications > MAX_NOTIFICATIONS_BEFORE_RESPONSE:
                     raise HarnessError("too-many-notifications-before-response")

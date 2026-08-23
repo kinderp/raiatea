@@ -55,27 +55,27 @@ class E05bConformanceTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATE.ContractError, "provider-and-route-profile-must-remain-distinct"):
             VALIDATE.validate(value)
 
-    def test_not_measured_evidence_cannot_claim_present_value(self):
+    def test_unavailable_evidence_cannot_claim_populated_value(self):
         value = self._load("poppler-native-pdf.json")
         status = value["stages"][0]["provider_status"]
-        status["evidence_state"] = "not-measured"
-        with self.assertRaisesRegex(VALIDATE.ContractError, "not-measured-must-have-unknown-value"):
+        status["evidence_state"] = "unavailable"
+        with self.assertRaisesRegex(VALIDATE.ContractError, "unavailable-must-have-unknown-value"):
             VALIDATE.validate(value)
 
-    def test_not_measured_evidence_origin_is_unresolved(self):
+    def test_unavailable_evidence_origin_is_unresolved(self):
         evidence = {
-            "evidence_state": "not-measured",
+            "evidence_state": "unavailable",
             "value_state": "unknown",
             "origin": "provider-native",
             "basis": "Provider did not expose the field",
         }
-        with self.assertRaisesRegex(VALIDATE.ContractError, "not-measured-origin-must-be-unresolved"):
+        with self.assertRaisesRegex(VALIDATE.ContractError, "unavailable-origin-must-be-unresolved"):
             VALIDATE._validate_evidence(evidence, "candidate")
 
-    def test_explicit_empty_is_present_evidence_not_unavailable(self):
+    def test_empty_is_present_evidence_not_unavailable(self):
         evidence = {
-            "evidence_state": "measured",
-            "value_state": "explicit-empty",
+            "evidence_state": "present",
+            "value_state": "empty",
             "origin": "provider-native",
             "basis": "Provider explicitly emitted an empty collection",
             "channel": "provider-lossless-raw",
@@ -86,8 +86,8 @@ class E05bConformanceTests(unittest.TestCase):
 
     def test_mismatch_is_assessment_not_value_state(self):
         evidence = {
-            "evidence_state": "measured",
-            "value_state": "present",
+            "evidence_state": "present",
+            "value_state": "populated",
             "origin": "provider-native",
             "basis": "Provider exposed the observed fact",
             "channel": "provider-lossless-raw",
@@ -105,7 +105,7 @@ class E05bConformanceTests(unittest.TestCase):
 
     def test_mismatch_assessment_requires_available_observed_value(self):
         evidence = {
-            "evidence_state": "not-measured",
+            "evidence_state": "unavailable",
             "value_state": "unknown",
             "origin": "unresolved",
             "basis": "field unavailable",
@@ -152,8 +152,8 @@ class E05bConformanceTests(unittest.TestCase):
     def test_core_stage_cannot_have_provider_status(self):
         value = self._load("poppler-native-pdf.json")
         value["stages"][1]["provider_status"] = {
-            "evidence_state": "measured",
-            "value_state": "present",
+            "evidence_state": "present",
+            "value_state": "populated",
             "origin": "provider-native",
             "basis": "invalid test input",
             "value": "success",
@@ -201,19 +201,19 @@ class E05bConformanceTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATE.ContractError, "run-produced-ref-must-have-stage-producer"):
             VALIDATE.validate(value)
 
-    def test_explicit_empty_coordinate_requires_null_value(self):
+    def test_empty_coordinate_requires_null_value(self):
         value = self._load("direct-epub-normalized.json")
         coordinate = value["units"][0]["coordinate"]
         coordinate.update(
             {
-                "evidence_state": "measured",
-                "value_state": "explicit-empty",
+                "evidence_state": "present",
+                "value_state": "empty",
                 "origin": "provider-native",
                 "basis": "Provider explicitly exposed no coordinate",
                 "value": {},
             }
         )
-        with self.assertRaisesRegex(VALIDATE.ContractError, "explicit-empty-must-use-null"):
+        with self.assertRaisesRegex(VALIDATE.ContractError, "empty-must-use-null"):
             VALIDATE.validate_representation(value)
 
 

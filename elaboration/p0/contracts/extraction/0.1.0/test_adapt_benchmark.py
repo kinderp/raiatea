@@ -25,6 +25,22 @@ class E05bBenchmarkAdaptationTests(unittest.TestCase):
     def _example(self, name: str):
         return json.loads((ROOT / "examples" / name).read_text(encoding="utf-8"))
 
+    def _assert_provider_then_core_normalization(self, run: dict, provider_id: str, route_id: str):
+        self.assertEqual(len(run["stages"]), 2)
+        native, normalization = run["stages"]
+        self.assertEqual(native["executor"]["kind"], "provider")
+        self.assertEqual(native["executor"]["provider"]["provider_id"], provider_id)
+        self.assertEqual(native["executor"]["route_profile"]["route_profile_id"], route_id)
+        self.assertIn("provider_status", native)
+        self.assertIn("outcome", native)
+        self.assertEqual(normalization["executor"]["kind"], "raiatea-core")
+        self.assertEqual(normalization["stage_kind"], "normalization")
+        self.assertNotIn("provider_status", normalization)
+        self.assertTrue(normalization["input_refs"])
+        self.assertTrue(
+            all(item["kind"] == "normalized-representation" for item in normalization["produced"])
+        )
+
     def test_poppler_mapper_shape_adapts_without_native_field_leakage(self):
         observation = self._input("poppler-pdftohtml-observation.json")
         bundle = ADAPT.adapt_poppler_observation(
@@ -36,8 +52,11 @@ class E05bBenchmarkAdaptationTests(unittest.TestCase):
         VALIDATE.validate_provider_evidence(bundle["provider_evidence"])
         VALIDATE.validate_representation(bundle["normalized_representation"])
 
-        self.assertEqual(bundle["run"]["provider"]["provider_id"], "poppler")
-        self.assertEqual(bundle["run"]["route_profile"]["route_profile_id"], "pdftohtml-xml")
+        self._assert_provider_then_core_normalization(
+            bundle["run"], "poppler", "pdftohtml-xml"
+        )
+        self.assertNotIn("provider", bundle["run"])
+        self.assertNotIn("route_profile", bundle["run"])
         self.assertEqual(
             bundle["run"]["outcome"]["assessments"][0]["completeness"],
             "unknown",
@@ -60,6 +79,9 @@ class E05bBenchmarkAdaptationTests(unittest.TestCase):
         VALIDATE.validate_provider_evidence(bundle["provider_evidence"])
         VALIDATE.validate_representation(bundle["normalized_representation"])
 
+        self._assert_provider_then_core_normalization(
+            bundle["run"], "python-stdlib", "direct-epub-stdlib"
+        )
         coordinates = [
             unit["coordinate"]["value"]
             for unit in bundle["normalized_representation"]["units"]

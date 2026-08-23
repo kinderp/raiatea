@@ -151,14 +151,14 @@ class E05bBenchmarkAdaptationTests(unittest.TestCase):
         )
         evidence = bundle["provider_evidence"]
         evidence["native_status"] = {
-            "evidence_state": "malformed-evidence",
+            "evidence_state": "malformed",
             "value_state": "unknown",
             "origin": "provider-native",
             "basis": "Provider result collection was structurally malformed",
             "channel": "benchmark-normalized-view",
         }
         VALIDATE.validate_provider_evidence(evidence)
-        self.assertEqual(evidence["native_status"]["evidence_state"], "malformed-evidence")
+        self.assertEqual(evidence["native_status"]["evidence_state"], "malformed")
 
     def test_provider_explicit_and_raiatea_derived_relations_are_distinct(self):
         value = self._example("direct-epub-normalized.json")

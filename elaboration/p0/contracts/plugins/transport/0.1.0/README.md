@@ -24,17 +24,17 @@ Each layer is validated independently. A frame that parses as JSON-RPC may still
 
 ## Provisional method binding
 
-The synthetic harness uses only three request methods:
-
 | Method | `params` | successful JSON-RPC `result` |
 | --- | --- | --- |
-| `raiatea.handshake` | transport compatibility expectations | v1b `Handshake` |
+| `raiatea.handshake` | `{}` — transport trigger only | v1b `Handshake` |
 | `raiatea.invoke` | v1b `InvocationRequest` | v1b `InvocationResult` |
 | `raiatea.cancel` | v1b `CancelRequest` | v1b `CancelAcknowledgement` |
 
 `raiatea.diagnostic` is a JSON-RPC notification whose `params` are a v1b `DiagnosticEvent`.
 
-These names are candidate wire bindings only. The accepted v1b records remain authoritative if the transport changes.
+Handshake identity/version/fingerprint expectations are **not repeated in transport params**. Core already owns the validated manifest and compares the returned v1b Handshake against it. This avoids a second compatibility-negotiation model in the wire layer.
+
+These method names are candidate wire bindings only. The accepted v1b records remain authoritative if the transport changes.
 
 ## Framing rules
 
@@ -65,19 +65,22 @@ The harness tests and rejects accidental reuse of `invocation_id` as the transpo
 `process_harness.py`:
 
 - launches a child process with binary stdin/stdout/stderr pipes;
-- continuously drains stderr on a dedicated daemon thread so non-authoritative logging cannot backpressure/block protocol stdout;
+- continuously drains stderr on a dedicated daemon thread so logging cannot backpressure/block protocol stdout;
+- retains at most 64 KiB of stderr text and marks `stderr_truncated` while continuing to drain excess bytes;
 - requires a valid v1b handshake before `invoke`/`cancel` helpers;
-- accepts structured diagnostic notifications while waiting for a response;
+- accepts at most 64 diagnostic notifications while waiting for a single response, then fails closed;
 - detects duplicate/unexpected response ids;
 - maps process EOF/crash without inventing a domain result;
 - runs accepted v1b semantic validation after framing;
 - never upgrades stderr text into a diagnostic record.
 
-`test_stderr_drain.py` writes more than 256 KiB to stderr before handshake and uses a bounded watchdog to prove the candidate remains responsive on Linux and Windows.
+`test_stderr_drain.py` writes more than 256 KiB to stderr before handshake and uses a bounded watchdog to prove the candidate stays responsive while retained logging remains bounded.
+
+The harness does **not** implement the production supervisor read-deadline timer or stateful idempotency collision store. Those require supervisor state and remain explicitly deferred rather than being simulated inside framing code.
 
 ### Process-attempt versus runtime lifecycle evidence
 
-Before a valid handshake, the Core has no validated plugin `runtime_instance_id`. A child that crashes in that interval is therefore recorded only as **process-attempt/supervisor evidence** (`process-exited-before-handshake`). The harness deliberately does not fabricate a v1b `LifecycleTransition` for an identity that was never established.
+Before a valid handshake, Core has no validated plugin `runtime_instance_id`. A child that crashes in that interval is recorded only as **process-attempt/supervisor evidence** (`process-exited-before-handshake`). The harness deliberately does not fabricate a v1b `LifecycleTransition` for an identity that was never established.
 
 After the v1b handshake is validated, the runtime instance is known and the harness can generate Core-observed lifecycle evidence:
 
@@ -87,23 +90,37 @@ ready -> failed                   post-handshake process crash
 ready -> stopping -> stopped      Core-requested normal shutdown
 ```
 
-The generated transitions are themselves checked by the accepted v1b lifecycle validator.
+The generated transitions are checked by the accepted v1b lifecycle validator.
 
 ## Synthetic plugin
 
-`synthetic_plugin.py` is transport test equipment only. It deliberately reuses the accepted `LocalReadOnlySourcePlugin` manifest to avoid creating a second capability definition, but it is **not** the real rights-safe SourcePlugin proof required before ADR acceptance.
+`synthetic_plugin.py` and the two flood helpers are transport test equipment only. They deliberately reuse the accepted `LocalReadOnlySourcePlugin` manifest to avoid creating a second capability definition, but they are **not** the real rights-safe SourcePlugin proof required before ADR acceptance.
 
-Synthetic fault modes exercise:
+Fault cases exercise:
 
+- malformed/oversized/unsupported JSON-RPC frames;
 - stdout noise;
-- unsupported JSON-RPC response version;
 - duplicate response ids;
 - startup/invocation crash;
+- invocation before handshake and unknown methods;
 - JSON-RPC error misused during invocation;
-- semantically invalid v1b result;
+- semantically invalid v1b result after valid framing;
 - malformed cancel acknowledgement;
+- transport id accidentally reused as invocation id;
 - structured diagnostic text written only to stderr;
-- stderr backpressure/flood without protocol blockage.
+- stderr backpressure/flood with bounded retention;
+- too many diagnostic notifications before a response.
+
+## Current candidate evidence
+
+Workflow `32664717729` passed on:
+
+- Ubuntu / Python 3.10;
+- Ubuntu / Python 3.12;
+- Windows / Python 3.10;
+- Windows / Python 3.12.
+
+That run included framing/process tests plus accepted v1a/v1b semantic regressions. Later hardening commits continue to rerun the same matrix before the PR can enter its final review gate.
 
 ## Evidence still required
 
@@ -118,7 +135,7 @@ Before ADR promotion, a separate child must run the same candidate through:
 ## Explicitly deferred
 
 - final transport ADR acceptance;
-- process supervisor/idempotency store;
+- production process supervisor, deadline timer and idempotency store;
 - secret delivery;
 - filesystem/network sandbox enforcement;
 - installation/update/PKI/marketplace;

@@ -118,7 +118,28 @@
       "required": ["kind", "command"],
       "properties": {
         "kind": {"const": "process"},
-        "command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "command": {
+          "oneOf": [
+            {
+              "type": "array",
+              "prefixItems": [
+                {"type": "string", "pattern": "^[A-Za-z0-9_.\\/-]+$"}
+              ],
+              "minItems": 1,
+              "maxItems": 1
+            },
+            {
+              "type": "array",
+              "prefixItems": [
+                {"type": "string", "pattern": "^[A-Za-z0-9_.\\/-]+$"},
+                {"const": "-m"},
+                {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_.]*$"}
+              ],
+              "minItems": 3,
+              "maxItems": 3
+            }
+          ]
+        },
         "working_directory": {"type": "string"}
       }
     },

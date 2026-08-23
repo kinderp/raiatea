@@ -13,7 +13,7 @@ V1b defines semantic records only:
 - invocation request/result;
 - cancellation request/acknowledgement;
 - structured runtime error;
-- `AssetHandle` and domain `RecordRef`;
+- `AssetHandle`, `OutputTargetHandle` and domain `RecordRef`;
 - diagnostics and health reports;
 - invocation provenance.
 
@@ -63,22 +63,27 @@ Runtime context carries Core references such as workspace scope, RightsDecisionR
 
 `idempotency_key` is Core-issued operation identity. V1b keeps it opaque: detecting reuse/collision requires supervisor state and is intentionally not faked by a stateless JSON Schema validator. A later runtime implementation must reject reuse of the same key for materially different operation intent.
 
-## AssetHandle
+## AssetHandle and output targets
 
 `AssetHandle` is opaque Core-issued invocation authority, not Catalog identity and not a RightsDecision. It contains no host filesystem path.
 
 Candidate access modes:
 
 - `read` — input/read lease;
-- `write-once-output` — output target/lease.
+- `write-once-output` — completed output handle.
+
+A not-yet-produced output is authorized with a separate `OutputTargetHandle`. This avoids overloading one field with two meanings:
+
+- `AssetHandle.byte_length` is the observed/actual content length when known;
+- `OutputTargetHandle.max_byte_length` is the Core-authorized output ceiling.
 
 Handle authority is bounded by the invocation:
 
 - a lease with `expires_at` must remain valid through the invocation `deadline_at`;
 - the same handle id cannot be both an input read handle and an output target in one invocation;
 - the plugin cannot mint a new output handle or change the Core-issued lease id;
-- if an output target declares `byte_length`, that value is the maximum authorized output size, not the produced size;
 - a completed asset output reports its actual `byte_length` and SHA-256 fingerprint;
+- actual output length cannot exceed `max_byte_length` when the Core supplied a ceiling;
 - result metadata cannot extend a Core-issued expiry or contradict a declared media type.
 
 These checks make expiry/oversize rejection deterministic at the contract level while leaving actual OS/file-descriptor/sandbox enforcement to the later runtime implementation.

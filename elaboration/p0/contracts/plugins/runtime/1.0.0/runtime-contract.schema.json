@@ -94,6 +94,12 @@
         "expires_at": {"type": "string", "format": "date-time"}
       }
     },
+    "OutputTargetHandle": {
+      "allOf": [
+        {"$ref": "#/$defs/AssetHandle"},
+        {"properties": {"access": {"const": "write-once-output"}}}
+      ]
+    },
     "SecretLeaseRef": {
       "type": "object",
       "additionalProperties": false,
@@ -138,7 +144,7 @@
     "InvocationRequest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["record_type", "invocation_id", "idempotency_key", "runtime_instance_id", "capability", "inputs", "runtime_context", "deadline_at", "parameters"],
+      "required": ["record_type", "invocation_id", "idempotency_key", "runtime_instance_id", "capability", "inputs", "output_targets", "runtime_context", "deadline_at", "parameters"],
       "properties": {
         "record_type": {"const": "invocation-request"},
         "invocation_id": {"type": "string", "pattern": "^[A-Za-z0-9._:-]+$"},
@@ -146,6 +152,7 @@
         "runtime_instance_id": {"type": "string", "minLength": 1},
         "capability": {"$ref": "#/$defs/CapabilityProfileRef"},
         "inputs": {"type": "array", "items": {"$ref": "#/$defs/InvocationInput"}},
+        "output_targets": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/OutputTargetHandle"}},
         "runtime_context": {"$ref": "#/$defs/RuntimeContext"},
         "deadline_at": {"type": "string", "format": "date-time"},
         "parameters": {"type": "object"}
@@ -159,7 +166,7 @@
           "required": ["kind", "handle"],
           "properties": {
             "kind": {"const": "asset-handle"},
-            "handle": {"$ref": "#/$defs/AssetHandle"}
+            "handle": {"$ref": "#/$defs/OutputTargetHandle"}
           }
         },
         {

@@ -1,0 +1,59 @@
+{
+  "schema_version": "0.1.0",
+  "run_id": "run-docling-rapidocr-001",
+  "source_ref": {"source_id": "B01-PDF-007", "source_class": "B-01", "fingerprint": "sha256:example"},
+  "provider": {"provider_id": "docling", "version": "2.118.0"},
+  "route_profile": {
+    "route_profile_id": "docling-2.118.0-rapidocr-3.9.2-torch-en-default",
+    "backend": "torch",
+    "mode": "ocr-fallback",
+    "model_revision": "rapidocr-3.9.2",
+    "payload_fingerprint": "sha256:131b4064...",
+    "execution_context": "local"
+  },
+  "rights_decision_ref": {"decision_id": "rights-001"},
+  "stages": [
+    {
+      "stage_id": "native-1",
+      "stage_kind": "native-extraction",
+      "provider": {"provider_id": "docling", "version": "2.118.0"},
+      "route_profile": {"route_profile_id": "docling-native-no-ocr", "mode": "native", "execution_context": "local"},
+      "provider_status": {"evidence_state": "measured", "value_state": "present", "basis": "Docling conversion status", "channel": "provider-normalized", "value": "success"},
+      "reconciliation_state": "not-applicable",
+      "produced": [{"kind": "provider-evidence", "evidence_id": "native-raw", "channel": "lossless-json"}]
+    },
+    {
+      "stage_id": "ocr-1",
+      "stage_kind": "ocr-fallback",
+      "provider": {"provider_id": "docling", "version": "2.118.0"},
+      "route_profile": {"route_profile_id": "docling-2.118.0-rapidocr-3.9.2-torch-en-default", "backend": "torch", "mode": "ocr-fallback", "model_revision": "rapidocr-3.9.2", "payload_fingerprint": "sha256:131b4064...", "execution_context": "local"},
+      "provider_status": {"evidence_state": "measured", "value_state": "present", "basis": "Docling conversion status", "channel": "provider-normalized", "value": "success"},
+      "trigger_basis": "native visible-page coverage assessment required OCR fallback",
+      "parent_stage_id": "native-1",
+      "reconciliation_state": "not-measured",
+      "produced": [{"kind": "provider-evidence", "evidence_id": "ocr-raw", "channel": "lossless-json"}]
+    }
+  ],
+  "outcome": {
+    "execution": "completed",
+    "assessments": [
+      {"scope": "native-text", "completeness": "complete", "integrity": "valid", "basis": "runtime native extraction assessment"},
+      {"scope": "raster-visible-text", "completeness": "partial", "integrity": "degraded", "basis": "runtime OCR surface assessment; token order mismatch"},
+      {"scope": "native-ocr-reconciliation", "completeness": "unknown", "integrity": "unknown", "basis": "stage provenance per emitted block unavailable"}
+    ],
+    "derivation_basis": "Raiatea orchestration assessment across explicit native and OCR stages"
+  },
+  "produced": [
+    {"kind": "provider-evidence", "evidence_id": "native-raw", "channel": "lossless-json"},
+    {"kind": "provider-evidence", "evidence_id": "ocr-raw", "channel": "lossless-json"},
+    {"kind": "normalized-representation", "representation_id": "norm-staged-1"}
+  ],
+  "provenance": {
+    "started_at": "2026-08-23T10:00:00Z",
+    "ended_at": "2026-08-23T10:00:04Z",
+    "provider_native_status_basis": "Docling stage conversion statuses and Raiatea stage orchestration",
+    "environment_fingerprint": "ubuntu-24.04+docling-2.118.0+rapidocr-3.9.2",
+    "input_fingerprint": "sha256:example"
+  },
+  "diagnostics": [{"code": "OCR_PARTIAL_ORDER_MISMATCH", "severity": "warning", "message": "OCR surface recovered expected tokens but not authored word order."}]
+}

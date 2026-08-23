@@ -139,8 +139,7 @@
               "maxItems": 3
             }
           ]
-        },
-        "working_directory": {"type": "string"}
+        }
       }
     },
     "PluginProvenance": {

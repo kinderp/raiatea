@@ -229,16 +229,7 @@ class LocalProcessHarness:
     def handshake(self) -> dict[str, Any]:
         if self.process is None:
             self.start()
-        expected_fingerprint = RUNTIME.canonical_manifest_fingerprint(self.manifest)
-        result = self._request(
-            "raiatea.handshake",
-            {
-                "expected_plugin_id": self.manifest["plugin"]["plugin_id"],
-                "expected_plugin_version": self.manifest["plugin"]["version"],
-                "expected_manifest_fingerprint": expected_fingerprint,
-                "runtime_contract_version": "1.0.0",
-            },
-        )
+        result = self._request("raiatea.handshake", {})
         if not isinstance(result, dict):
             raise HarnessError("handshake-result-must-be-runtime-record")
         try:

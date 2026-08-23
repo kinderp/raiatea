@@ -34,6 +34,8 @@ def _text_blocks_and_state(
 
     if state == "not-measured" or not isinstance(blocks, list):
         return None, "not-measured"
+    if any(not isinstance(block, dict) for block in blocks):
+        state = "partial"
     return [block for block in blocks if isinstance(block, dict)], str(state)
 
 
@@ -297,15 +299,30 @@ def _explicit_math(gold: dict[str, Any], observation: dict[str, Any]) -> dict[st
             "visual_inference": False,
         }
 
-    attributable_observed = [
-        item
-        for item in observed
-        if isinstance(item, dict) and item.get("provider_relation_source")
-    ]
-    observed_signatures = [
-        _relation_signature(item.get("formula_id"), item)
-        for item in attributable_observed
-    ]
+    attributable_observed: list[dict[str, Any]] = []
+    observed_signatures: list[tuple[Any, ...] | None] = []
+    malformed_observed_count = 0
+    for item in observed:
+        if (
+            not isinstance(item, dict)
+            or not item.get("provider_relation_source")
+            or item.get("formula_id") is None
+            or not isinstance(item.get("kind"), str)
+        ):
+            malformed_observed_count += 1
+            continue
+        signature = _relation_signature(item.get("formula_id"), item)
+        if item.get("kind") in {"superscript", "fraction"} and signature is None:
+            malformed_observed_count += 1
+            continue
+        attributable_observed.append(item)
+        observed_signatures.append(signature)
+
+    effective_collection_state = (
+        "partial"
+        if collection_state == "partial" or malformed_observed_count
+        else "measured"
+    )
 
     rows = []
     matched_observed_indexes: set[int] = set()
@@ -331,7 +348,7 @@ def _explicit_math(gold: dict[str, Any], observation: dict[str, Any]) -> dict[st
     ambiguous_count = sum(row["explicit_candidate_count"] > 1 for row in rows)
     unmatched_observed_count = len(attributable_observed) - len(matched_observed_indexes)
 
-    if collection_state == "partial":
+    if effective_collection_state == "partial":
         status = "partial"
     elif exact_count == len(rows) and ambiguous_count == 0:
         status = "measured"
@@ -344,14 +361,15 @@ def _explicit_math(gold: dict[str, Any], observation: dict[str, Any]) -> dict[st
 
     return {
         "status": status,
-        "collection_state": collection_state,
+        "collection_state": effective_collection_state,
         "expected_count": len(rows),
         "observed_count": len(attributable_observed),
         "evidence_count": evidence_count,
         "exact_count": exact_count,
         "ambiguous_expected_count": ambiguous_count,
         "unmatched_observed_count": unmatched_observed_count,
-        "explicit_empty": len(attributable_observed) == 0,
+        "malformed_observed_count": malformed_observed_count,
+        "explicit_empty": len(observed) == 0,
         "relations": rows,
         "visual_inference": False,
         "policy": (
@@ -375,12 +393,18 @@ def _provider_group_diagnostic(observation: dict[str, Any]) -> dict[str, Any]:
             "groups": [],
         }
 
+    malformed_group_count = sum(not isinstance(group, dict) for group in groups)
+    if malformed_group_count:
+        collection_state = "partial"
+    valid_groups = [group for group in groups if isinstance(group, dict)]
+
     return {
         "status": "partial" if collection_state == "partial" else "observed-nonsemantic",
         "collection_state": collection_state,
         "semantic_interpretation": "nonsemantic",
-        "observed_count": len(groups),
-        "groups": groups,
+        "observed_count": len(valid_groups),
+        "malformed_group_count": malformed_group_count,
+        "groups": valid_groups,
         "policy": (
             "Provider grouping is retained diagnostically but is not promoted to formula "
             "semantics unless the Provider labels/encodes it explicitly as mathematics"

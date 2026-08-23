@@ -37,7 +37,9 @@ jobs:
           elaboration/p0/contracts/plugins/runtime/1.0.0
           elaboration/p0/contracts/plugins/1.0.0
       - name: Run transport framing and process conformance
-        run: python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport.py -v
+        run: |
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_process_lifecycle_binding.py -v
       - name: Re-run accepted runtime semantics
         run: |
           python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime.py -v

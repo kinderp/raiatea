@@ -1,0 +1,296 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raiatea.invalid/contracts/plugins/runtime/1.0.0/runtime-contract.schema.json",
+  "title": "Raiatea Plugin Runtime Contract v1 candidate",
+  "oneOf": [
+    {"$ref": "#/$defs/Handshake"},
+    {"$ref": "#/$defs/LifecycleTransition"},
+    {"$ref": "#/$defs/InvocationRequest"},
+    {"$ref": "#/$defs/InvocationResult"},
+    {"$ref": "#/$defs/CancelRequest"},
+    {"$ref": "#/$defs/CancelAcknowledgement"},
+    {"$ref": "#/$defs/DiagnosticEvent"},
+    {"$ref": "#/$defs/HealthReport"}
+  ],
+  "$defs": {
+    "Sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "CapabilityProfileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability_id", "profile_id"],
+      "properties": {
+        "capability_id": {"type": "string", "minLength": 1},
+        "profile_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "RuntimeIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plugin_id", "plugin_version", "runtime_instance_id", "manifest_fingerprint", "runtime_contract_version"],
+      "properties": {
+        "plugin_id": {"type": "string", "minLength": 1},
+        "plugin_version": {"type": "string", "minLength": 1},
+        "runtime_instance_id": {"type": "string", "pattern": "^[A-Za-z0-9._:-]+$"},
+        "manifest_fingerprint": {"$ref": "#/$defs/Sha256"},
+        "runtime_contract_version": {"const": "1.0.0"}
+      }
+    },
+    "Handshake": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_type", "identity", "advertised_profiles", "observed_at"],
+      "properties": {
+        "record_type": {"const": "handshake"},
+        "identity": {"$ref": "#/$defs/RuntimeIdentity"},
+        "advertised_profiles": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/CapabilityProfileRef"}
+        },
+        "observed_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "LifecycleState": {
+      "enum": ["starting", "ready", "stopping", "stopped", "failed", "incompatible", "quarantined"]
+    },
+    "LifecycleTransition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_type", "runtime_instance_id", "from", "to", "basis", "observed_at"],
+      "properties": {
+        "record_type": {"const": "lifecycle-transition"},
+        "runtime_instance_id": {"type": "string", "minLength": 1},
+        "from": {"$ref": "#/$defs/LifecycleState"},
+        "to": {"$ref": "#/$defs/LifecycleState"},
+        "basis": {"type": "string", "minLength": 1},
+        "observed_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "RecordRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref_id", "contract_id", "contract_version", "record_kind"],
+      "properties": {
+        "ref_id": {"type": "string", "minLength": 1},
+        "contract_id": {"type": "string", "minLength": 1},
+        "contract_version": {"type": "string", "minLength": 1},
+        "record_kind": {"type": "string", "minLength": 1}
+      }
+    },
+    "AssetHandle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handle_id", "lease_id", "access"],
+      "properties": {
+        "handle_id": {"type": "string", "pattern": "^[A-Za-z0-9._:-]+$"},
+        "lease_id": {"type": "string", "pattern": "^[A-Za-z0-9._:-]+$"},
+        "access": {"enum": ["read", "write-once-output"]},
+        "media_type": {"type": "string", "minLength": 1},
+        "byte_length": {"type": "integer", "minimum": 0},
+        "fingerprint": {"$ref": "#/$defs/Sha256"},
+        "expires_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "SecretLeaseRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["secret_name", "lease_id"],
+      "properties": {
+        "secret_name": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+        "lease_id": {"type": "string", "pattern": "^[A-Za-z0-9._:-]+$"}
+      }
+    },
+    "RuntimeContext": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["workspace_scope_id", "secret_leases"],
+      "properties": {
+        "workspace_scope_id": {"type": "string", "minLength": 1},
+        "rights_decision_ref": {"type": "string", "minLength": 1},
+        "secret_leases": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/SecretLeaseRef"}}
+      }
+    },
+    "InvocationInput": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "handle"],
+          "properties": {
+            "kind": {"const": "asset-handle"},
+            "handle": {"$ref": "#/$defs/AssetHandle"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "record_ref"],
+          "properties": {
+            "kind": {"const": "record-ref"},
+            "record_ref": {"$ref": "#/$defs/RecordRef"}
+          }
+        }
+      ]
+    },
+    "InvocationRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_type", "invocation_id", "idempotency_key", "runtime_instance_id", "capability", "inputs", "runtime_context", "deadline_at", "parameters"],
+      "properties": {
+        "record_type": {"const": "invocation-request"},
+        "invocation_id": {"type": "string", "pattern": "^[A-Za-z0-9._:-]+$"},
+        "idempotency_key": {"type": "string", "minLength": 1},
+        "runtime_instance_id": {"type": "string", "minLength": 1},
+        "capability": {"$ref": "#/$defs/CapabilityProfileRef"},
+        "inputs": {"type": "array", "items": {"$ref": "#/$defs/InvocationInput"}},
+        "runtime_context": {"$ref": "#/$defs/RuntimeContext"},
+        "deadline_at": {"type": "string", "format": "date-time"},
+        "parameters": {"type": "object"}
+      }
+    },
+    "OutputRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "handle"],
+          "properties": {
+            "kind": {"const": "asset-handle"},
+            "handle": {"$ref": "#/$defs/AssetHandle"}
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "record_ref"],
+          "properties": {
+            "kind": {"const": "record-ref"},
+            "record_ref": {"$ref": "#/$defs/RecordRef"}
+          }
+        }
+      ]
+    },
+    "ErrorCode": {
+      "enum": [
+        "runtime-incompatible",
+        "unknown-capability-profile",
+        "invalid-input-handle",
+        "unauthorized-runtime-request",
+        "missing-secret-lease",
+        "provider-tool-failure",
+        "plugin-internal-failure",
+        "plugin-crash",
+        "timeout",
+        "cancelled",
+        "malformed-plugin-response",
+        "output-contract-violation",
+        "provenance-contract-violation"
+      ]
+    },
+    "RuntimeError": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "retryable"],
+      "properties": {
+        "code": {"$ref": "#/$defs/ErrorCode"},
+        "message": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "retryable": {"type": "boolean"},
+        "provider_status_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "InvocationStatus": {
+      "enum": ["completed", "failed", "cancelled", "timeout"]
+    },
+    "InvocationProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plugin_id", "plugin_version", "runtime_instance_id", "invocation_id", "capability", "started_at", "ended_at", "input_refs", "output_refs"],
+      "properties": {
+        "plugin_id": {"type": "string", "minLength": 1},
+        "plugin_version": {"type": "string", "minLength": 1},
+        "runtime_instance_id": {"type": "string", "minLength": 1},
+        "invocation_id": {"type": "string", "minLength": 1},
+        "capability": {"$ref": "#/$defs/CapabilityProfileRef"},
+        "started_at": {"type": "string", "format": "date-time"},
+        "ended_at": {"type": "string", "format": "date-time"},
+        "input_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "output_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "rights_decision_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "InvocationResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_type", "invocation_id", "runtime_instance_id", "status", "outputs", "diagnostic_refs", "provenance"],
+      "properties": {
+        "record_type": {"const": "invocation-result"},
+        "invocation_id": {"type": "string", "minLength": 1},
+        "runtime_instance_id": {"type": "string", "minLength": 1},
+        "status": {"$ref": "#/$defs/InvocationStatus"},
+        "outputs": {"type": "array", "items": {"$ref": "#/$defs/OutputRef"}},
+        "diagnostic_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "error": {"$ref": "#/$defs/RuntimeError"},
+        "provenance": {"$ref": "#/$defs/InvocationProvenance"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "completed"}}},
+          "then": {"not": {"required": ["error"]}},
+          "else": {"required": ["error"]}
+        }
+      ]
+    },
+    "CancelRequest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_type", "invocation_id", "requested_at", "reason"],
+      "properties": {
+        "record_type": {"const": "cancel-request"},
+        "invocation_id": {"type": "string", "minLength": 1},
+        "requested_at": {"type": "string", "format": "date-time"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 1024}
+      }
+    },
+    "CancelAcknowledgement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_type", "invocation_id", "acknowledged", "observed_at"],
+      "properties": {
+        "record_type": {"const": "cancel-ack"},
+        "invocation_id": {"type": "string", "minLength": 1},
+        "acknowledged": {"type": "boolean"},
+        "observed_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "DiagnosticEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_type", "diagnostic_id", "runtime_instance_id", "severity", "code", "message", "observed_at"],
+      "properties": {
+        "record_type": {"const": "diagnostic"},
+        "diagnostic_id": {"type": "string", "minLength": 1},
+        "runtime_instance_id": {"type": "string", "minLength": 1},
+        "invocation_id": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["debug", "info", "warning", "error"]},
+        "code": {"type": "string", "minLength": 1},
+        "message": {"type": "string", "minLength": 1, "maxLength": 4096},
+        "observed_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "HealthReport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["record_type", "runtime_instance_id", "health", "observed_at"],
+      "properties": {
+        "record_type": {"const": "health"},
+        "runtime_instance_id": {"type": "string", "minLength": 1},
+        "health": {"enum": ["healthy", "degraded", "unhealthy"]},
+        "diagnostic_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "observed_at": {"type": "string", "format": "date-time"}
+      }
+    }
+  }
+}

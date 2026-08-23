@@ -23,6 +23,7 @@
       "provider_status": {
         "evidence_state": "measured",
         "value_state": "present",
+        "origin": "provider-native",
         "basis": "process exit and parsed XML",
         "channel": "normalized-provider-view",
         "value": "success"

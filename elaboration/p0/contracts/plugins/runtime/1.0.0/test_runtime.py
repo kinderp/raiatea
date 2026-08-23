@@ -44,6 +44,7 @@ def source_request(m: dict, hs: dict) -> dict:
         "runtime_instance_id": hs["identity"]["runtime_instance_id"],
         "capability": {"capability_id": "source.discover", "profile_id": "local-read-only"},
         "inputs": [],
+        "output_targets": [],
         "runtime_context": {
             "workspace_scope_id": "workspace:1",
             "rights_decision_ref": "rights:1",
@@ -146,6 +147,33 @@ class RuntimeContractTests(unittest.TestCase):
         with self.assertRaisesRegex(V.RuntimeContractError, "secret-lease-must-not-contain-value"):
             V.validate_invocation(value, self.source_manifest, self.handshake)
 
+    def test_plugin_cannot_mint_output_handle(self):
+        request = copy.deepcopy(self.request)
+        request["output_targets"] = [{"handle_id": "out:1", "lease_id": "lease:out:1", "access": "write-once-output"}]
+        V.validate_invocation(request, self.source_manifest, self.handshake)
+        result = completed_source_result(self.source_manifest, request)
+        result["outputs"] = [{"kind": "asset-handle", "handle": {"handle_id": "minted:1", "lease_id": "lease:minted:1", "access": "write-once-output"}}]
+        result["provenance"]["output_refs"] = ["minted:1"]
+        with self.assertRaisesRegex(V.RuntimeContractError, "plugin-minted-output-handle-forbidden"):
+            V.validate_result(result, request, self.source_manifest)
+
+    def test_returned_output_handle_must_match_core_lease(self):
+        request = copy.deepcopy(self.request)
+        request["output_targets"] = [{"handle_id": "out:1", "lease_id": "lease:out:1", "access": "write-once-output"}]
+        result = completed_source_result(self.source_manifest, request)
+        result["outputs"] = [{"kind": "asset-handle", "handle": {"handle_id": "out:1", "lease_id": "wrong", "access": "write-once-output"}}]
+        result["provenance"]["output_refs"] = ["out:1"]
+        with self.assertRaisesRegex(V.RuntimeContractError, "output-handle-lease-mismatch"):
+            V.validate_result(result, request, self.source_manifest)
+
+    def test_provenance_input_refs_must_match_request_inputs(self):
+        request = copy.deepcopy(self.request)
+        request["inputs"] = [{"kind": "record-ref", "record_ref": {"ref_id": "in:1", "contract_id": "x", "contract_version": "1", "record_kind": "X"}}]
+        result = completed_source_result(self.source_manifest, request)
+        result["provenance"]["input_refs"] = []
+        with self.assertRaisesRegex(V.RuntimeContractError, "provenance-input-refs-mismatch"):
+            V.validate_result(result, request, self.source_manifest)
+
     def test_cancelled_result_requires_cancelled_error(self):
         result = completed_source_result(self.source_manifest, self.request)
         result["status"] = "cancelled"
@@ -154,6 +182,17 @@ class RuntimeContractTests(unittest.TestCase):
         result["error"] = {"code": "timeout", "message": "wrong", "retryable": False}
         with self.assertRaisesRegex(V.RuntimeContractError, "cancelled-status-requires-cancelled-error"):
             V.validate_result(result, self.request, self.source_manifest)
+
+    def test_cooperative_cancel_requires_acknowledgement(self):
+        result = completed_source_result(self.source_manifest, self.request)
+        result["status"] = "cancelled"
+        result["outputs"] = []
+        result["provenance"]["output_refs"] = []
+        result["error"] = {"code": "cancelled", "message": "cancelled", "retryable": False}
+        cancel = {"record_type": "cancel-request", "invocation_id": "invoke:1"}
+        ack = {"record_type": "cancel-ack", "invocation_id": "invoke:1", "acknowledged": False}
+        with self.assertRaisesRegex(V.RuntimeContractError, "cooperative-cancel-requires-acknowledgement"):
+            V.validate_cancellation_sequence(cancel, ack, result)
 
     def test_timeout_result_requires_timeout_error(self):
         result = completed_source_result(self.source_manifest, self.request)
@@ -169,6 +208,15 @@ class RuntimeContractTests(unittest.TestCase):
         with self.assertRaisesRegex(V.RuntimeContractError, "diagnostic-contains-secret-value"):
             V.validate_diagnostic_no_secret_values(diagnostic, {"supersecret"})
 
+    def test_result_error_secret_echo_fails_when_core_knows_value(self):
+        result = completed_source_result(self.source_manifest, self.request)
+        result["status"] = "failed"
+        result["outputs"] = []
+        result["provenance"]["output_refs"] = []
+        result["error"] = {"code": "plugin-internal-failure", "message": "failed with supersecret", "retryable": False}
+        with self.assertRaisesRegex(V.RuntimeContractError, "result-error-contains-secret-value"):
+            V.validate_result(result, self.request, self.source_manifest, {"supersecret"})
+
     def test_extractor_record_output_must_reference_e05(self):
         m = manifest("benchmark-backed-extractor.json")
         hs = source_handshake(m)
@@ -180,6 +228,7 @@ class RuntimeContractTests(unittest.TestCase):
             "runtime_instance_id": "runtime:extractor:1",
             "capability": {"capability_id": "extract.run", "profile_id": "pdf-native-no-ocr"},
             "inputs": [{"kind": "asset-handle", "handle": {"handle_id": "h:1", "lease_id": "l:1", "access": "read", "media_type": "application/pdf"}}],
+            "output_targets": [],
             "runtime_context": {"workspace_scope_id": "workspace:1", "secret_leases": []},
             "deadline_at": "2026-08-23T19:46:00Z",
             "parameters": {},

@@ -1,0 +1,159 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-pdf-007-defective-native-text-baseline",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "evidence_source_commit": "2a4d6fb17eaedb75ee8c0fdaca3029d358f075d2",
+  "fixture": {
+    "id": "B01-PDF-007",
+    "sha256": "4ed576898177b66cc7e187fbf791f32d4721a30c890ee429fad54949f53a59f0",
+    "bytes": 76090,
+    "raster_pixel_sha256": "9b86156aecfab15d577faee643ef1eaa04b9a565bf37f5db79b7f9090a9bdec3",
+    "raster_visible_expected_text": "OCR TARGET 2026",
+    "rights": {
+      "redistribution": "not-established",
+      "decision_issue": 131,
+      "public_rights_safe": false,
+      "remote_provider": "denied"
+    }
+  },
+  "ci_evidence": {
+    "native_stage": {
+      "workflow_run_id": 32633581661,
+      "status": "success",
+      "source_commit": "2a4d6fb17eaedb75ee8c0fdaca3029d358f075d2",
+      "poppler_artifact": {
+        "id": 9491704095,
+        "digest": "sha256:aa3415891b5f875dccde24deaf06086f379497e7ceeb86e97e682e5c645c56bd"
+      },
+      "tika_artifact": {
+        "id": 9491704392,
+        "digest": "sha256:b17335da03ad1c8167b964e65f5e87a6784b2ab23641316d9aad24714b4df115"
+      },
+      "docling_artifact": {
+        "id": 9491742290,
+        "digest": "sha256:0768e4b8e37d3bf9f72de7a5d7e01a7090b8bf018fc57e8903f221577191df93"
+      }
+    },
+    "ocr_stage": {
+      "workflow_run_id": 32633581646,
+      "status": "success",
+      "source_commit": "2a4d6fb17eaedb75ee8c0fdaca3029d358f075d2",
+      "artifact": {
+        "id": 9491742718,
+        "digest": "sha256:73acd2a3afa4c46368f30dc8d02ae67d0fb8c34408fb52c7781bce8daa51fd12"
+      },
+      "profile_id": "docling-2.118.0-rapidocr-3.9.2-torch-en-default",
+      "rapidocr_payload_lock": {
+        "file_count": 4,
+        "bytes": 32238329,
+        "manifest_sha256": "131b40647a9d3d67f7573adc717faa7e9b07048baaef318f1c94dc3bb150b3dc",
+        "verified": true,
+        "document_phase_offline": true
+      }
+    }
+  },
+  "results": {
+    "pdftotext-bbox-layout": {
+      "profile_kind": "native-no-ocr",
+      "native_text": "3/3",
+      "raster_exact_text": "0/1",
+      "raster_region_candidate_count": 0,
+      "visible_page_exact_coverage": "3/4",
+      "native_coordinates": "3/3",
+      "raster_text_coordinates": "not-measured",
+      "provider_status": "success",
+      "provider_warning_count": 0,
+      "fallback_required_gold_informed": true,
+      "native_ocr_reconciliation": "not-measured"
+    },
+    "pdftohtml-xml": {
+      "profile_kind": "native-no-ocr",
+      "native_text": "3/3",
+      "raster_exact_text": "0/1",
+      "raster_region_candidate_count": 0,
+      "visible_page_exact_coverage": "3/4",
+      "native_coordinates": "3/3",
+      "raster_text_coordinates": "not-measured",
+      "provider_status": "success",
+      "provider_warning_count": 0,
+      "fallback_required_gold_informed": true,
+      "native_ocr_reconciliation": "not-measured"
+    },
+    "tika-app-3.3.2-xhtml": {
+      "profile_kind": "native-no-ocr",
+      "native_text": "3/3",
+      "raster_exact_text": "0/1",
+      "raster_region_candidate_count": 0,
+      "visible_page_exact_coverage": "3/4",
+      "native_coordinates": "not-measured",
+      "raster_text_coordinates": "not-measured",
+      "provider_status": "success",
+      "provider_warning_count": 1,
+      "warning_scope": "missing source bbox geometry, not raster-text incompleteness",
+      "fallback_required_gold_informed": true,
+      "native_ocr_reconciliation": "not-measured"
+    },
+    "docling-2.118.0-standard-pdf-native-no-ocr": {
+      "profile_kind": "native-no-ocr",
+      "native_text": "3/3",
+      "raster_exact_text": "0/1",
+      "raster_region_candidate_count": 0,
+      "visible_page_exact_coverage": "3/4",
+      "native_coordinates": "3/3",
+      "raster_text_coordinates": "not-measured",
+      "provider_status": "success",
+      "provider_warning_count": 0,
+      "fallback_required_gold_informed": true,
+      "native_ocr_reconciliation": "not-measured"
+    },
+    "docling-2.118.0-rapidocr-3.9.2-torch-en-default": {
+      "profile_kind": "ocr-enabled-separate-route",
+      "native_text": "3/3",
+      "raster_exact_text": "0/1",
+      "observed_raster_region_text": "TARGET OCR 2026",
+      "raster_region_candidate_count": 1,
+      "raster_region_intersection_over_gold": 0.9925925925925918,
+      "token_multiset_exact": true,
+      "token_order_exact": false,
+      "partial_surface_evidence": true,
+      "visible_page_exact_coverage": "3/4",
+      "native_coordinates": "3/3",
+      "raster_exact_text_coordinates": "not-measured",
+      "provider_status": "success",
+      "provider_warning_count": 0,
+      "fallback_required_gold_informed": true,
+      "native_ocr_reconciliation": "not-measured",
+      "reconciliation_reason": "Provider-normalized text blocks do not attribute each block to native vs OCR stage"
+    }
+  },
+  "routing_evidence": {
+    "native_success_can_hide_material_gap": true,
+    "rapidocr_exact_fallback_success_on_this_fixture": false,
+    "rapidocr_partial_surface_recovery": true,
+    "rapidocr_failure_mode": "all expected tokens recognized but authored word order not preserved",
+    "production_fallback_heuristic_defined": false,
+    "reason": "Benchmark gold demonstrates the need for completeness/routing evidence; production routing must later use inspectable runtime signals rather than benchmark gold."
+  },
+  "e05_plugin_implications": [
+    "route/profile identity is distinct from Provider brand",
+    "native and OCR/fallback stages require separate lineage",
+    "Provider success is not content completeness",
+    "exact recovery and partial OCR surface evidence are distinct",
+    "Source Coordinates may be unavailable for exact OCR text even when a nearby OCR candidate exists",
+    "native/OCR overlap remains unknown when Provider blocks lack stage attribution",
+    "not-measured, partial, exact mismatch and nominal success must remain distinct"
+  ],
+  "comparison_boundary": {
+    "provider_selected": false,
+    "first_slice_promoted": false,
+    "g02_satisfied": false,
+    "g04_satisfied": false,
+    "g05_satisfied": false,
+    "rapidocr_promoted_as_fallback": false,
+    "remaining_b01_gap": "malformed/access-controlled negative PDFs"
+  }
+}

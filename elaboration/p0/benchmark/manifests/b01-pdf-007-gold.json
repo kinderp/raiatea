@@ -1,0 +1,106 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-pdf-007-gold",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only-separate-subprofile",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "fixture": {
+    "id": "B01-PDF-007",
+    "version": "0.1.0",
+    "source_family": "B-01",
+    "source_traits": [
+      "born-digital",
+      "paginated",
+      "mixed-text-image",
+      "defective-native-text-layer"
+    ],
+    "expected_profile": "mixed-native-and-raster-visible-text",
+    "expected_native_only_state": "materially-incomplete-visible-page-content",
+    "pdf_sha256": "4ed576898177b66cc7e187fbf791f32d4721a30c890ee429fad54949f53a59f0",
+    "pdf_bytes": 76090,
+    "rights": {
+      "redistribution": "not-established",
+      "decision_issue": 131,
+      "public_rights_safe": false,
+      "remote_provider": "denied"
+    }
+  },
+  "coordinate_semantics": {
+    "kind": "pdf-page-geometry",
+    "units": "points",
+    "origin": "bottom-left"
+  },
+  "reference_units": [
+    {
+      "id": "title",
+      "evidence_kind": "native-text",
+      "type": "heading",
+      "text": "Raiatea B01 PDF 007",
+      "page_index": 0,
+      "region": [72, 710, 420, 752]
+    },
+    {
+      "id": "native-before",
+      "evidence_kind": "native-text",
+      "type": "paragraph",
+      "text": "Native text before the raster-only region.",
+      "page_index": 0,
+      "region": [72, 650, 500, 680]
+    },
+    {
+      "id": "raster-target",
+      "evidence_kind": "raster-visible-text",
+      "type": "visible-text",
+      "text": "OCR TARGET 2026",
+      "page_index": 0,
+      "region": [72, 540, 489, 585],
+      "native_text_layer_authored": false,
+      "raster_pixel_width": 834,
+      "raster_pixel_height": 90,
+      "raster_pixel_sha256": "9b86156aecfab15d577faee643ef1eaa04b9a565bf37f5db79b7f9090a9bdec3"
+    },
+    {
+      "id": "native-after",
+      "evidence_kind": "native-text",
+      "type": "paragraph",
+      "text": "Native text after the raster-only region.",
+      "page_index": 0,
+      "region": [72, 465, 500, 500]
+    }
+  ],
+  "visible_page_reading_order": [
+    ["title", "native-before"],
+    ["native-before", "raster-target"],
+    ["raster-target", "native-after"]
+  ],
+  "native_text_layer_units": [
+    "title",
+    "native-before",
+    "native-after"
+  ],
+  "raster_visible_units": [
+    "raster-target"
+  ],
+  "measurement_dimensions": {
+    "native_text_content": "independent",
+    "raster_visible_text_content": "independent",
+    "visible_page_coverage": "independent",
+    "source_coordinates": "independent-per-evidence-item",
+    "provider_outcome_and_warnings": "independent",
+    "fallback_need_evidence": "independent",
+    "ocr_route_recovery": "only-when-separate-ocr-route-is-measured",
+    "native_ocr_overlap": "only-when-separate-ocr-route-is-measured"
+  },
+  "routing_intent": {
+    "native_partial_is_not_complete_success": true,
+    "missing_raster_target_is_material_visible_page_loss": true,
+    "provider_success_status_alone_proves_completeness": false,
+    "fallback_decision_must_be_inspectable": true,
+    "ocr_must_remain_separate_route_profile": true,
+    "native_and_ocr_provenance_must_remain_distinct": true,
+    "spatial_proximity_may_not_create_irreversible_merge": true
+  },
+  "intent_note": "The authored raster words are visible Source content but deliberately absent from the PDF native text layer. Native extraction may validly preserve the three native units while still being materially incomplete for visible-page content. The benchmark must represent that distinction explicitly before evaluating any OCR/fallback route."
+}

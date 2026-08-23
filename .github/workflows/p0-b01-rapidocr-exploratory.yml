@@ -1,0 +1,145 @@
+name: P0 B-01 RapidOCR reference profile
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/benchmark/**"
+      - ".github/workflows/p0-b01-rapidocr-exploratory.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/benchmark/**"
+      - ".github/workflows/p0-b01-rapidocr-exploratory.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  docling-rapidocr-reference:
+    name: B01-PDF-007 Docling + RapidOCR reference / Ubuntu 24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      DOCLING_VERSION: "2.118.0"
+      DOCLING_WHEEL_SHA256: "fd4962c9a54229bae1eb9b49f7fadb7e7b8affabf7e4fba1aac8cb335f558c8f"
+      DOCLING_CONSTRAINTS: "elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt"
+      DOCLING_MODEL_LOCK: "elaboration/p0/benchmark/locks/docling-2.118.0-layout-model-payload.json"
+      RAPIDOCR_VERSION: "3.9.2"
+      RAPIDOCR_MODEL_LOCK: "elaboration/p0/benchmark/locks/docling-2.118.0-rapidocr-3.9.2-torch-en.json"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SOURCE_COMMIT }}
+
+      - name: Verify exact evidence source checkout
+        run: test "$(git rev-parse HEAD)" = "${EVIDENCE_SOURCE_COMMIT}"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+
+      - name: Create isolated Docling environment
+        run: |
+          python -m venv "${RUNNER_TEMP}/docling-venv"
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip --version \
+            | tee "${RUNNER_TEMP}/docling-pip-version.txt"
+
+      - name: Install pinned Docling environment
+        run: |
+          mkdir -p "${RUNNER_TEMP}/docling-wheel"
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip download \
+            --no-deps --only-binary=:all: \
+            --dest "${RUNNER_TEMP}/docling-wheel" \
+            "docling==${DOCLING_VERSION}"
+          WHEEL="$(find "${RUNNER_TEMP}/docling-wheel" -maxdepth 1 -type f -name 'docling-*.whl' -print -quit)"
+          test -n "${WHEEL}"
+          echo "${DOCLING_WHEEL_SHA256}  ${WHEEL}" | sha256sum -c -
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip install \
+            --constraint "${DOCLING_CONSTRAINTS}" \
+            "${WHEEL}"
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip check
+          "${RUNNER_TEMP}/docling-venv/bin/python" -c \
+            'import importlib.metadata as m; assert m.version("docling") == "2.118.0"; assert m.version("rapidocr") == "3.9.2"; print(m.version("docling"), m.version("rapidocr"))'
+
+      - name: Prefetch and verify pinned Docling layout payload
+        run: |
+          mkdir -p "${RUNNER_TEMP}/docling-models"
+          "${RUNNER_TEMP}/docling-venv/bin/docling-tools" models download \
+            --quiet \
+            --output-dir "${RUNNER_TEMP}/docling-models" \
+            layout \
+            | tee "${RUNNER_TEMP}/docling-model-download.txt"
+          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/verify_docling_reference.py \
+            --constraints "${DOCLING_CONSTRAINTS}" \
+            --model-lock "${DOCLING_MODEL_LOCK}" \
+            --artifacts-path "${RUNNER_TEMP}/docling-models" \
+            --output "${RUNNER_TEMP}/docling-reference-verification.json"
+
+      - name: Materialize Docling-managed RapidOCR Torch English bundle
+        run: |
+          "${RUNNER_TEMP}/docling-venv/bin/docling-tools" models download \
+            rapidocr \
+            --rapidocr-backend-lang torch:en \
+            --output-dir "${RUNNER_TEMP}/docling-models" \
+            | tee "${RUNNER_TEMP}/docling-rapidocr-download.txt"
+          test -d "${RUNNER_TEMP}/docling-models/RapidOcr"
+          test -n "$(find "${RUNNER_TEMP}/docling-models/RapidOcr" -type f -print -quit)"
+
+      - name: Verify exact Raiatea RapidOCR payload lock
+        run: |
+          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/verify_rapidocr_reference.py \
+            --lock "${RAPIDOCR_MODEL_LOCK}" \
+            --root "${RUNNER_TEMP}/docling-models/RapidOcr" \
+            --output "${RUNNER_TEMP}/rapidocr-reference-verification.json"
+          test -s "${RUNNER_TEMP}/rapidocr-reference-verification.json"
+          "${RUNNER_TEMP}/docling-venv/bin/python" - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path(os.environ["RUNNER_TEMP"]) / "rapidocr-reference-verification.json"
+          value = json.loads(path.read_text(encoding="utf-8"))
+          assert value["verified"] is True
+          assert value["observed_file_count"] == 4
+          assert value["observed_bytes"] == 32238329
+          assert value["observed_manifest_sha256"] == "131b40647a9d3d67f7573adc717faa7e9b07048baaef318f1c94dc3bb150b3dc"
+          PY
+
+      - name: Run locked Docling RapidOCR reference profile offline
+        env:
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+          HF_HUB_DISABLE_TELEMETRY: "1"
+          DO_NOT_TRACK: "1"
+        run: |
+          OUT="${RUNNER_TEMP}/raiatea-b01-rapidocr-reference"
+          CACHE="${RUNNER_TEMP}/rapidocr-measured-cache"
+          mkdir -p "${OUT}" "${CACHE}"
+          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/measure_b01_docling_rapidocr_exploratory.py \
+            --output "${OUT}" \
+            --artifacts-path "${RUNNER_TEMP}/docling-models" \
+            --cache-root "${CACHE}" \
+            --rapidocr-lock "${RAPIDOCR_MODEL_LOCK}" \
+            --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
+            > "${OUT}/stdout-report.json"
+          test -s "${OUT}/b01-docling-rapidocr-reference.json"
+          test -s "${OUT}/rapidocr-reference-verification.json"
+          test -s "${OUT}/rapidocr-bundle-manifest.json"
+          test -s "${OUT}/raw/B01-PDF-007__docling-rapidocr.json"
+          test -s "${OUT}/observations/B01-PDF-007__docling-rapidocr.json"
+
+      - name: Upload reference evidence (model binaries excluded)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-b01-rapidocr-reference-${{ env.EVIDENCE_SOURCE_COMMIT }}
+          path: |
+            ${{ runner.temp }}/raiatea-b01-rapidocr-reference
+            ${{ runner.temp }}/rapidocr-reference-verification.json
+            ${{ runner.temp }}/docling-rapidocr-download.txt
+            ${{ runner.temp }}/docling-reference-verification.json
+            ${{ runner.temp }}/docling-pip-version.txt
+            ${{ runner.temp }}/docling-model-download.txt
+          if-no-files-found: warn
+          retention-days: 7

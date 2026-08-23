@@ -45,6 +45,7 @@ def _range_intersects(value: dict[str, Any], minimum: tuple[int, int, int], maxi
 
 def _validate_entrypoint(value: Any) -> None:
     _require(isinstance(value, dict), "entrypoint-required")
+    _require(set(value) <= {"kind", "command"}, "entrypoint-extra-runtime-field-forbidden")
     _require(value.get("kind") == "process", "entrypoint-kind-unsupported")
     command = value.get("command")
     _require(isinstance(command, list) and command, "entrypoint-command-required")

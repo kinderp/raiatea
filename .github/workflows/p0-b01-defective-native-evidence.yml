@@ -1,0 +1,211 @@
+name: P0 B-01 defective native-text evidence
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/benchmark/**"
+      - ".github/workflows/p0-b01-defective-native-evidence.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/benchmark/**"
+      - ".github/workflows/p0-b01-defective-native-evidence.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-contract:
+    name: B01-PDF-007 contract / Python 3.12
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Compile benchmark tooling
+        run: python -m compileall -q elaboration/p0/benchmark
+      - name: Run defective-native fixture tests
+        run: python -m unittest elaboration/p0/benchmark/tests/test_b01_defective_native_fixture.py -v
+      - name: Verify deterministic standalone fixture
+        run: |
+          mkdir -p "${RUNNER_TEMP}/raiatea-b01-defective-native"
+          python elaboration/p0/benchmark/b01_pdf_007_fixture.py \
+            --output "${RUNNER_TEMP}/raiatea-b01-defective-native/B01-PDF-007.pdf" \
+            > "${RUNNER_TEMP}/raiatea-b01-defective-native/fixture-evidence.json"
+          echo "4ed576898177b66cc7e187fbf791f32d4721a30c890ee429fad54949f53a59f0  ${RUNNER_TEMP}/raiatea-b01-defective-native/B01-PDF-007.pdf" | sha256sum -c -
+          test "$(stat -c %s "${RUNNER_TEMP}/raiatea-b01-defective-native/B01-PDF-007.pdf")" = "76090"
+
+  poppler-native:
+    name: B01-PDF-007 Poppler native / Ubuntu 24.04
+    needs: fixture-contract
+    runs-on: ubuntu-24.04
+    env:
+      EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      EXPECTED_POPPLER_VERSION: "24.02.0"
+      EXPECTED_PDFTOTEXT_SHA256: "0fb98ea179e19154a90202608c164f2a319b79f16576fa6534b2d601033565e7"
+      EXPECTED_PDFTOHTML_SHA256: "70bd5fbb655a14d0b02cb32cb53a601d3b0842a63553a24d1a6a612cf9f0624e"
+      EXPECTED_PDFINFO_SHA256: "3293dda06d80e1e38dab859aa47368c2876aedc41cbc2e24e8fb9a4e66392078"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SOURCE_COMMIT }}
+      - name: Verify evidence source checkout
+        run: test "$(git rev-parse HEAD)" = "${EVIDENCE_SOURCE_COMMIT}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Install and verify exact Poppler controls
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          pdftotext -v 2>&1 | head -1 | grep -F "version ${EXPECTED_POPPLER_VERSION}"
+          pdftohtml -v 2>&1 | head -1 | grep -F "version ${EXPECTED_POPPLER_VERSION}"
+          pdfinfo -v 2>&1 | head -1 | grep -F "version ${EXPECTED_POPPLER_VERSION}"
+          echo "${EXPECTED_PDFTOTEXT_SHA256}  /usr/bin/pdftotext" | sha256sum -c -
+          echo "${EXPECTED_PDFTOHTML_SHA256}  /usr/bin/pdftohtml" | sha256sum -c -
+          echo "${EXPECTED_PDFINFO_SHA256}  /usr/bin/pdfinfo" | sha256sum -c -
+      - name: Run raw native B01-PDF-007 measurement
+        run: |
+          OUT="${RUNNER_TEMP}/raiatea-b01-defective-poppler"
+          mkdir -p "${OUT}"
+          python elaboration/p0/benchmark/routes/measure_b01_defective_native_evidence.py poppler \
+            --output "${OUT}" \
+            --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
+            > "${OUT}/stdout-report.json"
+          test -s "${OUT}/b01-defective-native-raw.json"
+          test -s "${OUT}/observations/B01-PDF-007__pdftotext-bbox-layout.json"
+          test -s "${OUT}/observations/B01-PDF-007__pdftohtml-xml.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p0-b01-defective-native-poppler-${{ env.EVIDENCE_SOURCE_COMMIT }}
+          path: ${{ runner.temp }}/raiatea-b01-defective-poppler
+          if-no-files-found: error
+          retention-days: 7
+
+  tika-native:
+    name: B01-PDF-007 Tika native / Ubuntu 24.04
+    needs: fixture-contract
+    runs-on: ubuntu-24.04
+    env:
+      EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      TIKA_VERSION: "3.3.2"
+      TIKA_SHA512: "88c2032cba0d45feea361e6eebd2918bd04707614cdda5d89a1b167da5503c98e7b4cd368336f0402d559abcaf5006fcc7c825c32c749ae0417ea2f3b8423aba"
+      TIKA_URL: "https://downloads.apache.org/tika/3.3.2/tika-app-3.3.2.jar"
+      EXPECTED_JAVA_SHA256: "11af352aa2c506c4123a4e4c19c187d59e06cd0dff317d54f5e6806e07c6715d"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SOURCE_COMMIT }}
+      - name: Verify evidence source checkout
+        run: test "$(git rev-parse HEAD)" = "${EVIDENCE_SOURCE_COMMIT}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21.0.12+8"
+      - name: Verify exact Java and Tika
+        run: |
+          java -version 2>&1 | head -1 | grep -F '21.0.12'
+          echo "${EXPECTED_JAVA_SHA256}  $(command -v java)" | sha256sum -c -
+          mkdir -p "${RUNNER_TEMP}/raiatea-tika"
+          curl --fail --location --retry 3 --retry-delay 2 "${TIKA_URL}" \
+            --output "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar"
+          echo "${TIKA_SHA512}  ${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" | sha512sum -c -
+      - name: Run raw native B01-PDF-007 measurement
+        run: |
+          OUT="${RUNNER_TEMP}/raiatea-b01-defective-tika"
+          mkdir -p "${OUT}"
+          python elaboration/p0/benchmark/routes/measure_b01_defective_native_evidence.py tika \
+            --output "${OUT}" \
+            --tika-jar "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" \
+            --config elaboration/p0/benchmark/config/tika-pdf-native-no-ocr.xml \
+            --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
+            > "${OUT}/stdout-report.json"
+          test -s "${OUT}/b01-defective-native-raw.json"
+          test -s "${OUT}/observations/B01-PDF-007__tika-app-3.3.2-xhtml.json"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: p0-b01-defective-native-tika-${{ env.TIKA_VERSION }}-${{ env.EVIDENCE_SOURCE_COMMIT }}
+          path: ${{ runner.temp }}/raiatea-b01-defective-tika
+          if-no-files-found: error
+          retention-days: 7
+
+  docling-native:
+    name: B01-PDF-007 Docling native / Ubuntu 24.04
+    needs: fixture-contract
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      DOCLING_VERSION: "2.118.0"
+      DOCLING_WHEEL_SHA256: "fd4962c9a54229bae1eb9b49f7fadb7e7b8affabf7e4fba1aac8cb335f558c8f"
+      DOCLING_CONSTRAINTS: "elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt"
+      DOCLING_MODEL_LOCK: "elaboration/p0/benchmark/locks/docling-2.118.0-layout-model-payload.json"
+      PIP_DISABLE_PIP_VERSION_CHECK: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SOURCE_COMMIT }}
+      - name: Verify evidence source checkout
+        run: test "$(git rev-parse HEAD)" = "${EVIDENCE_SOURCE_COMMIT}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Create isolated Docling environment
+        run: |
+          python -m venv "${RUNNER_TEMP}/docling-venv"
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip --version | tee "${RUNNER_TEMP}/docling-pip-version.txt"
+      - name: Install pinned Docling environment
+        run: |
+          mkdir -p "${RUNNER_TEMP}/docling-wheel"
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip download --no-deps --only-binary=:all: \
+            --dest "${RUNNER_TEMP}/docling-wheel" "docling==${DOCLING_VERSION}"
+          WHEEL="$(find "${RUNNER_TEMP}/docling-wheel" -maxdepth 1 -type f -name 'docling-*.whl' -print -quit)"
+          test -n "${WHEEL}"
+          echo "${DOCLING_WHEEL_SHA256}  ${WHEEL}" | sha256sum -c -
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip install \
+            --constraint "${DOCLING_CONSTRAINTS}" "${WHEEL}"
+          "${RUNNER_TEMP}/docling-venv/bin/python" -m pip check
+      - name: Prefetch and verify pinned model payload
+        run: |
+          mkdir -p "${RUNNER_TEMP}/docling-models"
+          "${RUNNER_TEMP}/docling-venv/bin/docling-tools" models download --quiet \
+            --output-dir "${RUNNER_TEMP}/docling-models" layout \
+            | tee "${RUNNER_TEMP}/docling-model-download.txt"
+          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/verify_docling_reference.py \
+            --constraints "${DOCLING_CONSTRAINTS}" \
+            --model-lock "${DOCLING_MODEL_LOCK}" \
+            --artifacts-path "${RUNNER_TEMP}/docling-models" \
+            --output "${RUNNER_TEMP}/docling-reference-verification.json"
+      - name: Run raw native B01-PDF-007 measurement offline
+        env:
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+          HF_HUB_DISABLE_TELEMETRY: "1"
+          DO_NOT_TRACK: "1"
+        run: |
+          OUT="${RUNNER_TEMP}/raiatea-b01-defective-docling"
+          CACHE="${RUNNER_TEMP}/docling-measured-cache"
+          mkdir -p "${OUT}" "${CACHE}"
+          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/measure_b01_defective_native_evidence.py docling \
+            --output "${OUT}" \
+            --artifacts-path "${RUNNER_TEMP}/docling-models" \
+            --cache-root "${CACHE}" \
+            --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
+            > "${OUT}/stdout-report.json"
+          test -s "${OUT}/b01-defective-native-raw.json"
+          test -s "${OUT}/observations/B01-PDF-007__docling.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: p0-b01-defective-native-docling-${{ env.DOCLING_VERSION }}-${{ env.EVIDENCE_SOURCE_COMMIT }}
+          path: |
+            ${{ runner.temp }}/raiatea-b01-defective-docling
+            ${{ runner.temp }}/docling-reference-verification.json
+            ${{ runner.temp }}/docling-pip-version.txt
+            ${{ runner.temp }}/docling-model-download.txt
+          if-no-files-found: warn
+          retention-days: 7

@@ -65,12 +65,15 @@ The harness tests and rejects accidental reuse of `invocation_id` as the transpo
 `process_harness.py`:
 
 - launches a child process with binary stdin/stdout/stderr pipes;
+- continuously drains stderr on a dedicated daemon thread so non-authoritative logging cannot backpressure/block protocol stdout;
 - requires a valid v1b handshake before `invoke`/`cancel` helpers;
 - accepts structured diagnostic notifications while waiting for a response;
 - detects duplicate/unexpected response ids;
 - maps process EOF/crash without inventing a domain result;
 - runs accepted v1b semantic validation after framing;
 - never upgrades stderr text into a diagnostic record.
+
+`test_stderr_drain.py` writes more than 256 KiB to stderr before handshake and uses a bounded watchdog to prove the candidate remains responsive on Linux and Windows.
 
 ### Process-attempt versus runtime lifecycle evidence
 
@@ -99,7 +102,8 @@ Synthetic fault modes exercise:
 - JSON-RPC error misused during invocation;
 - semantically invalid v1b result;
 - malformed cancel acknowledgement;
-- structured diagnostic text written only to stderr.
+- structured diagnostic text written only to stderr;
+- stderr backpressure/flood without protocol blockage.
 
 ## Evidence still required
 

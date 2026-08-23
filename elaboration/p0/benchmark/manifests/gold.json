@@ -35,7 +35,10 @@
           "region": [72, 610, 500, 640]
         }
       ],
-      "reading_order": [["title", "p1"], ["p1", "p2"]],
+      "reading_order": [
+        ["title", "p1"],
+        ["p1", "p2"]
+      ],
       "coordinate_semantics": {
         "kind": "pdf-page-geometry",
         "units": "points",
@@ -85,7 +88,12 @@
           "region": [330, 610, 520, 640]
         }
       ],
-      "reading_order": [["title", "l1"], ["l1", "l2"], ["l2", "r1"], ["r1", "r2"]],
+      "reading_order": [
+        ["title", "l1"],
+        ["l1", "l2"],
+        ["l2", "r1"],
+        ["r1", "r2"]
+      ],
       "coordinate_semantics": {
         "kind": "pdf-page-geometry",
         "units": "points",
@@ -253,8 +261,160 @@
       },
       "figure_intent_note": "The raster payload, figure region and caption relation are authored fixture intent. Provider scoring must keep figure presence, asset identity, caption text, geometry and association separate; association is credited only when the Provider exposes explicit relation evidence, never from spatial proximity alone."
     },
+    "B01-PDF-005": {
+      "assertion_modes": [
+        "exact",
+        "ordered-relation",
+        "tolerance-based",
+        "relation-or-set"
+      ],
+      "reference_units": [
+        {
+          "id": "title",
+          "type": "heading",
+          "text": "Raiatea B01 PDF 005",
+          "page_index": 0,
+          "region": [72, 710, 420, 752]
+        },
+        {
+          "id": "body-before",
+          "type": "paragraph",
+          "text": "Body text before the benchmark table.",
+          "page_index": 0,
+          "region": [72, 650, 430, 680]
+        },
+        {
+          "id": "body-after",
+          "type": "paragraph",
+          "text": "Body text after the benchmark table.",
+          "page_index": 0,
+          "region": [72, 375, 430, 405]
+        }
+      ],
+      "reading_order": [
+        ["title", "body-before"],
+        ["body-before", "body-after"]
+      ],
+      "reading_order_note": "Surrounding ordinary-text reading order is separate from table topology; table topology is represented only by authored table/cell relations.",
+      "tables": [
+        {
+          "id": "table-1",
+          "page_index": 0,
+          "region": [72, 440, 540, 600],
+          "row_count": 4,
+          "column_count": 3,
+          "cells": [
+            {
+              "id": "cell-r0c0",
+              "row": 0,
+              "column": 0,
+              "text": "Item",
+              "role": "header",
+              "region": [72, 560, 300, 600]
+            },
+            {
+              "id": "cell-r0c1",
+              "row": 0,
+              "column": 1,
+              "text": "Qty",
+              "role": "header",
+              "region": [300, 560, 390, 600]
+            },
+            {
+              "id": "cell-r0c2",
+              "row": 0,
+              "column": 2,
+              "text": "Price",
+              "role": "header",
+              "region": [390, 560, 540, 600]
+            },
+            {
+              "id": "cell-r1c0",
+              "row": 1,
+              "column": 0,
+              "text": "Alpha",
+              "role": "body",
+              "region": [72, 520, 300, 560]
+            },
+            {
+              "id": "cell-r1c1",
+              "row": 1,
+              "column": 1,
+              "text": "2",
+              "role": "body",
+              "region": [300, 520, 390, 560]
+            },
+            {
+              "id": "cell-r1c2",
+              "row": 1,
+              "column": 2,
+              "text": "3.50",
+              "role": "body",
+              "region": [390, 520, 540, 560]
+            },
+            {
+              "id": "cell-r2c0",
+              "row": 2,
+              "column": 0,
+              "text": "Beta",
+              "role": "body",
+              "region": [72, 480, 300, 520]
+            },
+            {
+              "id": "cell-r2c1",
+              "row": 2,
+              "column": 1,
+              "text": "1",
+              "role": "body",
+              "region": [300, 480, 390, 520]
+            },
+            {
+              "id": "cell-r2c2",
+              "row": 2,
+              "column": 2,
+              "text": "7.00",
+              "role": "body",
+              "region": [390, 480, 540, 520]
+            },
+            {
+              "id": "cell-r3c0",
+              "row": 3,
+              "column": 0,
+              "text": "Total",
+              "role": "body",
+              "region": [72, 440, 300, 480]
+            },
+            {
+              "id": "cell-r3c1",
+              "row": 3,
+              "column": 1,
+              "text": "3",
+              "role": "body",
+              "region": [300, 440, 390, 480]
+            },
+            {
+              "id": "cell-r3c2",
+              "row": 3,
+              "column": 2,
+              "text": "14.00",
+              "role": "body",
+              "region": [390, 440, 540, 480]
+            }
+          ]
+        }
+      ],
+      "coordinate_semantics": {
+        "kind": "pdf-page-geometry",
+        "units": "points",
+        "origin": "bottom-left"
+      },
+      "table_intent_note": "Provider-native table structure must be credited only from explicit Provider table/cell topology. Visible spatial alignment alone never proves row/column membership or header roles."
+    },
     "B02-EPUB-001": {
-      "assertion_modes": ["exact", "ordered-relation"],
+      "assertion_modes": [
+        "exact",
+        "ordered-relation"
+      ],
       "spine": ["ch1", "ch2"],
       "reference_units": [
         {
@@ -286,14 +446,22 @@
           "fragment": "next-text"
         }
       ],
-      "reading_order": [["intro", "intro-p"], ["intro-p", "next"], ["next", "next-p"]],
+      "reading_order": [
+        ["intro", "intro-p"],
+        ["intro-p", "next"],
+        ["next", "next-p"]
+      ],
       "coordinate_semantics": {
         "kind": "epub-package-logical",
         "canonical_rendered_pages": false
       }
     },
     "B02-EPUB-002": {
-      "assertion_modes": ["exact", "relation-or-set", "ordered-relation"],
+      "assertion_modes": [
+        "exact",
+        "relation-or-set",
+        "ordered-relation"
+      ],
       "spine": ["ch1", "ch2"],
       "navigation": [
         {
@@ -322,7 +490,10 @@
     "B02-EPUB-NEG-001": {
       "assertion_modes": ["exact"],
       "expected_state": "degraded-with-warning-or-safe-success",
-      "security_expectations": ["script-not-executed", "no-network-required"],
+      "security_expectations": [
+        "script-not-executed",
+        "no-network-required"
+      ],
       "coordinate_semantics": {
         "kind": "epub-package-logical",
         "canonical_rendered_pages": false
@@ -331,7 +502,10 @@
     "B02-EPUB-NEG-002": {
       "assertion_modes": ["exact"],
       "expected_state": "rejected-or-degraded-with-warning",
-      "security_expectations": ["no-path-escape", "no-extractall"],
+      "security_expectations": [
+        "no-path-escape",
+        "no-extractall"
+      ],
       "coordinate_semantics": {
         "kind": "epub-package-logical",
         "canonical_rendered_pages": false

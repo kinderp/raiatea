@@ -15,7 +15,7 @@ import zipfile
 
 HERE = Path(__file__).resolve().parent
 MANIFEST_PATH = HERE / "manifests" / "fixtures.json"
-GENERATOR_VERSION = "0.3.0"
+GENERATOR_VERSION = "0.4.0"
 ZIP_DATE = (1980, 1, 1, 0, 0, 0)
 
 
@@ -187,6 +187,51 @@ def _build_figure_caption_pdf() -> bytes:
     return _serialize_pdf_objects(objects)
 
 
+def _build_table_structure_pdf() -> bytes:
+    """Build B01-PDF-005 with authored grid geometry and unambiguous cell text."""
+    x_bounds = [72, 300, 390, 540]
+    y_bounds = [600, 560, 520, 480, 440]
+    stream_parts = [
+        _text_cmd("Raiatea B01 PDF 005", 72, 730, 20),
+        _text_cmd("Body text before the benchmark table.", 72, 665, 12),
+        "0.75 w\n",
+    ]
+    for x in x_bounds:
+        stream_parts.append(f"{x} {y_bounds[-1]} m {x} {y_bounds[0]} l S\n")
+    for y in y_bounds:
+        stream_parts.append(f"{x_bounds[0]} {y} m {x_bounds[-1]} {y} l S\n")
+
+    rows = [
+        ["Item", "Qty", "Price"],
+        ["Alpha", "2", "3.50"],
+        ["Beta", "1", "7.00"],
+        ["Total", "3", "14.00"],
+    ]
+    text_x = [82, 310, 400]
+    text_y = [575, 535, 495, 455]
+    for row_index, row in enumerate(rows):
+        for column_index, text in enumerate(row):
+            stream_parts.append(
+                _text_cmd(text, text_x[column_index], text_y[row_index], 12)
+            )
+    stream_parts.append(
+        _text_cmd("Body text after the benchmark table.", 72, 390, 12)
+    )
+    stream = "".join(stream_parts).encode("ascii")
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n" + stream + b"endstream",
+    ]
+    return _serialize_pdf_objects(objects)
+
+
 def generate_pdf_single_column(path: Path) -> None:
     path.write_bytes(
         _build_pdf(
@@ -219,6 +264,10 @@ def generate_pdf_semantic_structure(path: Path) -> None:
 
 def generate_pdf_figure_caption(path: Path) -> None:
     path.write_bytes(_build_figure_caption_pdf())
+
+
+def generate_pdf_table_structure(path: Path) -> None:
+    path.write_bytes(_build_table_structure_pdf())
 
 
 def _zip_write_text(zf: zipfile.ZipFile, name: str, text: str, compress: bool = False) -> None:
@@ -337,6 +386,7 @@ GENERATORS = {
     "pdf_two_column": generate_pdf_two_column,
     "pdf_semantic_structure": generate_pdf_semantic_structure,
     "pdf_figure_caption": generate_pdf_figure_caption,
+    "pdf_table_structure": generate_pdf_table_structure,
     "epub_spine": generate_epub_spine,
     "epub_navigation": generate_epub_navigation,
     "epub_inert_active_content": generate_epub_inert_active_content,

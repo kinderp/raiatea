@@ -1,0 +1,166 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-pdf-005-table-structure-baseline",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "no_universal_total_score": true
+  },
+  "fixture": {
+    "id": "B01-PDF-005",
+    "version": "0.1.0",
+    "sha256": "f841920e1e9b2566124c2d174bc6627ecaf5ebc96482898f163a4f3e1aa04456",
+    "bytes": 1518,
+    "generator": "pdf_table_structure",
+    "generator_version": "0.4.0",
+    "authored_table": {
+      "row_count": 4,
+      "column_count": 3,
+      "cell_count": 12,
+      "header_cells": 3,
+      "region_points_bottom_left": [72, 440, 540, 600]
+    },
+    "rights": {
+      "redistribution": "not-established",
+      "decision_issue": 131,
+      "public_rights_safe": false,
+      "remote_provider": "denied"
+    }
+  },
+  "analysis_provenance": {
+    "source_commit": "7834742856f4cfc01e065503396df8444e7e4ce7",
+    "policy": [
+      "Provider-native explicit table structure only",
+      "visible/spatial alignment never reconstructs row-column topology",
+      "table identity never falls back to list position when ambiguous",
+      "explicit table/group descendant text may prove content preservation but remains unbound to cells",
+      "geometry records raw per-edge error; no post-hoc tolerance"
+    ]
+  },
+  "ci_evidence": {
+    "workflow_run_id": 32624545149,
+    "source_commit": "7834742856f4cfc01e065503396df8444e7e4ce7",
+    "status": "success",
+    "poppler_artifact": {
+      "id": 9489318140,
+      "name": "p0-b01-table-poppler-7834742856f4cfc01e065503396df8444e7e4ce7",
+      "digest": "sha256:72d27541d97deb3f67478eb4179e809cf56211f9529fd62a38e7e2c4921475b8"
+    },
+    "tika_artifact": {
+      "id": 9489320069,
+      "name": "p0-b01-table-tika-3.3.2-7834742856f4cfc01e065503396df8444e7e4ce7",
+      "digest": "sha256:5b481ca46e946d0205b5a6d6db869bfd748d4dff80c9ba834208852b96a1c8a2"
+    },
+    "docling_artifact": {
+      "id": 9489357436,
+      "name": "p0-b01-table-docling-2.118.0-7834742856f4cfc01e065503396df8444e7e4ce7",
+      "digest": "sha256:91c9859c1478991d6babd475e3b694e58478d18d239de6cd8233670041ee5a92"
+    },
+    "cross_platform_contract_run": {
+      "workflow_run_id": 32624545024,
+      "status": "success",
+      "matrix": "Linux/Windows × Python 3.10/3.12"
+    }
+  },
+  "results": {
+    "pdftotext-bbox-layout": {
+      "route_family": "Poppler control",
+      "provider_version": "24.02.0",
+      "surrounding_text": {"content_preserved": "3/3", "reading_order_edges": "2/2"},
+      "cell_text_content": "12/12",
+      "table_presence": "not-measured",
+      "table_topology": "not-measured",
+      "explicit_cell_text": "not-measured",
+      "header_roles": "not-measured",
+      "table_geometry": "not-measured",
+      "cell_geometry": "not-measured",
+      "raw_output_sha256": "b0955c2f6318349d394f085dce2db130d3e39bed5b4914da24be0c31018c57da",
+      "raw_output_bytes": 6453,
+      "observation": "All authored cell texts are separate visible text blocks, but the route exposes no trustworthy explicit table collection."
+    },
+    "pdftohtml-xml": {
+      "route_family": "Poppler control",
+      "provider_version": "24.02.0",
+      "surrounding_text": {"content_preserved": "3/3", "reading_order_edges": "2/2"},
+      "cell_text_content": "12/12",
+      "table_presence": "not-measured",
+      "table_topology": "not-measured",
+      "explicit_cell_text": "not-measured",
+      "header_roles": "not-measured",
+      "table_geometry": "not-measured",
+      "cell_geometry": "not-measured",
+      "raw_output_sha256": "f5e9da55779c2fe2d8b7b47b6c3096d8ee0a91186bb7600b10eb7c451c17ae46",
+      "raw_output_bytes": 1498,
+      "observation": "All authored cell texts are visible, but visual coordinates are not promoted to Provider-native table topology."
+    },
+    "tika-app-3.3.2-xhtml": {
+      "route_family": "Apache Tika structured",
+      "provider_version": "3.3.2",
+      "surrounding_text": {"content_preserved": "3/3", "reading_order_edges": "2/2"},
+      "cell_text_content": "12/12",
+      "table_presence": "not-measured",
+      "table_topology": "not-measured",
+      "explicit_cell_text": "not-measured",
+      "header_roles": "not-measured",
+      "table_geometry": "not-measured",
+      "cell_geometry": "not-measured",
+      "raw_output_sha256": "9001aab08a55001a7e7969f657b594ae4e2afcc48416e2ed9a2424ccd24ecd5b",
+      "raw_output_bytes": 1573,
+      "observation": "Tika groups each visible table row into paragraph text but exposes no trustworthy explicit table collection in the measured XHTML."
+    },
+    "docling-2.118.0-standard-pdf-native-no-ocr": {
+      "route_family": "Docling structured",
+      "provider_version": "2.118.0",
+      "surrounding_text": {"content_preserved": "3/3", "reading_order_edges": "2/2"},
+      "cell_text_content": {
+        "preserved": "12/12",
+        "binding": "explicit-table-descendant-unbound-to-cell",
+        "evidence": "lossless table -> group -> text references preserve all authored cell strings"
+      },
+      "table_presence": {"status": "measured", "expected": 1, "observed": 1, "count_exact": true},
+      "table_topology": {
+        "status": "measured",
+        "expected": {"rows": 4, "columns": 3, "cells": 12},
+        "observed": {"rows": 1, "columns": 1, "cells": 1},
+        "topology_exact": false,
+        "explicit_cell_text": "not-measured",
+        "header_roles": "not-measured",
+        "cell_geometry": "not-measured",
+        "reason": "The pinned route exposes one explicit 1x1 table with one empty structural cell; descendant text is not rebound to row/column positions."
+      },
+      "table_geometry": {
+        "status": "measured",
+        "expected_bbox_points_bottom_left": [72, 440, 540, 600],
+        "observed_bbox_points_bottom_left": [70.94497680664062, 439.6137390136719, 540.6881103515625, 601.0523071289062],
+        "signed_edge_error_points": [-1.055023193359375, -0.386260986328125, 0.6881103515625, 1.05230712890625],
+        "max_absolute_edge_error_points": 1.055023193359375,
+        "bbox_exact": false
+      },
+      "raw_output_sha256": "e1340ee6b3a4b96acf06743c40648d96cc0bba7d61f3f5c35f19396f52122c6f",
+      "raw_output_bytes": 6036,
+      "environment_freeze_sha256": "54625595793321bdcb4f7b5763122b2c403ce1f4ecbd6d7837ab619a96c39456",
+      "model_payload_manifest_sha256": "c9afe973808a41c359c1f270f063097972985c096468089b206031395f8a885e",
+      "profile_observation": "The currently pinned Docling profile has do_table_structure=false. Richer table topology, if needed, must be evaluated as a distinct route/profile rather than silently changing this baseline."
+    }
+  },
+  "e05_inputs": [
+    "table text preservation and explicit table topology must be separate capabilities/evidence surfaces",
+    "a Provider can expose an explicit table object while its row/column topology is degraded",
+    "Provider-native descendant text may need lineage to a table without pretending to know cell identity",
+    "table geometry should preserve Provider-native coordinates and raw comparison evidence",
+    "Extractor routing may require a distinct table-structure profile instead of treating one Provider brand as one capability"
+  ],
+  "comparison_boundary": {
+    "statement": "Per-dimension evidence only; no route wins a universal score.",
+    "provider_selected": false,
+    "first_slice_promoted": false,
+    "g02_satisfied": false,
+    "g04_satisfied": false,
+    "g05_satisfied": false,
+    "remaining_b01_gaps": [
+      "B01-PDF-006 formula fidelity beyond code/preformatted coverage",
+      "B01-PDF-007 defective native text / later OCR fallback",
+      "malformed/access-controlled negative PDF fixtures"
+    ]
+  }
+}

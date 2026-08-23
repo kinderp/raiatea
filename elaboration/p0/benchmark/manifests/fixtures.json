@@ -126,6 +126,40 @@
       }
     },
     {
+      "id": "B01-PDF-005",
+      "version": "0.1.0",
+      "source_family": "SF-01",
+      "profile": "normal-quality",
+      "traits": [
+        "born-digital",
+        "paginated",
+        "single-column",
+        "table",
+        "grid-table",
+        "header-row"
+      ],
+      "generator": "pdf_table_structure",
+      "output": "B01-PDF-005.pdf",
+      "expected_outcome": "success",
+      "dimensions": {
+        "content": "target",
+        "reading_order": "target",
+        "source_coordinates": "target",
+        "tables": "target",
+        "table_cells": "target",
+        "table_topology": "target",
+        "table_geometry": "target",
+        "header_roles": "target"
+      },
+      "rights": {
+        "origin": "project-created",
+        "redistribution": "not-established",
+        "public_rights_safe": false,
+        "remote_provider": "denied",
+        "decision_issue": 131
+      }
+    },
+    {
       "id": "B02-EPUB-001",
       "version": "0.1.0",
       "source_family": "SF-03",
@@ -226,7 +260,6 @@
     }
   ],
   "coverage_gaps": [
-    "B01-PDF-005 tables",
     "B01-PDF-006 formula fidelity beyond the code/preformatted coverage in B01-PDF-003",
     "B01-PDF-007 defective native text",
     "B01-PDF negative malformed/access-controlled cases",

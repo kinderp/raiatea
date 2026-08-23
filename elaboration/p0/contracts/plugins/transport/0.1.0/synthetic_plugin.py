@@ -46,8 +46,13 @@ def _write(message: dict[str, Any]) -> None:
     sys.stdout.buffer.flush()
 
 
-def _write_raw(message: dict[str, Any]) -> None:
-    payload = json.dumps(message, separators=(",", ":"), sort_keys=True).encode("utf-8") + b"\n"
+def _write_raw(message: dict[str, Any] | bytes) -> None:
+    if isinstance(message, bytes):
+        payload = message
+    else:
+        payload = json.dumps(message, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    if not payload.endswith(b"\n"):
+        payload += b"\n"
     sys.stdout.buffer.write(payload)
     sys.stdout.buffer.flush()
 
@@ -205,18 +210,27 @@ def run(mode: str) -> int:
         if method == "raiatea.invoke":
             if mode == "crash-invoke":
                 os._exit(71)
+            if mode == "protocol-error-invoke":
+                _write(error_message(request_id, -32050, "Synthetic protocol misuse"))
+                continue
             if not isinstance(params, dict):
                 _write(error_message(request_id, -32602, "Invalid params"))
                 continue
             parameters = params.get("parameters", {})
             if isinstance(parameters, dict) and parameters.get("emit_diagnostic") is True:
                 _write(notification_message("raiatea.diagnostic", _diagnostic(params)))
-            _write(result_message(request_id, _invocation_result(manifest, params)))
+            result = _invocation_result(manifest, params)
+            if mode == "invalid-runtime-result":
+                result["provenance"].pop("plugin_id", None)
+            _write(result_message(request_id, result))
             continue
 
         if method == "raiatea.cancel":
             if not isinstance(params, dict):
                 _write(error_message(request_id, -32602, "Invalid params"))
+                continue
+            if mode == "bad-cancel-ack":
+                _write(result_message(request_id, {"record_type": "wrong-ack", "invocation_id": params.get("invocation_id")}))
                 continue
             ack = {
                 "record_type": "cancel-ack",
@@ -243,6 +257,9 @@ def main() -> int:
             "stderr-diagnostic",
             "crash-startup",
             "crash-invoke",
+            "protocol-error-invoke",
+            "invalid-runtime-result",
+            "bad-cancel-ack",
         ],
     )
     args = parser.parse_args()

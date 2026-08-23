@@ -42,10 +42,10 @@ Candidate machine states:
 
 ```text
 EvidenceState:
-  measured | partial | not-measured | malformed-evidence | ambiguous | not-applicable
+  present | partial | unavailable | ambiguous | malformed | not-applicable
 
 ValueState:
-  present | explicit-empty | unknown
+  populated | empty | unknown
 
 EvidenceOrigin:
   provider-native | raiatea-aligned | raiatea-derived | user-asserted | unresolved
@@ -53,9 +53,11 @@ EvidenceOrigin:
 
 `channel` describes where Provider evidence was observed (`lossless/raw`, normalized Provider view, diagnostic stream, etc.); it never substitutes for `origin`.
 
-A trustworthy empty collection is `evidence_state=measured`, `value_state=explicit-empty`, with its actual empty value. For a singular SourceCoordinate the explicit empty value is `null`.
+A trustworthy empty collection is `evidence_state=present`, `value_state=empty`, with its actual empty value. For a singular SourceCoordinate the empty value is `null`. Missing or unexposed evidence is instead represented as `evidence_state=unavailable`, `value_state=unknown`.
 
 **Mismatch is not a ValueState.** When two available facts are compared, mismatch/consistency belongs to an optional `EvidenceAssessment` carrying its own basis and optional compared-to reference. An unavailable or malformed fact cannot be declared a proven mismatch.
+
+Benchmark adapters translate E-04 measurement vocabulary at the boundary; the runtime contract does not export benchmark-only `measured` / `not-measured` or `explicit-empty` state names.
 
 ## Policy and technical outcome are separate
 
@@ -89,7 +91,7 @@ Authoritative permission/restriction remains Core-owned through `RightsDecisionR
 | provider/core stage executor distinction | required by accepted E-05a ownership boundary | Raiatea Core owns normalization/alignment; Providers own route execution evidence |
 | stage outcome distinct from Provider status | required-by-evidence | Provider native `success` may coexist with Raiatea-invalid/degraded assessment |
 | run outcome distinct from stage outcome | required-by-evidence | overall orchestration is not last-stage/worst-stage aggregation |
-| evidence state + value state | required-by-evidence | E-04 distinguishes unavailable, partial and explicit-empty evidence |
+| evidence state + value state | required-by-evidence | E-04 distinguishes unavailable, partial and trustworthy empty evidence; adapters translate benchmark vocabulary into runtime states |
 | evidence origin separate from channel | required by E-05a I-04/I-05 | Provider-native facts may be read through different channels; Raiatea may align/derive others |
 | mismatch as assessment | required by E-05a §7.4 | comparison/conflict is not evidence availability or value cardinality |
 | Provider evidence channel/locator | required-by-evidence / optional locator | lossless/raw, normalized Provider views and diagnostics expose different facts |

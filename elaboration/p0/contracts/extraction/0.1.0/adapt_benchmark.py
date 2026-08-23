@@ -66,13 +66,78 @@ def _diagnostics(warnings: Any) -> list[dict[str, Any]]:
     return rows
 
 
+def _execution_from_status(status: str) -> str:
+    if status in {"success", "degraded", "partial"}:
+        return "completed"
+    if status == "failed":
+        return "failed"
+    if status == "rejected":
+        return "rejected"
+    if status == "unsupported":
+        return "unsupported"
+    return "unknown"
+
+
+def _provider_stage_outcome(status: str, label: str) -> dict[str, Any]:
+    return {
+        "execution": _execution_from_status(status),
+        "assessments": [
+            {
+                "scope": label,
+                "completeness": "unknown",
+                "integrity": "unknown",
+                "basis": "Provider observation exists, but benchmark gold is not imported as runtime completeness or integrity knowledge",
+            }
+        ],
+        "derivation_basis": "E-05b stage assessment keeps Provider-native status separate from Raiatea stage outcome",
+    }
+
+
+def _normalization_stage(
+    *,
+    stage_id: str,
+    parent_stage_id: str,
+    input_refs: list[dict[str, Any]],
+    representation_id: str,
+) -> dict[str, Any]:
+    return {
+        "stage_id": stage_id,
+        "stage_kind": "normalization",
+        "executor": {
+            "kind": "raiatea-core",
+            "operation_id": "normalize-provider-evidence",
+        },
+        "parent_stage_id": parent_stage_id,
+        "input_refs": input_refs,
+        "outcome": {
+            "execution": "completed",
+            "assessments": [
+                {
+                    "scope": "normalized-record-structure",
+                    "completeness": "unknown",
+                    "integrity": "valid",
+                    "basis": "Core produced a structurally valid normalized record; source completeness remains unestablished",
+                }
+            ],
+            "derivation_basis": "Raiatea Core normalization over explicit prior ProviderEvidence references",
+        },
+        "reconciliation_state": "not-applicable",
+        "produced": [
+            {
+                "kind": "normalized-representation",
+                "representation_id": representation_id,
+            }
+        ],
+    }
+
+
 def adapt_poppler_observation(
     observation: dict[str, Any],
     *,
     source_id: str,
     fingerprint: str,
     provider_version: str = "24.02.0",
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, Any]:
     route_id = observation.get("route")
     if route_id not in {"pdftohtml-xml", "pdftotext-bbox-layout"}:
         raise ValueError(f"unsupported Poppler benchmark route: {route_id!r}")
@@ -85,6 +150,7 @@ def adapt_poppler_observation(
         "execution_context": "local",
     }
     status = str(observation.get("status", "unknown"))
+    execution = _execution_from_status(status)
     native_status = _present(
         status,
         "E-04 Poppler mapper observation status",
@@ -92,6 +158,11 @@ def adapt_poppler_observation(
     )
     evidence_id = f"evidence-{source_id}-{route_id}"
     representation_id = f"norm-{source_id}-{route_id}"
+    evidence_ref = {
+        "kind": "provider-evidence",
+        "evidence_id": evidence_id,
+        "channel": "benchmark-normalized-view",
+    }
 
     evidence: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -155,36 +226,47 @@ def adapt_poppler_observation(
         "diagnostics": _diagnostics(observation.get("warnings")),
     }
 
-    execution = "completed" if status == "success" else "failed"
-    produced: list[dict[str, Any]] = [
-        {"kind": "provider-evidence", "evidence_id": evidence_id, "channel": "benchmark-normalized-view"}
-    ]
-    stage_produced = list(produced)
-    if status == "success":
+    provider_stage = {
+        "stage_id": "native-1",
+        "stage_kind": "native-extraction",
+        "executor": {
+            "kind": "provider",
+            "provider": provider,
+            "route_profile": route,
+        },
+        "input_refs": [],
+        "provider_status": native_status,
+        "outcome": _provider_stage_outcome(status, "provider-evidence-emission"),
+        "reconciliation_state": "not-applicable",
+        "produced": [evidence_ref],
+    }
+    stages = [provider_stage]
+    produced: list[dict[str, Any]] = [evidence_ref]
+    result: dict[str, Any] = {
+        "provider_evidence": evidence,
+    }
+
+    if execution == "completed":
         normalized_ref = {
             "kind": "normalized-representation",
             "representation_id": representation_id,
         }
+        stages.append(
+            _normalization_stage(
+                stage_id="normalize-1",
+                parent_stage_id="native-1",
+                input_refs=[evidence_ref],
+                representation_id=representation_id,
+            )
+        )
         produced.append(normalized_ref)
-        stage_produced.append(normalized_ref)
+        result["normalized_representation"] = representation
 
     run = {
         "schema_version": SCHEMA_VERSION,
         "run_id": f"run-{source_id}-{route_id}",
         "source_ref": source_ref,
-        "provider": provider,
-        "route_profile": route,
-        "stages": [
-            {
-                "stage_id": "native-1",
-                "stage_kind": "native-extraction",
-                "provider": provider,
-                "route_profile": route,
-                "provider_status": native_status,
-                "reconciliation_state": "not-applicable",
-                "produced": stage_produced,
-            }
-        ],
+        "stages": stages,
         "outcome": {
             "execution": execution,
             "assessments": [
@@ -195,18 +277,20 @@ def adapt_poppler_observation(
                     "basis": "adapter has Provider observation only; benchmark gold is not runtime knowledge",
                 }
             ],
-            "derivation_basis": "E-05b benchmark adaptation from explicit Provider observation state",
+            "derivation_basis": "E-05b Core orchestration over explicit stage outcomes and produced references",
         },
         "produced": produced,
         "provenance": {
             "started_at": "2026-08-23T00:00:00Z",
             "ended_at": "2026-08-23T00:00:01Z",
+            "run_outcome_basis": "Core orchestration over the explicit Provider stage and optional Core normalization stage",
             "provider_native_status_basis": "E-04 Poppler benchmark mapper status",
             "input_fingerprint": fingerprint,
         },
         "diagnostics": _diagnostics(observation.get("warnings")),
     }
-    return {"run": run, "provider_evidence": evidence, "normalized_representation": representation}
+    result["run"] = run
+    return result
 
 
 def adapt_direct_epub_observation(
@@ -215,7 +299,7 @@ def adapt_direct_epub_observation(
     source_id: str,
     fingerprint: str,
     python_version: str,
-) -> dict[str, dict[str, Any]]:
+) -> dict[str, Any]:
     if observation.get("route") != "direct-epub-stdlib":
         raise ValueError(f"unsupported direct EPUB benchmark route: {observation.get('route')!r}")
 
@@ -227,6 +311,7 @@ def adapt_direct_epub_observation(
         "execution_context": "local",
     }
     status = str(observation.get("status", "unknown"))
+    execution = _execution_from_status(status)
     native_status = _present(
         status,
         "E-04 direct EPUB mapper observation status",
@@ -234,6 +319,11 @@ def adapt_direct_epub_observation(
     )
     evidence_id = f"evidence-{source_id}-direct-epub"
     representation_id = f"norm-{source_id}-direct-epub"
+    evidence_ref = {
+        "kind": "provider-evidence",
+        "evidence_id": evidence_id,
+        "channel": "benchmark-normalized-view",
+    }
 
     evidence = {
         "schema_version": SCHEMA_VERSION,
@@ -315,36 +405,47 @@ def adapt_direct_epub_observation(
         "diagnostics": _diagnostics(observation.get("warnings")),
     }
 
-    execution = "completed" if status in {"success", "degraded"} else "failed"
-    produced: list[dict[str, Any]] = [
-        {"kind": "provider-evidence", "evidence_id": evidence_id, "channel": "benchmark-normalized-view"}
-    ]
-    stage_produced = list(produced)
+    provider_stage = {
+        "stage_id": "native-1",
+        "stage_kind": "native-extraction",
+        "executor": {
+            "kind": "provider",
+            "provider": provider,
+            "route_profile": route,
+        },
+        "input_refs": [],
+        "provider_status": native_status,
+        "outcome": _provider_stage_outcome(status, "provider-package-evidence"),
+        "reconciliation_state": "not-applicable",
+        "produced": [evidence_ref],
+    }
+    stages = [provider_stage]
+    produced: list[dict[str, Any]] = [evidence_ref]
+    result: dict[str, Any] = {
+        "provider_evidence": evidence,
+    }
+
     if execution == "completed":
         normalized_ref = {
             "kind": "normalized-representation",
             "representation_id": representation_id,
         }
+        stages.append(
+            _normalization_stage(
+                stage_id="normalize-1",
+                parent_stage_id="native-1",
+                input_refs=[evidence_ref],
+                representation_id=representation_id,
+            )
+        )
         produced.append(normalized_ref)
-        stage_produced.append(normalized_ref)
+        result["normalized_representation"] = representation
 
     run = {
         "schema_version": SCHEMA_VERSION,
         "run_id": f"run-{source_id}-direct-epub",
         "source_ref": source_ref,
-        "provider": provider,
-        "route_profile": route,
-        "stages": [
-            {
-                "stage_id": "native-1",
-                "stage_kind": "native-extraction",
-                "provider": provider,
-                "route_profile": route,
-                "provider_status": native_status,
-                "reconciliation_state": "not-applicable",
-                "produced": stage_produced,
-            }
-        ],
+        "stages": stages,
         "outcome": {
             "execution": execution,
             "assessments": [
@@ -355,15 +456,17 @@ def adapt_direct_epub_observation(
                     "basis": "adapter preserves emitted package evidence but does not import benchmark gold as runtime truth",
                 }
             ],
-            "derivation_basis": "E-05b benchmark adaptation from direct EPUB observation state",
+            "derivation_basis": "E-05b Core orchestration over explicit direct-parser and normalization stages",
         },
         "produced": produced,
         "provenance": {
             "started_at": "2026-08-23T00:00:00Z",
             "ended_at": "2026-08-23T00:00:01Z",
+            "run_outcome_basis": "Core orchestration over explicit direct-parser stage outcome and optional normalization stage",
             "provider_native_status_basis": "E-04 direct EPUB benchmark mapper status",
             "input_fingerprint": fingerprint,
         },
         "diagnostics": _diagnostics(observation.get("warnings")),
     }
-    return {"run": run, "provider_evidence": evidence, "normalized_representation": representation}
+    result["run"] = run
+    return result

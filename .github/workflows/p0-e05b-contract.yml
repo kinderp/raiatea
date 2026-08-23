@@ -40,6 +40,7 @@ jobs:
           elaboration/p0/contracts/extraction/0.1.0/examples/docling-rapidocr-staged.json
           elaboration/p0/contracts/extraction/0.1.0/examples/direct-epub-normalized.json
           elaboration/p0/contracts/extraction/0.1.0/examples/restricted-access-controlled.json
+          elaboration/p0/contracts/extraction/0.1.0/examples/restricted-before-provider.json
 
   json-schema-reference:
     name: E-05b JSON Schema Draft 2020-12 reference validation
@@ -89,6 +90,7 @@ jobs:
               "poppler-native-pdf.json",
               "docling-rapidocr-staged.json",
               "restricted-access-controlled.json",
+              "restricted-before-provider.json",
           ):
               check(
                   run_validator,

@@ -21,10 +21,17 @@ def _source(source_id: str, source_class: str, fingerprint: str) -> dict[str, An
     }
 
 
-def _present(value: Any, basis: str, channel: str) -> dict[str, Any]:
+def _present(
+    value: Any,
+    basis: str,
+    channel: str,
+    *,
+    origin: str = "provider-native",
+) -> dict[str, Any]:
     return {
         "evidence_state": "measured",
         "value_state": "present",
+        "origin": origin,
         "basis": basis,
         "channel": channel,
         "value": value,
@@ -35,6 +42,7 @@ def _unknown(basis: str, channel: str | None = None) -> dict[str, Any]:
     result: dict[str, Any] = {
         "evidence_state": "not-measured",
         "value_state": "unknown",
+        "origin": "unresolved",
         "basis": basis,
     }
     if channel:
@@ -155,6 +163,7 @@ def adapt_poppler_observation(
         status,
         "E-04 Poppler mapper observation status",
         "benchmark-normalized-view",
+        origin="provider-native",
     )
     evidence_id = f"evidence-{source_id}-{route_id}"
     representation_id = f"norm-{source_id}-{route_id}"
@@ -193,8 +202,9 @@ def adapt_poppler_observation(
                     "page_index": page_index,
                     "bbox_points_bottom_left": bbox,
                 },
-                "Poppler mapper supplied mapped bottom-left PDF geometry",
+                "Raiatea benchmark mapper converted attributable Poppler geometry into bottom-left PDF points",
                 "benchmark-normalized-view",
+                origin="raiatea-aligned",
             )
         else:
             coordinate = _unknown(
@@ -208,6 +218,7 @@ def adapt_poppler_observation(
                     block["text"],
                     "Poppler mapper emitted text block surface",
                     "benchmark-normalized-view",
+                    origin="provider-native",
                 ),
                 "semantic_role": _unknown(
                     "Poppler benchmark route does not provide Provider-native semantic-role evidence",
@@ -316,6 +327,7 @@ def adapt_direct_epub_observation(
         status,
         "E-04 direct EPUB mapper observation status",
         "benchmark-normalized-view",
+        origin="provider-native",
     )
     evidence_id = f"evidence-{source_id}-direct-epub"
     representation_id = f"norm-{source_id}-direct-epub"
@@ -357,6 +369,7 @@ def adapt_direct_epub_observation(
                 },
                 "direct EPUB mapper supplied package resource and logical fragment",
                 "benchmark-normalized-view",
+                origin="provider-native",
             )
         else:
             coordinate = _unknown(
@@ -373,11 +386,13 @@ def adapt_direct_epub_observation(
                     block["text"],
                     "direct EPUB mapper emitted XHTML-derived surface text",
                     "benchmark-normalized-view",
+                    origin="provider-native",
                 ),
                 "semantic_role": _present(
                     semantic_value,
                     "direct EPUB mapper classified explicit XHTML element type",
                     "benchmark-normalized-view",
+                    origin="provider-native",
                 ),
                 "coordinate": coordinate,
             }

@@ -1,10 +1,10 @@
 # E-04 Evidence Synthesis for E-05
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 0.4.0
+> Version: 1.0.0
 >
 > Last reviewed: 23 August 2026
 >
@@ -102,7 +102,7 @@ Measured facts include:
 
 B-02 remains incomplete for images/captions/alt, footnotes/endnotes, semantic
 table/code/MathML, broader composites and malformed/missing-resource cases.
-Those gaps must remain visible.
+Those gaps remain visible.
 
 ## 4. Evidence-to-requirement matrix
 
@@ -326,7 +326,7 @@ E-04 does **not** justify freezing:
 
 ## 10. Handoff to E-05
 
-Evidence supports exploring these conceptual names:
+Evidence supports these accepted **conceptual** names for the E-05a model:
 
 ```text
 SourceReference
@@ -352,18 +352,19 @@ RightsDecisionRef
 `ProducedRef` in the companion model is only a conceptual union/reference over
 actual produced object references, not an additional domain entity.
 
-The names above are not accepted API resource names.
+The names are accepted for conceptual work only, not as stable public API
+resource names.
 
 [`provider-neutral-extraction-contract.md`](provider-neutral-extraction-contract.md)
-contains the candidate conceptual model. A machine-readable schema belongs to a
-later E-05 child only after conceptual review.
+contains the accepted E-05a conceptual model. A machine-readable schema belongs
+to a later E-05 child.
 
-## 11. Phase boundary
+## 11. Accepted phase boundary
 
-After E-05a acceptance:
+With E-05a accepted:
 
-1. E-04 becomes measured input to contract design rather than an invitation for
-   another default B-01 fixture;
+1. E-04 is treated as measured input to contract design rather than an invitation
+   for another default B-01 fixture;
 2. the next E-05 child may attempt a bounded machine-readable contract plus
    conformance tests;
 3. #147 ExtractorPlugin consumes E-05 semantics and does not define a parallel

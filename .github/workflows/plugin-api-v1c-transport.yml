@@ -1,0 +1,46 @@
+name: Plugin API v1c local transport candidate
+
+on:
+  pull_request:
+    paths:
+      - "adr/0001-plugin-local-process-transport-candidate.md"
+      - "elaboration/p0/contracts/plugins/transport/**"
+      - ".github/workflows/plugin-api-v1c-transport.yml"
+  push:
+    branches: [main]
+    paths:
+      - "adr/0001-plugin-local-process-transport-candidate.md"
+      - "elaboration/p0/contracts/plugins/transport/**"
+      - ".github/workflows/plugin-api-v1c-transport.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  conformance:
+    name: Transport candidate / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile candidate and accepted contract tooling
+        run: >-
+          python -m compileall -q
+          elaboration/p0/contracts/plugins/transport/0.1.0
+          elaboration/p0/contracts/plugins/runtime/1.0.0
+          elaboration/p0/contracts/plugins/1.0.0
+      - name: Run transport framing and process conformance
+        run: python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport.py -v
+      - name: Re-run accepted runtime semantics
+        run: |
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime.py -v
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime_handle_bounds.py -v
+      - name: Re-run accepted manifest semantics
+        run: python elaboration/p0/contracts/plugins/1.0.0/test_manifest.py -v

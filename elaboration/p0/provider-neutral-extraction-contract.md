@@ -4,7 +4,7 @@
 >
 > Assertion status: `mixed`
 >
-> Version: 0.5.0
+> Version: 0.6.0
 >
 > Last reviewed: 23 August 2026
 >
@@ -177,16 +177,22 @@ collection is populated, empty, unavailable or malformed belongs to the relevant
 `EvidenceEnvelope`, ProviderEvidence or NormalizedRepresentation—not to a global
 `output=empty` outcome flag.
 
-### I-15 — completeness is always scoped
+### I-15 — completeness and integrity are scoped assessments
 
-A result can be complete for text while incomplete or unmeasured for figures,
-table topology, formula relations or Source Coordinates. A run/stage
-`completeness` value therefore has meaning only relative to an explicit
-`completeness_scope` (or equivalent) derived from the request, stage purpose or
-declared capability/evidence family.
+A result can be complete/valid for text while table topology, coordinates or
+mathematical relations remain unavailable or degraded. Completeness and
+integrity therefore do not exist as one unscoped global truth.
 
-If scope or evidence basis is absent, completeness remains `not-established`.
-A scoped orchestration summary never overwrites per-family EvidenceEnvelopes.
+`ProcessingOutcome` carries one or more scoped assessments (or equivalent), each
+with:
+
+- an explicit scope derived from request/stage purpose/capability/evidence family;
+- completeness for that scope;
+- integrity for that scope;
+- an explicit runtime assessment basis.
+
+If scope or basis is absent, the corresponding claim remains `not-established`.
+Scoped orchestration summaries never overwrite per-family EvidenceEnvelopes.
 
 ### I-16 — benchmark truth is not automatic production knowledge
 
@@ -196,9 +202,8 @@ only when it has an explicit runtime basis: Provider evidence, Core validation,
 an authoritative expectation, user assertion or another inspectable source.
 
 E-04 conclusions therefore justify the **shape of the contract and conformance
-tests**, not hidden production detectors. Without runtime evidence,
-completeness/integrity remains `not-established` rather than importing benchmark
-gold truth.
+tests**, not hidden production detectors. Without runtime evidence, an assessment
+remains `not-established` rather than importing benchmark gold truth.
 
 ### I-17 — no universal quality score
 
@@ -230,7 +235,7 @@ OriginalArtifact ──────────────┤
              ├── Provider-native status
              ├── ProviderEvidence / RawExtractionRef
              ├── stage ProcessingOutcome
-             └── produced_outputs : EvidenceEnvelope<List<OutputRef>>
+             └── produced_outputs : EvidenceEnvelope<List<ProducedRef>>
                                │
                                ▼
                    Raiatea normalization
@@ -245,6 +250,11 @@ OriginalArtifact ──────────────┤
 ```
 
 The graph describes ownership and lineage, not a required serialization tree.
+
+`ProducedRef` is **not** a new domain entity. It is a conceptual reference union
+over actual produced objects such as ProviderEvidenceRef,
+NormalizedRepresentationRef or a future explicitly defined DerivedArtifactRef.
+The machine-readable union is deferred.
 
 ## 5. SourceReference, OriginalArtifact and ExtractionRequest
 
@@ -276,9 +286,9 @@ information includes input reference, requested capability/profile constraints,
 applicable policy/rights context, optional requested evidence families, resource
 constraints and correlation/idempotency context.
 
-Requested capability/evidence families also provide the natural candidate basis
-for later scoped completeness assessment; this does not require every request to
-claim a universal “complete extraction”.
+Requested capability/evidence families provide the natural candidate scopes for
+later result assessments; the request does not need to claim a universal
+“complete extraction”.
 
 Provider-specific parameters belong to the selected RouteProfile/ProcessingStage
 provenance unless Raiatea later defines a stable cross-provider option.
@@ -406,8 +416,7 @@ Candidate minimum:
 - start/end timestamps;
 - overall ProcessingOutcome;
 - explicit run-outcome derivation basis;
-- completeness scope/basis when completeness is asserted;
-- `produced_outputs` or equivalent evidence-bearing output references;
+- `produced_outputs` or equivalent evidence-bearing references;
 - diagnostics and provenance;
 - authoritative RightsDecisionRef/policy context.
 
@@ -428,10 +437,9 @@ Candidate minimum:
 - ProviderRef + RouteProfileRef where Provider-backed;
 - trigger/reason for fallback or orchestration transition;
 - inputs;
-- `produced_outputs : EvidenceEnvelope<List<OutputRef>>` or equivalent;
+- `produced_outputs : EvidenceEnvelope<List<ProducedRef>>` or equivalent;
 - Provider-native status if invoked;
 - stage ProcessingOutcome;
-- completeness scope/basis when asserted;
 - diagnostics and provenance/timing.
 
 A Provider stage may produce a ProviderEvidence reference whose internal content
@@ -441,13 +449,29 @@ are not collapsed into ProcessingOutcome.
 
 Stage vocabulary remains extensible; E-05a does not freeze an exhaustive enum.
 
-## 9. ProcessingOutcome is multi-dimensional
+## 9. ProcessingOutcome = execution + scoped result assessments
 
 > Assertion status: `evidence-derived draft decision`
 
 A single boolean or monolithic enum cannot represent E-04 outcomes safely.
 ProcessingOutcome carries technical/orchestration assessment; field-level output
 and evidence cardinality stays in EvidenceEnvelope/produced-output records.
+
+Conceptually:
+
+```text
+ProcessingOutcome
+├── execution
+├── result_assessments[]
+│    ├── scope
+│    ├── completeness
+│    ├── integrity
+│    ├── assessment_basis
+│    └── diagnostics?
+└── derivation_basis?       # especially for run-level outcome
+```
+
+Exact serialization remains deferred.
 
 ### 9.1 Execution
 
@@ -468,9 +492,12 @@ Provider-native status remains separately preserved. `not-started` is provisiona
 vocabulary for an attempt/stage intentionally not invoked because a prerequisite
 or Core decision prevented execution.
 
-### 9.2 Scoped completeness
+### 9.2 Scoped result assessment
 
-Candidate values:
+Each assessment applies only to an explicit `scope` derived from the request,
+stage purpose, declared capability or evidence family.
+
+Candidate completeness values:
 
 ```text
 complete
@@ -479,30 +506,7 @@ not-established
 not-applicable
 ```
 
-A completeness value is never meaningful by itself. It is paired conceptually
-with:
-
-```text
-completeness_scope
-completeness_basis
-```
-
-The scope identifies what the assessment covers, for example a requested text
-surface capability, visible-content coverage detector, table-topology capability
-or another declared evidence family. The basis identifies the runtime evidence
-or validator supporting the assessment.
-
-Rules:
-
-- `complete` means complete **only for the declared scope**;
-- completeness for one scope never upgrades other EvidenceEnvelopes;
-- if no defensible scope/basis exists, use `not-established`;
-- a run-level completeness summary may cover the request's declared expected
-  capabilities but never implies universal document completeness.
-
-### 9.3 Integrity
-
-Candidate states:
+Candidate integrity values:
 
 ```text
 established
@@ -512,41 +516,37 @@ not-established
 not-applicable
 ```
 
-Integrity applies to the trustworthiness/usability of the intended result, not
-to whether a raw artifact happened to be emitted. A produced result can be
-present while integrity is degraded/invalid; without validation evidence it may
-remain not-established.
+Rules:
 
-Integrity claims also carry an explicit assessment basis; benchmark gold is not
-an implicit production validator.
+- `complete` means complete only for the declared scope;
+- `integrity=established` means established only for that scope;
+- one scope never upgrades another scope's EvidenceEnvelope;
+- `assessment_basis` identifies runtime evidence/validator/authoritative
+  expectation supporting the claim;
+- if scope or basis is not defensible, the assessment is absent or remains
+  `not-established`;
+- a run may expose multiple assessments, for example text-surface complete while
+  table-topology remains not-established.
 
-### 9.4 Core policy disposition
+### 9.3 Core policy disposition is separate
 
 Authoritative policy remains in `RightsDecisionRef` or a later more general Core
 policy-decision reference if evidence justifies one.
 
-For readability a run may project a disposition such as:
+For readability a run may project a disposition such as allowed, restricted,
+requires-authorization, denied or not-evaluated, but the projection must be
+derived from and traceable to the Core decision. Provider/ExtractorPlugin cannot
+set it independently.
 
-```text
-allowed
-restricted
-requires-authorization
-denied
-not-evaluated
-```
+### 9.4 Run outcome versus stage outcomes
 
-but the projection must be derived from and traceable to the Core decision. A
-Provider or ExtractorPlugin cannot set it independently.
+Each stage retains its own ProcessingOutcome. The run-level outcome is a Core
+orchestration summary with explicit derivation basis.
 
-### 9.5 Run outcome versus stage outcomes
-
-Each stage retains its own outcome. The run-level outcome is a Core orchestration
-summary with explicit derivation basis.
-
-A native stage can succeed with not-established text completeness, an OCR stage
-can succeed with partial recovery for its declared OCR scope, and normalization
-can still produce a useful representation. Hidden rules such as “take worst
-stage” or “copy last stage” are forbidden.
+A native stage can succeed with text completeness not-established, an OCR stage
+can establish partial recovery for an OCR scope, and normalization can still
+produce a useful representation. Hidden rules such as “take worst stage” or
+“copy last stage” are forbidden.
 
 ## 10. ProviderEvidence / RawExtractionRef and NormalizedRepresentation
 
@@ -727,13 +727,13 @@ stage native-1
   route = docling-native-no-ocr
   provider_status = success
   produced_outputs = [ProviderEvidence A]
-  completeness = not-established unless runtime evidence establishes a scope
+  assessments = [text-surface: not-established unless runtime evidence proves more]
 
 stage ocr-1
   triggered_by = explicit Raiatea routing decision/basis
   route = docling-rapidocr-locked
   produced_outputs = [ProviderEvidence B]
-  completeness = partial for declared OCR-recovery scope, if runtime evidence establishes it
+  assessments = [ocr-recovery: partial if runtime evidence establishes it]
 
 stage normalize-1
   inputs = A + B
@@ -742,7 +742,7 @@ stage normalize-1
 
 run outcome
   derived_from = stage outcomes + produced outputs + runtime validation + Core policy
-  completeness = scoped to declared request expectations, otherwise not-established
+  assessments = scoped to declared request expectations
 ```
 
 The normalizer may preserve A and B without destructively choosing one when
@@ -776,8 +776,8 @@ after an attempted run.
 
 If a Provider was invoked and exposes a content collection, `present+empty`,
 `unavailable` and `present+unexpected-content` remain field-level evidence
-states/values inside ProviderEvidence. They do not become global
-ProcessingOutcome output states.
+states/values inside ProviderEvidence. They do not become global ProcessingOutcome
+output states.
 
 A generic Provider failure and explicit restriction signal are different
 evidence. Absence of observed side effects is not proof of unmeasured security
@@ -815,7 +815,7 @@ Every attempted ProcessingRun should be able to trace, where applicable:
 - Provider-native status if available;
 - each stage ProcessingOutcome;
 - produced-output evidence/references for each stage/run;
-- completeness scope/basis when asserted;
+- each scoped result assessment and assessment basis;
 - overall run ProcessingOutcome + derivation basis;
 - diagnostics;
 - raw/provider evidence references/fingerprints;
@@ -836,35 +836,34 @@ runtime information source.
 Examples:
 
 - NEG-001 tells the benchmark that Tika returned Provider-native success on a
-  malformed fixture. In production, absent an independent validator, Raiatea can
-  conclude only that integrity/completeness is `not-established`; it cannot
-  manufacture `malformed` from benchmark history.
+  malformed fixture. In production, absent an independent validator, Raiatea
+  cannot manufacture `malformed` from benchmark history.
 - B01-PDF-007 tells the benchmark that native extraction missed raster-visible
   authored text. In production, a fallback decision requires its own detector,
   policy or evidence basis; Provider brand does not imply incompleteness.
 - benchmark exact/mismatch scores validate contract behavior but are not
   automatically serialized into production ContentUnits or relations.
 
-A production assessment such as scoped `complete`, `degraded`, `invalid`, exact
-relation or fallback-required must therefore identify an explicit runtime basis.
+A production scoped assessment such as complete/degraded/invalid, an exact
+relation or fallback-required claim must identify an explicit runtime basis.
 
 ## 20. Scenario validation
 
 The model must represent accepted E-04 evidence without Provider-specific
 contract fields.
 
-### A — Provider success, completeness not established
+### A — Provider success, scoped completeness not established
 
-A native stage records Provider-native success and ProviderEvidence present while
-global/unscoped completeness remains not-established. If a runtime validator
-checks a declared text scope, it may establish completeness only for that scope.
+A native stage records Provider-native success and ProviderEvidence present.
+Text-surface completeness remains not-established until a runtime basis evaluates
+that scope. Other scopes remain independent.
 
 ### B — benchmark-known malformed input not surfaced by Provider
 
 For Tika NEG-001, benchmark evidence records Provider-native success and no
 relevant corruption diagnostic. This proves Provider success cannot establish
-integrity. Production without independent validation remains
-`integrity=not-established`; gold does not become a runtime malformed detector.
+result integrity. Production without independent validation leaves relevant
+integrity assessments not-established; gold does not become a runtime detector.
 
 ### C — restricted Source
 
@@ -874,9 +873,9 @@ only if an eligible Provider stage was actually invoked.
 
 ### D — text complete, structure partial
 
-A result may be complete for an explicitly declared text-surface scope while
-table topology/cell binding EvidenceEnvelopes remain unavailable. No global
-`complete` value upgrades those structural dimensions.
+A text-surface scoped assessment may be complete/established while table-topology
+assessment remains not-established and its EvidenceEnvelopes unavailable. No
+scope upgrades another.
 
 ### E — surface math present, semantics unavailable
 
@@ -933,10 +932,10 @@ from a run that never produced a NormalizedRepresentation.
 
 ### J — stage/run outcome aggregation
 
-A native stage may succeed with not-established completeness, OCR may establish
-partial recovery only for a declared OCR scope, and normalization may produce
-useful output. The run outcome records a Core orchestration assessment and basis;
-it is not implicitly the last or worst stage.
+A native stage may succeed, OCR may establish partial recovery for a declared
+scope, and normalization may produce useful output. The run outcome records a
+Core orchestration assessment and basis; it is not implicitly the last or worst
+stage.
 
 ## 21. Compatibility boundary with Plugin API #147
 
@@ -987,7 +986,7 @@ That child should:
 1. encode only evidence-required or deliberately accepted optional concepts;
 2. include negative tests for evidence-state/value-state collapse,
    Provider/Raiatea origin confusion, coordinate coercion, output-evidence
-   collapse, unscoped completeness, hidden run/stage aggregation,
+   collapse, unscoped completeness/integrity, hidden run/stage aggregation,
    benchmark-gold leakage and restricted-output states;
 3. remain independent of plugin transport;
 4. demonstrate at least two existing benchmark mappers can adapt without leaking

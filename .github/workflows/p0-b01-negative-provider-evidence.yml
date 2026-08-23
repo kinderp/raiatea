@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   negative-contract:
-    name: B01 negative raw-runner contract / Python 3.12
+    name: B01 negative scored-runner contract / Python 3.12
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -25,10 +25,11 @@ jobs:
           python-version: "3.12.14"
       - name: Compile negative tooling
         run: python -m compileall -q elaboration/p0/benchmark
-      - name: Run fixture and Provider-policy tests
+      - name: Run fixture, Provider-policy and scoring tests
         run: |
           python -m unittest elaboration/p0/benchmark/tests/test_b01_negative_pdf_fixture.py -v
           python -m unittest elaboration/p0/benchmark/tests/test_b01_negative_raw_runner.py -v
+          python -m unittest elaboration/p0/benchmark/tests/test_b01_negative_scoring.py -v
 
   poppler-negative:
     name: B01 negative Poppler 24.02.0 / Ubuntu 24.04
@@ -63,33 +64,38 @@ jobs:
           echo "${EXPECTED_PDFTOTEXT_SHA256}  /usr/bin/pdftotext" | sha256sum -c -
           echo "${EXPECTED_PDFTOHTML_SHA256}  /usr/bin/pdftohtml" | sha256sum -c -
           echo "${EXPECTED_PDFINFO_SHA256}  /usr/bin/pdfinfo" | sha256sum -c -
-      - name: Run raw negative measurements without password or bypass
+      - name: Run scored negative measurements without password or bypass
         run: |
           OUT="${RUNNER_TEMP}/raiatea-b01-negative-poppler"
           mkdir -p "${OUT}"
-          python elaboration/p0/benchmark/routes/measure_b01_negative_raw.py poppler \
+          python elaboration/p0/benchmark/routes/measure_b01_negative_scored.py poppler \
             --output "${OUT}" \
             --qpdf "$(command -v qpdf)" \
             --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
-            > "${OUT}/stdout-report.json"
+            > "${OUT}/stdout-scored-report.json"
           test -s "${OUT}/b01-negative-poppler-raw.json"
+          test -s "${OUT}/b01-negative-poppler-scored.json"
           python - <<'PY'
           import json, os
           from pathlib import Path
-          path = Path(os.environ["RUNNER_TEMP"]) / "raiatea-b01-negative-poppler" / "b01-negative-poppler-raw.json"
-          value = json.loads(path.read_text(encoding="utf-8"))
-          assert value["provider_password_supplied"] is False
-          assert value["access_control_bypass_allowed"] is False
-          assert len(value["results"]) == 4
-          assert all(row["provider_invocation_audit"]["audit_passed"] for row in value["results"])
+          root = Path(os.environ["RUNNER_TEMP"]) / "raiatea-b01-negative-poppler"
+          raw = json.loads((root / "b01-negative-poppler-raw.json").read_text(encoding="utf-8"))
+          scored = json.loads((root / "b01-negative-poppler-scored.json").read_text(encoding="utf-8"))
+          assert raw["provider_password_supplied"] is False
+          assert raw["access_control_bypass_allowed"] is False
+          assert len(raw["results"]) == 4
+          assert all(row["provider_invocation_audit"]["audit_passed"] for row in raw["results"])
+          assert scored["all_invocation_audits_passed"] is True
+          assert len(scored["results"]) == 4
           PY
-      - name: Upload raw negative evidence only
+      - name: Upload raw and normalized negative evidence
         uses: actions/upload-artifact@v4
         with:
           name: p0-b01-negative-poppler-${{ env.EVIDENCE_SOURCE_COMMIT }}
           path: |
             ${{ runner.temp }}/raiatea-b01-negative-poppler/b01-negative-poppler-raw.json
-            ${{ runner.temp }}/raiatea-b01-negative-poppler/stdout-report.json
+            ${{ runner.temp }}/raiatea-b01-negative-poppler/b01-negative-poppler-scored.json
+            ${{ runner.temp }}/raiatea-b01-negative-poppler/stdout-scored-report.json
           if-no-files-found: error
           retention-days: 7
 
@@ -130,36 +136,41 @@ jobs:
           curl --fail --location --retry 3 --retry-delay 2 "${TIKA_URL}" \
             --output "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar"
           echo "${TIKA_SHA512}  ${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" | sha512sum -c -
-      - name: Run raw negative measurements without password or bypass
+      - name: Run scored negative measurements without password or bypass
         run: |
           OUT="${RUNNER_TEMP}/raiatea-b01-negative-tika"
           mkdir -p "${OUT}"
-          python elaboration/p0/benchmark/routes/measure_b01_negative_raw.py tika \
+          python elaboration/p0/benchmark/routes/measure_b01_negative_scored.py tika \
             --output "${OUT}" \
             --qpdf "$(command -v qpdf)" \
             --tika-jar "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" \
             --config elaboration/p0/benchmark/config/tika-pdf-native-no-ocr.xml \
             --java "$(command -v java)" \
             --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
-            > "${OUT}/stdout-report.json"
+            > "${OUT}/stdout-scored-report.json"
           test -s "${OUT}/b01-negative-tika-raw.json"
+          test -s "${OUT}/b01-negative-tika-scored.json"
           python - <<'PY'
           import json, os
           from pathlib import Path
-          path = Path(os.environ["RUNNER_TEMP"]) / "raiatea-b01-negative-tika" / "b01-negative-tika-raw.json"
-          value = json.loads(path.read_text(encoding="utf-8"))
-          assert value["provider_password_supplied"] is False
-          assert value["access_control_bypass_allowed"] is False
-          assert len(value["results"]) == 2
-          assert all(row["provider_invocation_audit"]["audit_passed"] for row in value["results"])
+          root = Path(os.environ["RUNNER_TEMP"]) / "raiatea-b01-negative-tika"
+          raw = json.loads((root / "b01-negative-tika-raw.json").read_text(encoding="utf-8"))
+          scored = json.loads((root / "b01-negative-tika-scored.json").read_text(encoding="utf-8"))
+          assert raw["provider_password_supplied"] is False
+          assert raw["access_control_bypass_allowed"] is False
+          assert len(raw["results"]) == 2
+          assert all(row["provider_invocation_audit"]["audit_passed"] for row in raw["results"])
+          assert scored["all_invocation_audits_passed"] is True
+          assert len(scored["results"]) == 2
           PY
-      - name: Upload raw negative evidence only
+      - name: Upload raw and normalized negative evidence
         uses: actions/upload-artifact@v4
         with:
           name: p0-b01-negative-tika-${{ env.EVIDENCE_SOURCE_COMMIT }}
           path: |
             ${{ runner.temp }}/raiatea-b01-negative-tika/b01-negative-tika-raw.json
-            ${{ runner.temp }}/raiatea-b01-negative-tika/stdout-report.json
+            ${{ runner.temp }}/raiatea-b01-negative-tika/b01-negative-tika-scored.json
+            ${{ runner.temp }}/raiatea-b01-negative-tika/stdout-scored-report.json
           if-no-files-found: error
           retention-days: 7
 
@@ -213,7 +224,7 @@ jobs:
             --model-lock "${DOCLING_MODEL_LOCK}" \
             --artifacts-path "${RUNNER_TEMP}/docling-models" \
             --output "${RUNNER_TEMP}/docling-reference-verification.json"
-      - name: Run raw negative measurements offline without password or bypass
+      - name: Run scored negative measurements offline without password or bypass
         env:
           HF_HUB_OFFLINE: "1"
           TRANSFORMERS_OFFLINE: "1"
@@ -223,32 +234,37 @@ jobs:
           OUT="${RUNNER_TEMP}/raiatea-b01-negative-docling"
           CACHE="${RUNNER_TEMP}/docling-negative-cache"
           mkdir -p "${OUT}" "${CACHE}"
-          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/measure_b01_negative_raw.py docling \
+          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/measure_b01_negative_scored.py docling \
             --output "${OUT}" \
             --qpdf "$(command -v qpdf)" \
             --artifacts-path "${RUNNER_TEMP}/docling-models" \
             --cache-root "${CACHE}" \
             --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
-            > "${OUT}/stdout-report.json"
+            > "${OUT}/stdout-scored-report.json"
           test -s "${OUT}/b01-negative-docling-raw.json"
+          test -s "${OUT}/b01-negative-docling-scored.json"
           "${RUNNER_TEMP}/docling-venv/bin/python" - <<'PY'
           import json, os
           from pathlib import Path
-          path = Path(os.environ["RUNNER_TEMP"]) / "raiatea-b01-negative-docling" / "b01-negative-docling-raw.json"
-          value = json.loads(path.read_text(encoding="utf-8"))
-          assert value["provider_password_supplied"] is False
-          assert value["access_control_bypass_allowed"] is False
-          assert len(value["results"]) == 2
-          assert all(row["provider_invocation_audit"]["audit_passed"] for row in value["results"])
+          root = Path(os.environ["RUNNER_TEMP"]) / "raiatea-b01-negative-docling"
+          raw = json.loads((root / "b01-negative-docling-raw.json").read_text(encoding="utf-8"))
+          scored = json.loads((root / "b01-negative-docling-scored.json").read_text(encoding="utf-8"))
+          assert raw["provider_password_supplied"] is False
+          assert raw["access_control_bypass_allowed"] is False
+          assert len(raw["results"]) == 2
+          assert all(row["provider_invocation_audit"]["audit_passed"] for row in raw["results"])
+          assert scored["all_invocation_audits_passed"] is True
+          assert len(scored["results"]) == 2
           PY
-      - name: Upload raw negative evidence only
+      - name: Upload raw and normalized negative evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: p0-b01-negative-docling-${{ env.EVIDENCE_SOURCE_COMMIT }}
           path: |
             ${{ runner.temp }}/raiatea-b01-negative-docling/b01-negative-docling-raw.json
-            ${{ runner.temp }}/raiatea-b01-negative-docling/stdout-report.json
+            ${{ runner.temp }}/raiatea-b01-negative-docling/b01-negative-docling-scored.json
+            ${{ runner.temp }}/raiatea-b01-negative-docling/stdout-scored-report.json
             ${{ runner.temp }}/docling-reference-verification.json
             ${{ runner.temp }}/docling-model-download.txt
           if-no-files-found: warn

@@ -146,7 +146,7 @@ def _known_output_targets(request: dict[str, Any], deadline: datetime | None = N
         _require(handle_id not in targets, "duplicate-output-target-handle")
         if deadline is not None:
             _validate_handle_lease(handle, deadline, "output-target")
-        max_bytes = handle.get("byte_length")
+        max_bytes = handle.get("max_byte_length")
         if max_bytes is not None:
             _require(isinstance(max_bytes, int) and max_bytes >= 0, "output-target-byte-limit-invalid")
         targets[handle_id] = handle
@@ -256,7 +256,7 @@ def validate_result(
                 _require(handle.get("media_type") == target.get("media_type"), "output-handle-media-type-mismatch")
             actual_bytes = handle.get("byte_length")
             _require(isinstance(actual_bytes, int) and actual_bytes >= 0, "output-handle-byte-length-required")
-            max_bytes = target.get("byte_length")
+            max_bytes = target.get("max_byte_length")
             if isinstance(max_bytes, int):
                 _require(actual_bytes <= max_bytes, "output-handle-exceeds-authorized-byte-limit")
             _require_sha256(handle.get("fingerprint"), "output-handle-fingerprint")

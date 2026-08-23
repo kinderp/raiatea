@@ -90,6 +90,47 @@ class B01FormulaScoringTests(unittest.TestCase):
         self.assertEqual(diagnostic["observed_count"], 1)
         self.assertEqual(dimensions["explicit_math_relations"]["status"], "not-measured")
 
+    def test_explicit_provider_math_relation_can_be_credited_exactly(self):
+        gold_relation = self.gold["formulas"][0]["relations"][0]
+        observation = {
+            "math_relations": [
+                {
+                    "formula_id": "formula-energy",
+                    "kind": "superscript",
+                    "gold_relation_key": gold_relation,
+                    "provider_relation_source": "provider-explicit-math-relation",
+                }
+            ]
+        }
+        relations = SCORE.measure_b01_formula_dimensions(
+            observation, self.gold
+        )["explicit_math_relations"]
+        self.assertEqual(relations["status"], "partial")
+        self.assertEqual(relations["evidence_count"], 1)
+        self.assertEqual(relations["exact_count"], 1)
+        self.assertFalse(relations["visual_inference"])
+
+    def test_wrong_explicit_relation_does_not_receive_credit(self):
+        gold_relation = self.gold["formulas"][0]["relations"][0]
+        wrong = dict(gold_relation)
+        wrong["base_token"] = "f1-m"
+        observation = {
+            "math_relations": [
+                {
+                    "formula_id": "formula-energy",
+                    "kind": "superscript",
+                    "gold_relation_key": wrong,
+                    "provider_relation_source": "provider-explicit-math-relation",
+                }
+            ]
+        }
+        relations = SCORE.measure_b01_formula_dimensions(
+            observation, self.gold
+        )["explicit_math_relations"]
+        self.assertEqual(relations["status"], "not-measured")
+        self.assertEqual(relations["evidence_count"], 0)
+        self.assertEqual(relations["exact_count"], 0)
+
     def test_missing_provider_text_is_not_scored_as_zero_fidelity(self):
         dimensions = SCORE.measure_b01_formula_dimensions({}, self.gold)
         self.assertEqual(dimensions["formula_surface_content"]["status"], "not-measured")

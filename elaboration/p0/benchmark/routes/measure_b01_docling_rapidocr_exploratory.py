@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""Exploratory B01-PDF-007 Docling + RapidOCR profile.
+"""Reference B01-PDF-007 Docling + RapidOCR profile.
 
 This route is deliberately separate from the canonical Docling native/no-OCR
-baseline. It reuses the exact Docling dependency/layout-model lock and the
-RapidOCR bundle materialized by Docling's own model downloader for ``torch:en``.
-Until that complete bundle is frozen in a Raiatea payload lock, output from this
-helper is setup/exploratory evidence only and must not be described as a
-canonical E-04 measurement.
+baseline. It reuses the exact Docling dependency/layout-model lock and requires
+the complete Docling-managed RapidOCR ``torch:en`` bundle to match Raiatea's
+committed payload lock before any document measurement is allowed.
+
+Model materialization may happen during workflow setup, but the measured
+document phase runs offline. A payload mismatch fails closed before OCR starts.
 """
 from __future__ import annotations
 
@@ -38,6 +39,7 @@ from docling_routes import (  # noqa: E402
 from score_b01_defective_native import (  # noqa: E402
     measure_b01_defective_native_dimensions,
 )
+from verify_rapidocr_reference import payload_manifest, verify as verify_payload  # noqa: E402
 
 RAPIDOCR_VERSION = "3.9.2"
 PROFILE_ID = "docling-2.118.0-rapidocr-3.9.2-torch-en-default"
@@ -88,10 +90,36 @@ def _controlled_environment(cache_root: Path) -> Iterator[None]:
                 os.environ[key] = old
 
 
-def run_exploratory(
+def _verify_rapidocr_lock(lock_path: Path, rapidocr_root: Path) -> dict[str, Any]:
+    lock = json.loads(lock_path.read_text(encoding="utf-8"))
+    if lock.get("profile_id") != PROFILE_ID:
+        raise ValueError(
+            f"RapidOCR lock profile mismatch: {lock.get('profile_id')!r} != {PROFILE_ID!r}"
+        )
+    if lock.get("rapidocr_version") != RAPIDOCR_VERSION:
+        raise ValueError(
+            "RapidOCR lock version mismatch: "
+            f"{lock.get('rapidocr_version')!r} != {RAPIDOCR_VERSION!r}"
+        )
+    if lock.get("backend") != "torch" or lock.get("language") != "en":
+        raise ValueError("RapidOCR lock must describe the torch:en reference bundle")
+
+    observed = payload_manifest(rapidocr_root)
+    verification = verify_payload(lock, observed)
+    if not verification.get("verified"):
+        failed = [name for name, ok in verification.get("checks", {}).items() if not ok]
+        raise ValueError(
+            "RapidOCR payload does not match committed lock; failed checks: "
+            + ", ".join(failed)
+        )
+    return verification
+
+
+def run_reference(
     output: Path,
     artifacts_path: Path,
     cache_root: Path,
+    rapidocr_lock: Path,
     evidence_source_commit: str | None,
 ) -> dict[str, Any]:
     started = time.perf_counter()
@@ -114,13 +142,10 @@ def run_exploratory(
         raise ValueError("Pinned Docling model artifact root is missing")
 
     rapidocr_root = artifacts_path.resolve() / "RapidOcr"
-    rapidocr_payload = artifact_manifest(rapidocr_root)
+    verification = _verify_rapidocr_lock(rapidocr_lock.resolve(), rapidocr_root)
+    _write_json(output / "rapidocr-reference-verification.json", verification)
+    rapidocr_payload = verification["observed"]
     _write_json(output / "rapidocr-bundle-manifest.json", rapidocr_payload)
-    if not rapidocr_payload.get("exists") or not rapidocr_payload.get("file_count"):
-        raise ValueError(
-            "Docling RapidOCR bundle is missing; materialize it with "
-            "docling-tools models download rapidocr --rapidocr-backend-lang torch:en"
-        )
 
     source = output / "fixture" / "B01-PDF-007.pdf"
     source.parent.mkdir(parents=True, exist_ok=True)
@@ -201,11 +226,13 @@ def run_exploratory(
         "lang": ["en"],
         "mode": "default/pdf-aware-layout-regions",
         "use_cls": False,
-        "artifact_resolution": "docling-managed-RapidOcr-bundle",
+        "artifact_resolution": "raiatea-locked-docling-managed-RapidOcr-bundle",
+        "rapidocr_payload_manifest_sha256": rapidocr_payload.get("manifest_sha256"),
         "do_table_structure": False,
         "do_formula_enrichment": False,
         "remote_services": False,
         "external_plugins": False,
+        "document_phase_offline": True,
         "cpu_only": True,
     }
     raw_bytes = json.dumps(
@@ -226,10 +253,10 @@ def run_exploratory(
     dimensions = measure_b01_defective_native_dimensions(mapped, _gold())
     report = {
         "contract": {
-            "name": "raiatea-p0-b01-docling-rapidocr-exploratory",
-            "version": "0.2.0",
-            "scope": "setup-and-exploratory-evidence-only",
-            "canonical_e04_measurement": False,
+            "name": "raiatea-p0-b01-docling-rapidocr-reference",
+            "version": "0.3.0",
+            "scope": "benchmark-reference-evidence",
+            "canonical_e04_measurement": True,
             "public_p0_schema": False,
         },
         "evidence_source_commit": evidence_source_commit,
@@ -237,16 +264,18 @@ def run_exploratory(
         "environment": environment,
         "rapidocr_version": rapidocr_version,
         "docling_model_root_manifest": layout_payload,
+        "rapidocr_reference_verification": verification,
         "rapidocr_bundle": rapidocr_payload,
         "provider_conversion_status": provider_status,
         "dimensions": dimensions,
         "duration_seconds": round(time.perf_counter() - started, 9),
-        "next_gate": (
-            "freeze the complete Docling-managed RapidOcr bundle manifest before "
-            "canonical offline measurement"
+        "interpretation_boundary": (
+            "This reference run measures the locked route/profile only. Provider success "
+            "does not imply visible-page completeness, and benchmark fallback_needed is "
+            "gold-informed evidence rather than a production routing heuristic."
         ),
     }
-    _write_json(output / "b01-docling-rapidocr-exploratory.json", report)
+    _write_json(output / "b01-docling-rapidocr-reference.json", report)
     return report
 
 
@@ -255,12 +284,14 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--artifacts-path", type=Path, required=True)
     parser.add_argument("--cache-root", type=Path, required=True)
+    parser.add_argument("--rapidocr-lock", type=Path, required=True)
     parser.add_argument("--evidence-source-commit")
     args = parser.parse_args()
-    report = run_exploratory(
+    report = run_reference(
         args.output.resolve(),
         args.artifacts_path.resolve(),
         args.cache_root.resolve(),
+        args.rapidocr_lock.resolve(),
         args.evidence_source_commit,
     )
     print(json.dumps(report, indent=2, ensure_ascii=False))

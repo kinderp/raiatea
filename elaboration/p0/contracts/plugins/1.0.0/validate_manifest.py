@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +17,8 @@ PLUGIN_API_SUPPORTED_MAX_EXCLUSIVE = (2, 0, 0)
 EXTRACTION_CONTRACT_ID = "raiatea.extraction.processing-run"
 EXTRACTION_SUPPORTED_MIN = (0, 1, 0)
 EXTRACTION_SUPPORTED_MAX_EXCLUSIVE = (0, 2, 0)
+SAFE_LAUNCH_TOKEN = re.compile(r"^[A-Za-z0-9_.\/-]+$")
+SAFE_MODULE_TARGET = re.compile(r"^[A-Za-z_][A-Za-z0-9_.]*$")
 
 
 def _require(condition: bool, message: str) -> None:
@@ -24,8 +27,9 @@ def _require(condition: bool, message: str) -> None:
 
 
 def _version(value: str, label: str) -> tuple[int, int, int]:
+    core = value.split("+", 1)[0].split("-", 1)[0]
     try:
-        parts = tuple(int(part) for part in value.split("."))
+        parts = tuple(int(part) for part in core.split("."))
     except Exception as exc:
         raise ManifestError(f"{label}-invalid-version") from exc
     _require(len(parts) == 3, f"{label}-invalid-version")
@@ -37,6 +41,25 @@ def _range_intersects(value: dict[str, Any], minimum: tuple[int, int, int], maxi
     high = _version(value.get("max_exclusive", ""), f"{label}-max")
     _require(low < high, f"{label}-empty-or-reversed-range")
     return low < maximum and high > minimum
+
+
+def _validate_entrypoint(value: Any) -> None:
+    _require(isinstance(value, dict), "entrypoint-required")
+    _require(value.get("kind") == "process", "entrypoint-kind-unsupported")
+    command = value.get("command")
+    _require(isinstance(command, list) and command, "entrypoint-command-required")
+    _require(all(isinstance(token, str) and token for token in command), "entrypoint-command-token-invalid")
+
+    # V1a launch metadata deliberately carries no free-form runtime arguments.
+    # Accepted forms are a single executable target or Python module launch.
+    if len(command) == 1:
+        _require(bool(SAFE_LAUNCH_TOKEN.fullmatch(command[0])), "entrypoint-command-not-structural")
+    elif len(command) == 3:
+        _require(command[1] == "-m", "entrypoint-command-not-structural")
+        _require(bool(SAFE_LAUNCH_TOKEN.fullmatch(command[0])), "entrypoint-command-not-structural")
+        _require(bool(SAFE_MODULE_TARGET.fullmatch(command[2])), "entrypoint-command-not-structural")
+    else:
+        raise ManifestError("entrypoint-command-not-structural")
 
 
 def validate(manifest: dict[str, Any]) -> None:
@@ -126,6 +149,8 @@ def validate(manifest: dict[str, Any]) -> None:
     for secret in permissions.get("secrets", []):
         _require(isinstance(secret, str) and secret, "secret-name-required")
         _require("=" not in secret and ":" not in secret, "secret-value-must-not-be-embedded")
+
+    _validate_entrypoint(manifest.get("entrypoint"))
 
     trust_tier = manifest.get("trust_tier")
     _require(trust_tier in {"official", "verified", "community", "local"}, "invalid-trust-tier")

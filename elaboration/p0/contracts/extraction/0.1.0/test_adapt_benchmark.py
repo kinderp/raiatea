@@ -114,6 +114,45 @@ class E05bBenchmarkAdaptationTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATE.ContractError, "must-remain-nonsemantic"):
             VALIDATE.validate_provider_evidence(evidence)
 
+    def test_malformed_provider_evidence_remains_explicit(self):
+        observation = self._input("poppler-pdftohtml-observation.json")
+        bundle = ADAPT.adapt_poppler_observation(
+            observation,
+            source_id="B01-PDF-001",
+            fingerprint="sha256:malformed-evidence-example",
+        )
+        evidence = bundle["provider_evidence"]
+        evidence["native_status"] = {
+            "evidence_state": "malformed-evidence",
+            "value_state": "unknown",
+            "basis": "Provider result collection was structurally malformed",
+            "channel": "benchmark-normalized-view",
+        }
+        VALIDATE.validate_provider_evidence(evidence)
+        self.assertEqual(evidence["native_status"]["evidence_state"], "malformed-evidence")
+
+    def test_provider_explicit_and_raiatea_derived_relations_are_distinct(self):
+        value = self._example("direct-epub-normalized.json")
+        value["relations"].append(
+            {
+                "relation_id": "provider-link-1",
+                "kind": "link-target",
+                "from_ref": "intro-p",
+                "to_ref": "uri:https://example.invalid/details",
+                "evidence_origin": "provider-explicit",
+                "basis": "explicit href observed by the Provider mapper",
+            }
+        )
+        VALIDATE.validate_representation(value)
+        origins = {relation["evidence_origin"] for relation in value["relations"]}
+        self.assertEqual(origins, {"provider-explicit", "raiatea-derived"})
+
+    def test_relation_without_basis_is_rejected(self):
+        value = self._example("direct-epub-normalized.json")
+        del value["relations"][0]["basis"]
+        with self.assertRaisesRegex(VALIDATE.ContractError, "relation-0-basis-required"):
+            VALIDATE.validate_representation(value)
+
 
 if __name__ == "__main__":
     unittest.main()

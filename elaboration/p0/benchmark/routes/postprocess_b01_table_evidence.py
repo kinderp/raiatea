@@ -2,10 +2,10 @@
 """Post-process B01-PDF-005 Provider runs into conservative table evidence.
 
 The input directory must already contain an exact-source run produced by
-``measure_b01_table_evidence.py``. Poppler/Tika currently contribute only their
-normalized text observations unless a separately inspected explicit table mapper
-is added. Docling contributes explicit table evidence only through the lossless
-JSON mapper. This keeps Provider-native structure distinct from visual inference.
+``measure_b01_table_evidence.py``. Poppler/Tika contribute normalized text
+observations unless an inspected explicit table mapper exists. Docling adds
+lossless explicit table evidence plus text reached through explicit table/group
+references. Descendant text remains unbound to cells and cannot repair topology.
 """
 
 from __future__ import annotations
@@ -37,8 +37,30 @@ def _score(
 
     combined = dict(observation)
     combined["blocks"] = list(observation.get("blocks", []))
-    if explicit_table_evidence is not None and "tables" in explicit_table_evidence:
-        combined["tables"] = explicit_table_evidence["tables"]
+    if explicit_table_evidence is not None:
+        if "tables" in explicit_table_evidence:
+            combined["tables"] = explicit_table_evidence["tables"]
+
+        # Docling's generic text mapper deliberately treats a TableItem as an
+        # opaque non-text leaf. The lossless table evidence mapper may still
+        # expose text descendants through explicit table/group refs. Add those
+        # blocks only to content-preservation scoring. They carry no row/column
+        # identity and therefore cannot repair explicit topology/cell binding.
+        existing_refs = {
+            block.get("docling_ref") or block.get("provider_ref")
+            for block in combined["blocks"]
+            if isinstance(block, dict)
+        }
+        for block in explicit_table_evidence.get("unbound_table_text_blocks", []):
+            if not isinstance(block, dict):
+                continue
+            ref = block.get("docling_ref") or block.get("provider_ref")
+            if ref is not None and ref in existing_refs:
+                continue
+            combined["blocks"].append(block)
+            if ref is not None:
+                existing_refs.add(ref)
+
     return {
         "route": observation.get("route"),
         "route_status": observation.get("status"),
@@ -99,6 +121,9 @@ def main() -> int:
         "results": rows,
         "structural_policy": (
             "Provider-native explicit structure only; no spatial reconstruction or list-position identity"
+        ),
+        "content_policy": (
+            "explicit table/group descendant text may support content preservation but never supplies cell topology"
         ),
     }
     (output / "b01-table-evidence.json").write_text(

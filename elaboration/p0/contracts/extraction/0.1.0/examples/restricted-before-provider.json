@@ -11,7 +11,7 @@
   },
   "stages": [],
   "outcome": {
-    "execution": "restricted",
+    "execution": "not-started",
     "assessments": [
       {
         "scope": "provider-processing",
@@ -20,7 +20,7 @@
         "basis": "Core rights decision prevented Provider invocation before any extraction stage started"
       }
     ],
-    "derivation_basis": "Core orchestration terminated the run before Provider selection or invocation"
+    "derivation_basis": "Core orchestration records that technical processing did not start; authoritative restriction remains in RightsDecisionRef"
   },
   "produced": [],
   "provenance": {

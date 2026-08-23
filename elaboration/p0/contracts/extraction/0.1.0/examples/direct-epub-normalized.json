@@ -10,24 +10,24 @@
     {
       "unit_id": "intro",
       "surface": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "direct EPUB mapper block text",
         "channel": "benchmark-normalized-view",
         "value": "Introduction"
       },
       "semantic_role": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "explicit XHTML h1 element",
         "channel": "benchmark-normalized-view",
         "value": {"type": "heading", "level": 1}
       },
       "coordinate": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "EPUB package resource and authored fragment id",
         "channel": "benchmark-normalized-view",
@@ -42,24 +42,24 @@
     {
       "unit_id": "intro-p",
       "surface": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "direct EPUB mapper block text",
         "channel": "benchmark-normalized-view",
         "value": "The first chapter establishes the package order."
       },
       "semantic_role": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "explicit XHTML p element",
         "channel": "benchmark-normalized-view",
         "value": {"type": "paragraph"}
       },
       "coordinate": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "EPUB package resource and authored fragment id",
         "channel": "benchmark-normalized-view",
@@ -74,24 +74,24 @@
     {
       "unit_id": "next",
       "surface": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "direct EPUB mapper block text",
         "channel": "benchmark-normalized-view",
         "value": "Next Chapter"
       },
       "semantic_role": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "explicit XHTML h1 element",
         "channel": "benchmark-normalized-view",
         "value": {"type": "heading", "level": 1}
       },
       "coordinate": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "EPUB package resource and authored fragment id",
         "channel": "benchmark-normalized-view",
@@ -106,24 +106,24 @@
     {
       "unit_id": "next-p",
       "surface": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "direct EPUB mapper block text",
         "channel": "benchmark-normalized-view",
         "value": "The second chapter follows the first in the spine."
       },
       "semantic_role": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "explicit XHTML p element",
         "channel": "benchmark-normalized-view",
         "value": {"type": "paragraph"}
       },
       "coordinate": {
-        "evidence_state": "measured",
-        "value_state": "present",
+        "evidence_state": "present",
+        "value_state": "populated",
         "origin": "provider-native",
         "basis": "EPUB package resource and authored fragment id",
         "channel": "benchmark-normalized-view",

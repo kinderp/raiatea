@@ -1,0 +1,139 @@
+name: P0 B-01 negative fixture setup
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/benchmark/**"
+      - ".github/workflows/p0-b01-negative-fixture-setup.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/benchmark/**"
+      - ".github/workflows/p0-b01-negative-fixture-setup.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  negative-contract:
+    name: B01 negative fixture contract / Python 3.12
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Compile benchmark tooling
+        run: python -m compileall -q elaboration/p0/benchmark
+      - name: Run negative fixture contract tests
+        run: python -m unittest elaboration/p0/benchmark/tests/test_b01_negative_pdf_fixture.py -v
+      - name: Generate dependency-free malformed fixture
+        run: |
+          OUT="${RUNNER_TEMP}/raiatea-b01-negative-contract"
+          mkdir -p "${OUT}"
+          python elaboration/p0/benchmark/b01_pdf_negative_fixtures.py \
+            --output "${OUT}" \
+            > "${OUT}/stdout-manifest.json"
+          echo "803cdada146c89d6a86169351ed7a4b0a46c0afe99f5b08ea25f813d0c8d630d  ${OUT}/B01-PDF-NEG-001.pdf" | sha256sum -c -
+          test "$(stat -c %s "${OUT}/B01-PDF-NEG-001.pdf")" = "376"
+
+  qpdf-generation-gate:
+    name: B01 access-controlled fixture qpdf generation gate / Ubuntu 24.04
+    needs: negative-contract
+    runs-on: ubuntu-24.04
+    env:
+      EVIDENCE_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
+      EXPECTED_QPDF_VERSION: "11.9.0"
+      EXPECTED_QPDF_PACKAGE: "11.9.0-1.1ubuntu0.1"
+      EXPECTED_QPDF_SHA256: "10fc302c4ca9860f24b8d2cb7f8a4cc454ba59d4a91e7a8e40f6b2c229486df7"
+      EXPECTED_NEG002_SHA256: "c277faaffe74c38b0e01b18d30e2573614f97377aacbb5e74eadd012a528029f"
+      EXPECTED_NEG002_BYTES: "1079"
+    steps:
+      - name: Check out exact source commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.EVIDENCE_SOURCE_COMMIT }}
+
+      - name: Verify exact source checkout
+        run: test "$(git rev-parse HEAD)" = "${EVIDENCE_SOURCE_COMMIT}"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+
+      - name: Install and verify qpdf fixture-generation utility
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qpdf
+          qpdf --version | tee "${RUNNER_TEMP}/qpdf-version.txt"
+          qpdf --version | grep -F "qpdf version ${EXPECTED_QPDF_VERSION}"
+          QPDF_BIN="$(command -v qpdf)"
+          echo "${EXPECTED_QPDF_SHA256}  ${QPDF_BIN}" | sha256sum -c - \
+            | tee "${RUNNER_TEMP}/qpdf-executable-sha256-check.txt"
+          sha256sum "${QPDF_BIN}" | tee "${RUNNER_TEMP}/qpdf-executable-sha256.txt"
+          dpkg-query -W -f='${Package}\t${Version}\t${Architecture}\n' qpdf \
+            | tee "${RUNNER_TEMP}/qpdf-package.txt"
+          grep -F $'qpdf\t'"${EXPECTED_QPDF_PACKAGE}"$'\tamd64' \
+            "${RUNNER_TEMP}/qpdf-package.txt"
+
+      - name: Generate access-controlled fixture twice and require frozen identity
+        run: |
+          OUT="${RUNNER_TEMP}/raiatea-b01-negative-qpdf"
+          mkdir -p "${OUT}"
+          python elaboration/p0/benchmark/b01_pdf_negative_fixtures.py \
+            --output "${OUT}" \
+            --qpdf "$(command -v qpdf)" \
+            --include-access-controlled \
+            > "${OUT}/stdout-manifest.json"
+          test -s "${OUT}/generated-negative-manifest.json"
+          test -s "${OUT}/B01-PDF-NEG-002.pdf"
+          echo "${EXPECTED_NEG002_SHA256}  ${OUT}/B01-PDF-NEG-002.pdf" | sha256sum -c -
+          test "$(stat -c %s "${OUT}/B01-PDF-NEG-002.pdf")" = "${EXPECTED_NEG002_BYTES}"
+          grep -a -q '/Encrypt' "${OUT}/B01-PDF-NEG-002.pdf"
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          root = Path(os.environ["RUNNER_TEMP"]) / "raiatea-b01-negative-qpdf"
+          manifest = json.loads((root / "generated-negative-manifest.json").read_text(encoding="utf-8"))
+          rows = {row["id"]: row for row in manifest["fixtures"]}
+          protected = rows["B01-PDF-NEG-002"]
+          assert protected["provider_password_supplied"] is False
+          assert protected["provider_bypass_allowed"] is False
+          assert protected["bytes"] == 1079
+          assert protected["sha256"] == "c277faaffe74c38b0e01b18d30e2573614f97377aacbb5e74eadd012a528029f"
+          assert protected["generator_evidence"]["encryption_bits"] == 128
+          assert protected["generator_evidence"]["encryption_options"] == ["--use-aes=y"]
+          print(json.dumps(protected, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Verify encrypted fixture requires a password without supplying one
+        run: |
+          OUT="${RUNNER_TEMP}/raiatea-b01-negative-qpdf"
+          set +e
+          qpdf --requires-password "${OUT}/B01-PDF-NEG-002.pdf" \
+            > "${RUNNER_TEMP}/qpdf-requires-password.stdout" \
+            2> "${RUNNER_TEMP}/qpdf-requires-password.stderr"
+          STATUS=$?
+          set -e
+          echo "${STATUS}" | tee "${RUNNER_TEMP}/qpdf-requires-password-exit.txt"
+          # qpdf --requires-password exit 0 means a password other than the
+          # supplied (none here) is required. No password/decrypt/bypass option
+          # is supplied by this inspection query.
+          test "${STATUS}" = "0"
+
+      - name: Publish setup evidence without fixture binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: p0-b01-negative-qpdf-setup-${{ env.EVIDENCE_SOURCE_COMMIT }}
+          path: |
+            ${{ runner.temp }}/raiatea-b01-negative-qpdf/generated-negative-manifest.json
+            ${{ runner.temp }}/raiatea-b01-negative-qpdf/stdout-manifest.json
+            ${{ runner.temp }}/qpdf-version.txt
+            ${{ runner.temp }}/qpdf-executable-sha256.txt
+            ${{ runner.temp }}/qpdf-executable-sha256-check.txt
+            ${{ runner.temp }}/qpdf-package.txt
+            ${{ runner.temp }}/qpdf-requires-password.stdout
+            ${{ runner.temp }}/qpdf-requires-password.stderr
+            ${{ runner.temp }}/qpdf-requires-password-exit.txt
+          if-no-files-found: error
+          retention-days: 7

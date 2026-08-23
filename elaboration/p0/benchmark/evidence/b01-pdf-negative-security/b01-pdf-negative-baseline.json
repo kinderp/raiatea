@@ -1,0 +1,190 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-negative-pdf-security-baseline",
+    "version": "0.2.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "negative_security_fixtures": true,
+    "excluded_from_normal_quality_averages": true,
+    "no_universal_total_score": true
+  },
+  "canonical_raw_evidence_source_commit": "c39fa9f22d8c15db0fb09162210eb7a3d02090bb",
+  "normalization_hardening_through_commit": "14c5b276f27d7f222fe6d238a4cb85a2e648d5c0",
+  "evidence_source_policy": {
+    "provider_facts": "Canonical Provider statuses, warnings and content observations come from the exact raw evidence source commit and workflow artifacts below.",
+    "normalization": "Later commits only harden Provider-neutral failure/security classification and evidence integrity. They do not rewrite the canonical Provider observations.",
+    "final_validation_head": "record-after-final-unchanged-head-ci-and-review"
+  },
+  "fixture_setup": {
+    "B01-PDF-NEG-001": {
+      "sha256": "803cdada146c89d6a86169351ed7a4b0a46c0afe99f5b08ea25f813d0c8d630d",
+      "bytes": 376,
+      "kind": "intentional-truncation"
+    },
+    "B01-PDF-NEG-002": {
+      "sha256": "c277faaffe74c38b0e01b18d30e2573614f97377aacbb5e74eadd012a528029f",
+      "bytes": 1079,
+      "kind": "password-encrypted-pdf",
+      "provider_password_supplied": false,
+      "access_control_bypass_allowed": false,
+      "qpdf": {
+        "version": "11.9.0",
+        "package": "11.9.0-1.1ubuntu0.1",
+        "executable_sha256": "10fc302c4ca9860f24b8d2cb7f8a4cc454ba59d4a91e7a8e40f6b2c229486df7"
+      }
+    }
+  },
+  "raw_provider_run": {
+    "workflow_run_id": 32634960777,
+    "status": "success",
+    "artifacts": {
+      "poppler": {
+        "id": 9492079719,
+        "digest": "sha256:748c00f261b703962ef347ef9e520ed3b884bc81be0934306a12e4dc3a596a52"
+      },
+      "tika": {
+        "id": 9492093713,
+        "digest": "sha256:87a464e473403e340d24c5d6f2593870b1b77c0f9cbc9f0d83fcf12564904258"
+      },
+      "docling": {
+        "id": 9492110457,
+        "digest": "sha256:e9752b146e4abe5dbbf2293bdf135e72a08ef154678aab9175c141145f89c3b3"
+      }
+    }
+  },
+  "results": [
+    {
+      "provider": "poppler",
+      "route": "pdftotext-bbox-layout",
+      "fixture": "B01-PDF-NEG-001",
+      "provider_status": "failed",
+      "normalized_outcome": "failed-with-malformed-signal",
+      "explicit_negative_signal": true,
+      "acceptable_negative_outcome": true,
+      "false_complete_success": false,
+      "invocation_audit_passed": true
+    },
+    {
+      "provider": "poppler",
+      "route": "pdftohtml-xml",
+      "fixture": "B01-PDF-NEG-001",
+      "provider_status": "failed",
+      "normalized_outcome": "safe-failure-generic",
+      "explicit_negative_signal": false,
+      "acceptable_negative_outcome": true,
+      "false_complete_success": false,
+      "invocation_audit_passed": true
+    },
+    {
+      "provider": "tika",
+      "route": "tika-app-3.3.2-xhtml",
+      "fixture": "B01-PDF-NEG-001",
+      "provider_status": "success",
+      "normalized_outcome": "silent-complete-success",
+      "explicit_negative_signal": false,
+      "acceptable_negative_outcome": false,
+      "false_complete_success": true,
+      "provider_blocks": 0,
+      "observed_unrelated_warning": "bbox-not-exposed",
+      "invocation_audit_passed": true
+    },
+    {
+      "provider": "docling",
+      "route": "docling-2.118.0-standard-pdf-native-no-ocr",
+      "fixture": "B01-PDF-NEG-001",
+      "provider_status": "failed",
+      "normalized_outcome": "failed-with-malformed-signal",
+      "explicit_negative_signal": true,
+      "acceptable_negative_outcome": true,
+      "false_complete_success": false,
+      "invocation_audit_passed": true
+    },
+    {
+      "provider": "poppler",
+      "route": "pdftotext-bbox-layout",
+      "fixture": "B01-PDF-NEG-002",
+      "provider_status": "failed",
+      "normalized_outcome": "restricted-or-password-required",
+      "explicit_access_control_signal": true,
+      "acceptable_negative_outcome": true,
+      "false_complete_success": false,
+      "invocation_audit_passed": true
+    },
+    {
+      "provider": "poppler",
+      "route": "pdftohtml-xml",
+      "fixture": "B01-PDF-NEG-002",
+      "provider_status": "failed",
+      "normalized_outcome": "safe-failure-generic",
+      "explicit_access_control_signal": false,
+      "acceptable_negative_outcome": true,
+      "false_complete_success": false,
+      "invocation_audit_passed": true
+    },
+    {
+      "provider": "tika",
+      "route": "tika-app-3.3.2-xhtml",
+      "fixture": "B01-PDF-NEG-002",
+      "provider_status": "failed",
+      "normalized_outcome": "restricted-or-password-required",
+      "explicit_access_control_signal": true,
+      "acceptable_negative_outcome": true,
+      "false_complete_success": false,
+      "invocation_audit_passed": true
+    },
+    {
+      "provider": "docling",
+      "route": "docling-2.118.0-standard-pdf-native-no-ocr",
+      "fixture": "B01-PDF-NEG-002",
+      "provider_status": "failed",
+      "normalized_outcome": "restricted-or-password-required",
+      "explicit_access_control_signal": true,
+      "acceptable_negative_outcome": true,
+      "false_complete_success": false,
+      "invocation_audit_passed": true
+    }
+  ],
+  "normalization_invariants": {
+    "malformed_provider_success_without_relevant_signal": "silent-complete-success / unacceptable",
+    "malformed_provider_success_with_explicit_malformed_signal": "degraded-with-malformed-signal / acceptable negative outcome",
+    "access_controlled_success_with_explicit_restriction_and_empty_content": "safe-metadata-or-restricted-success / acceptable negative outcome",
+    "access_controlled_success_with_explicit_restriction_and_unknown_output": "restricted-success-output-unknown / fail-closed",
+    "access_controlled_success_with_explicit_restriction_and_content": "unexpected-content-under-access-control / fail-closed",
+    "access_controlled_success_without_restriction_signal": "silent-complete-success-with-inaccessible-content / unacceptable",
+    "scored_cli_stdout": "exactly one valid JSON document; raw evidence persists separately"
+  },
+  "security_boundary": {
+    "provider_password_supplied": false,
+    "access_control_bypass_requested": false,
+    "remote_provider": false,
+    "normal_quality_average_inclusion": false
+  },
+  "finding_log": [
+    {
+      "id": "F1",
+      "severity": "major",
+      "status": "resolved",
+      "summary": "A Provider-native success state can hide malformed/incomplete negative input; Tika 3.3.2 accepts NEG-001 without a corruption signal."
+    },
+    {
+      "id": "F2",
+      "severity": "major",
+      "status": "resolved",
+      "summary": "Access-controlled success needed fail-closed distinction between trustworthy empty output, unknown output and unexpected content."
+    },
+    {
+      "id": "F3",
+      "severity": "minor",
+      "status": "resolved",
+      "summary": "The scored CLI could emit raw and normalized JSON consecutively on stdout; raw and normalized channels are now separated."
+    }
+  ],
+  "e05_implications": [
+    "Provider success must be distinct from integrity/completeness-established state",
+    "security-policy refusal/restricted input must be a first-class outcome",
+    "generic failure and explicit access-control signal must remain distinct",
+    "unknown output and unexpected content under access control must remain fail-closed states",
+    "attempted Processing Run provenance must exist even when no normalized output is produced",
+    "ExtractorPlugin must not retry protected input through credential-override or circumvention behavior"
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema_version": "0.1.0",
+  "run_id": "run-restricted-before-provider",
+  "source_ref": {
+    "source_id": "source-policy-gated-001",
+    "source_class": "B-01",
+    "fingerprint": "sha256:policy-gated-example"
+  },
+  "rights_decision_ref": {
+    "decision_id": "rights-requires-authorization-001"
+  },
+  "stages": [],
+  "outcome": {
+    "execution": "restricted",
+    "assessments": [
+      {
+        "scope": "provider-processing",
+        "completeness": "not-applicable",
+        "integrity": "not-applicable",
+        "basis": "Core rights decision prevented Provider invocation before any extraction stage started"
+      }
+    ],
+    "derivation_basis": "Core orchestration terminated the run before Provider selection or invocation"
+  },
+  "produced": [],
+  "provenance": {
+    "started_at": "2026-08-23T12:00:00Z",
+    "ended_at": "2026-08-23T12:00:00Z",
+    "run_outcome_basis": "Core RightsDecisionRef prevented any Provider-backed stage from starting",
+    "input_fingerprint": "sha256:policy-gated-example"
+  },
+  "diagnostics": [
+    {
+      "code": "PROCESSING_REQUIRES_AUTHORIZATION",
+      "severity": "warning",
+      "message": "No Provider was selected or invoked because the Core rights gate did not authorize processing."
+    }
+  ]
+}

@@ -87,18 +87,33 @@
       "enum": ["measured", "partial", "not-measured", "malformed-evidence", "ambiguous", "not-applicable"]
     },
     "ValueState": {
-      "enum": ["present", "explicit-empty", "explicit-mismatch", "unknown"]
+      "enum": ["present", "explicit-empty", "unknown"]
+    },
+    "EvidenceOrigin": {
+      "enum": ["provider-native", "raiatea-aligned", "raiatea-derived", "user-asserted", "unresolved"]
+    },
+    "EvidenceAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "basis"],
+      "properties": {
+        "state": {"enum": ["consistent", "mismatch", "unresolved"]},
+        "basis": {"type": "string", "minLength": 1},
+        "compared_to_ref": {"type": "string", "minLength": 1}
+      }
     },
     "EvidenceEnvelope": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["evidence_state", "value_state", "basis"],
+      "required": ["evidence_state", "value_state", "origin", "basis"],
       "properties": {
         "evidence_state": {"$ref": "#/$defs/EvidenceState"},
         "value_state": {"$ref": "#/$defs/ValueState"},
+        "origin": {"$ref": "#/$defs/EvidenceOrigin"},
         "basis": {"type": "string", "minLength": 1},
         "channel": {"type": "string"},
-        "value": {}
+        "value": {},
+        "assessment": {"$ref": "#/$defs/EvidenceAssessment"}
       },
       "allOf": [
         {
@@ -151,10 +166,11 @@
     "SourceCoordinateEnvelope": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["evidence_state", "value_state", "basis"],
+      "required": ["evidence_state", "value_state", "origin", "basis"],
       "properties": {
         "evidence_state": {"$ref": "#/$defs/EvidenceState"},
         "value_state": {"$ref": "#/$defs/ValueState"},
+        "origin": {"$ref": "#/$defs/EvidenceOrigin"},
         "basis": {"type": "string", "minLength": 1},
         "channel": {"type": "string"},
         "value": {
@@ -162,7 +178,8 @@
             {"$ref": "#/$defs/SourceCoordinate"},
             {"type": "null"}
           ]
-        }
+        },
+        "assessment": {"$ref": "#/$defs/EvidenceAssessment"}
       },
       "allOf": [
         {
@@ -291,7 +308,7 @@
       "required": ["execution", "assessments", "derivation_basis"],
       "properties": {
         "execution": {
-          "enum": ["not-started", "completed", "failed", "restricted", "rejected", "unsupported", "cancelled", "timeout", "unknown"]
+          "enum": ["not-started", "completed", "failed", "rejected", "unsupported", "cancelled", "timeout", "unknown"]
         },
         "assessments": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/ScopedAssessment"}},
         "derivation_basis": {"type": "string", "minLength": 1}

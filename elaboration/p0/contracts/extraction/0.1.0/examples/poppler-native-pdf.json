@@ -1,0 +1,35 @@
+{
+  "schema_version": "0.1.0",
+  "run_id": "run-poppler-native-001",
+  "source_ref": {"source_id": "B01-PDF-001", "source_class": "B-01", "fingerprint": "sha256:example"},
+  "provider": {"provider_id": "poppler", "version": "24.02.0"},
+  "route_profile": {"route_profile_id": "pdftohtml-xml", "mode": "native", "execution_context": "local"},
+  "stages": [{
+    "stage_id": "native-1",
+    "stage_kind": "native-extraction",
+    "provider": {"provider_id": "poppler", "version": "24.02.0"},
+    "route_profile": {"route_profile_id": "pdftohtml-xml", "mode": "native", "execution_context": "local"},
+    "provider_status": {"evidence_state": "measured", "value_state": "present", "basis": "process exit and parsed XML", "channel": "normalized-provider-view", "value": "success"},
+    "reconciliation_state": "not-applicable",
+    "produced": [{"kind": "provider-evidence", "evidence_id": "raw-poppler-1", "channel": "xml"}]
+  }],
+  "outcome": {
+    "execution": "completed",
+    "assessments": [
+      {"scope": "text-surface", "completeness": "complete", "integrity": "valid", "basis": "runtime extraction assessment"},
+      {"scope": "semantic-structure", "completeness": "unknown", "integrity": "unknown", "basis": "route exposes no semantic-role evidence"}
+    ],
+    "derivation_basis": "Raiatea orchestration assessment from Provider evidence"
+  },
+  "produced": [
+    {"kind": "provider-evidence", "evidence_id": "raw-poppler-1", "channel": "xml"},
+    {"kind": "normalized-representation", "representation_id": "norm-1"}
+  ],
+  "provenance": {
+    "started_at": "2026-08-23T10:00:00Z",
+    "ended_at": "2026-08-23T10:00:01Z",
+    "provider_native_status_basis": "process exit and XML parser",
+    "environment_fingerprint": "ubuntu-24.04",
+    "input_fingerprint": "sha256:example"
+  }
+}

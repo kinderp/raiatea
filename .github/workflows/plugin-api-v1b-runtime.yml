@@ -30,7 +30,9 @@ jobs:
       - name: Compile runtime contract tooling
         run: python -m compileall -q elaboration/p0/contracts/plugins/runtime/1.0.0
       - name: Run semantic tests
-        run: python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime.py -v
+        run: |
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime.py -v
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime_handle_bounds.py -v
 
   json-schema-reference:
     name: Plugin runtime JSON Schema reference validation

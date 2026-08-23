@@ -1,0 +1,120 @@
+{
+  "contract": {
+    "name": "raiatea-p0-b01-negative-pdf-gold",
+    "version": "0.1.0",
+    "scope": "benchmark-evidence-only",
+    "public_p0_schema": false,
+    "negative_security_fixtures": true,
+    "excluded_from_normal_quality_averages": true
+  },
+  "fixtures": {
+    "B01-PDF-NEG-001": {
+      "source_family": "B-01",
+      "traits": ["malformed", "truncated-container"],
+      "generator": "b01_pdf_negative_fixtures.py",
+      "generator_version": "0.1.0",
+      "sha256": "803cdada146c89d6a86169351ed7a4b0a46c0afe99f5b08ea25f813d0c8d630d",
+      "bytes": 376,
+      "corruption": {
+        "kind": "intentional-truncation",
+        "description": "content object truncated before endstream/endobj; xref, trailer, startxref and EOF absent",
+        "active_payload": false,
+        "external_reference": false
+      },
+      "allowed_outcome_classes": [
+        "rejected",
+        "failed",
+        "unsupported",
+        "degraded-with-warning",
+        "partial-with-warning"
+      ],
+      "forbidden_interpretation": "silent-complete-success",
+      "target_dimensions": [
+        "visible-failure-or-degradation-state",
+        "warning-error-visibility",
+        "partial-output-visibility",
+        "filesystem-side-effects",
+        "network-remote-service-state",
+        "route-runtime-provenance"
+      ],
+      "quality_dimensions_excluded": true,
+      "rights": {
+        "origin": "project-created",
+        "redistribution": "not-established",
+        "decision_issue": 131,
+        "public_rights_safe": false,
+        "remote_provider": "denied"
+      }
+    },
+    "B01-PDF-NEG-002": {
+      "source_family": "B-01",
+      "traits": ["access-controlled", "password-encrypted"],
+      "generator": "b01_pdf_negative_fixtures.py + pinned qpdf fixture-generation utility",
+      "generator_version": "0.1.0",
+      "sha256": null,
+      "bytes": null,
+      "identity_state": "pending-qpdf-reproducibility-gate-before-provider-measurement",
+      "access_control": {
+        "kind": "password-encrypted-pdf",
+        "fixture_password_is_public_test_input": true,
+        "provider_password_supplied": false,
+        "authorized_credential_route_present": false,
+        "bypass_allowed": false
+      },
+      "allowed_outcome_classes": [
+        "restricted-or-password-required",
+        "rejected",
+        "failed",
+        "unsupported",
+        "degraded-with-warning",
+        "safe-metadata-only"
+      ],
+      "forbidden_interpretations": [
+        "silent-complete-success-with-inaccessible-content",
+        "automatic-decryption-or-access-control-removal"
+      ],
+      "forbidden_provider_options_or_behaviors": [
+        "-nodrm",
+        "--password",
+        "--password-file",
+        "--password-is-hex-key",
+        "--decrypt",
+        "--remove-restrictions",
+        "password-guessing",
+        "password-cracking",
+        "credential-recovery"
+      ],
+      "generator_only_test_options": [
+        "--static-id",
+        "--static-aes-iv"
+      ],
+      "target_dimensions": [
+        "restricted-unsupported-failure-state",
+        "warning-error-visibility",
+        "explicit-access-control-signal",
+        "partial-or-empty-output-visibility",
+        "provider-invocation-policy-audit",
+        "filesystem-side-effects",
+        "network-remote-service-state",
+        "route-runtime-provenance"
+      ],
+      "quality_dimensions_excluded": true,
+      "rights": {
+        "origin": "project-created",
+        "redistribution": "not-established",
+        "decision_issue": 131,
+        "public_rights_safe": false,
+        "remote_provider": "denied"
+      }
+    }
+  },
+  "measurement_policy": {
+    "provider_specific_exception_strings_are_gold": false,
+    "rejected_unknown_partial_may_be_valid": true,
+    "negative_results_enter_quality_average": false,
+    "silent_unknown_or_partial_as_full_success": false,
+    "remote_processing": false,
+    "access_control_bypass": false,
+    "credential_or_password_supplied_to_provider": false
+  }
+}

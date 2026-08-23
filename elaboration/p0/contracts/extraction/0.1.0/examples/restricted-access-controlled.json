@@ -1,0 +1,80 @@
+{
+  "schema_version": "0.1.0",
+  "run_id": "run-tika-restricted-neg002",
+  "source_ref": {
+    "source_id": "B01-PDF-NEG-002",
+    "source_class": "B-01",
+    "fingerprint": "sha256:c277faaffe74c38b0e01b18d30e2573614f97377aacbb5e74eadd012a528029f"
+  },
+  "rights_decision_ref": {"decision_id": "rights-neg002-no-authorized-credential-route"},
+  "stages": [
+    {
+      "stage_id": "native-1",
+      "stage_kind": "native-extraction",
+      "executor": {
+        "kind": "provider",
+        "provider": {"provider_id": "apache-tika", "version": "3.3.2"},
+        "route_profile": {
+          "route_profile_id": "tika-app-3.3.2-xhtml-native-no-ocr",
+          "mode": "native-no-ocr",
+          "execution_context": "local"
+        }
+      },
+      "input_refs": [],
+      "provider_status": {
+        "evidence_state": "present",
+        "value_state": "populated",
+        "origin": "provider-native",
+        "basis": "Tika process exit and encrypted-PDF failure evidence",
+        "channel": "provider-process",
+        "value": "failed"
+      },
+      "outcome": {
+        "execution": "failed",
+        "assessments": [
+          {
+            "scope": "provider-access-attempt",
+            "completeness": "not-applicable",
+            "integrity": "not-applicable",
+            "basis": "Provider rejected the access-controlled input before content extraction"
+          }
+        ],
+        "derivation_basis": "stage assessment retains the Provider failure without turning it into policy authority"
+      },
+      "reconciliation_state": "not-applicable",
+      "produced": [
+        {"kind": "provider-evidence", "evidence_id": "tika-neg002-failure", "channel": "process-diagnostic"}
+      ]
+    }
+  ],
+  "outcome": {
+    "execution": "failed",
+    "assessments": [
+      {
+        "scope": "accessible-content",
+        "completeness": "not-applicable",
+        "integrity": "not-applicable",
+        "basis": "Core rights/policy context has no authorized credential route; no bypass or alternative circumvention route is permitted"
+      }
+    ],
+    "derivation_basis": "Core orchestration records the technical attempt as failed; authoritative access restriction remains in RightsDecisionRef"
+  },
+  "produced": [
+    {"kind": "provider-evidence", "evidence_id": "tika-neg002-failure", "channel": "process-diagnostic"}
+  ],
+  "provenance": {
+    "started_at": "2026-08-23T10:56:00Z",
+    "ended_at": "2026-08-23T10:56:01Z",
+    "run_outcome_basis": "Core rights decision plus explicit Provider-stage outcome",
+    "provider_native_status_basis": "Tika process failure evidence without a supplied password or bypass option",
+    "environment_fingerprint": "ubuntu-24.04+tika-3.3.2+java-21.0.12",
+    "input_fingerprint": "sha256:c277faaffe74c38b0e01b18d30e2573614f97377aacbb5e74eadd012a528029f"
+  },
+  "diagnostics": [
+    {
+      "code": "ACCESS_CONTROLLED_NO_AUTHORIZED_CREDENTIAL_ROUTE",
+      "severity": "warning",
+      "message": "Processing stopped without password recovery, guessing, decryption override, or other access-control bypass."
+    }
+  ]
+}

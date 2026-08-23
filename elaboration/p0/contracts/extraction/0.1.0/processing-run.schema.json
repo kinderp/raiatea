@@ -1,0 +1,386 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raiatea.invalid/contracts/extraction/0.1.0/processing-run.schema.json",
+  "title": "Raiatea E-05b ProcessingRunRecord candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "run_id", "source_ref", "stages", "outcome", "produced", "provenance"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "run_id": {"type": "string", "minLength": 1},
+    "source_ref": {"$ref": "#/$defs/SourceReference"},
+    "rights_decision_ref": {"$ref": "#/$defs/RightsDecisionRef"},
+    "stages": {"type": "array", "items": {"$ref": "#/$defs/ProcessingStage"}},
+    "outcome": {"$ref": "#/$defs/ProcessingOutcome"},
+    "produced": {"type": "array", "items": {"$ref": "#/$defs/ProducedRef"}},
+    "provenance": {"$ref": "#/$defs/ProvenanceRecord"},
+    "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/Diagnostic"}}
+  },
+  "$defs": {
+    "ProviderRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["provider_id", "version"],
+      "properties": {
+        "provider_id": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "minLength": 1}
+      }
+    },
+    "RouteProfileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["route_profile_id"],
+      "properties": {
+        "route_profile_id": {"type": "string", "minLength": 1},
+        "backend": {"type": "string"},
+        "mode": {"type": "string"},
+        "model_revision": {"type": "string"},
+        "payload_fingerprint": {"type": "string"},
+        "execution_context": {"enum": ["local", "remote", "hybrid"]},
+        "parameters": {"type": "object"}
+      }
+    },
+    "ProviderStageExecutor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "provider", "route_profile"],
+      "properties": {
+        "kind": {"const": "provider"},
+        "provider": {"$ref": "#/$defs/ProviderRef"},
+        "route_profile": {"$ref": "#/$defs/RouteProfileRef"}
+      }
+    },
+    "CoreStageExecutor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "operation_id"],
+      "properties": {
+        "kind": {"const": "raiatea-core"},
+        "operation_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "StageExecutor": {
+      "oneOf": [
+        {"$ref": "#/$defs/ProviderStageExecutor"},
+        {"$ref": "#/$defs/CoreStageExecutor"}
+      ]
+    },
+    "SourceReference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_class"],
+      "properties": {
+        "source_id": {"type": "string", "minLength": 1},
+        "source_class": {"type": "string", "minLength": 1},
+        "fingerprint": {"type": "string"}
+      }
+    },
+    "RightsDecisionRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision_id"],
+      "properties": {
+        "decision_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "EvidenceState": {
+      "enum": ["present", "partial", "unavailable", "ambiguous", "malformed", "not-applicable"]
+    },
+    "ValueState": {
+      "enum": ["populated", "empty", "unknown"]
+    },
+    "EvidenceOrigin": {
+      "enum": ["provider-native", "raiatea-aligned", "raiatea-derived", "user-asserted", "unresolved"]
+    },
+    "EvidenceAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["state", "basis"],
+      "properties": {
+        "state": {"enum": ["consistent", "mismatch", "unresolved"]},
+        "basis": {"type": "string", "minLength": 1},
+        "compared_to_ref": {"type": "string", "minLength": 1}
+      }
+    },
+    "EvidenceEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_state", "value_state", "origin", "basis"],
+      "properties": {
+        "evidence_state": {"$ref": "#/$defs/EvidenceState"},
+        "value_state": {"$ref": "#/$defs/ValueState"},
+        "origin": {"$ref": "#/$defs/EvidenceOrigin"},
+        "basis": {"type": "string", "minLength": 1},
+        "channel": {"type": "string"},
+        "value": {},
+        "assessment": {"$ref": "#/$defs/EvidenceAssessment"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"value_state": {"const": "populated"}}},
+          "then": {"required": ["value"]}
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "empty"}}},
+          "then": {"required": ["value"]}
+        }
+      ]
+    },
+    "PdfCoordinate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "page_index", "bbox_points_bottom_left"],
+      "properties": {
+        "kind": {"const": "pdf-geometric"},
+        "page_index": {"type": "integer", "minimum": 0},
+        "bbox_points_bottom_left": {
+          "type": "array",
+          "prefixItems": [
+            {"type": "number"},
+            {"type": "number"},
+            {"type": "number"},
+            {"type": "number"}
+          ],
+          "minItems": 4,
+          "maxItems": 4
+        }
+      }
+    },
+    "EpubCoordinate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "resource"],
+      "properties": {
+        "kind": {"const": "epub-logical"},
+        "resource": {"type": "string", "minLength": 1},
+        "fragment": {"type": ["string", "null"]},
+        "spine_index": {"type": ["integer", "null"], "minimum": 0}
+      }
+    },
+    "SourceCoordinate": {
+      "oneOf": [
+        {"$ref": "#/$defs/PdfCoordinate"},
+        {"$ref": "#/$defs/EpubCoordinate"}
+      ]
+    },
+    "SourceCoordinateEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["evidence_state", "value_state", "origin", "basis"],
+      "properties": {
+        "evidence_state": {"$ref": "#/$defs/EvidenceState"},
+        "value_state": {"$ref": "#/$defs/ValueState"},
+        "origin": {"$ref": "#/$defs/EvidenceOrigin"},
+        "basis": {"type": "string", "minLength": 1},
+        "channel": {"type": "string"},
+        "value": {
+          "oneOf": [
+            {"$ref": "#/$defs/SourceCoordinate"},
+            {"type": "null"}
+          ]
+        },
+        "assessment": {"$ref": "#/$defs/EvidenceAssessment"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"value_state": {"const": "populated"}}},
+          "then": {
+            "required": ["value"],
+            "properties": {"value": {"$ref": "#/$defs/SourceCoordinate"}}
+          }
+        },
+        {
+          "if": {"properties": {"value_state": {"const": "empty"}}},
+          "then": {
+            "required": ["value"],
+            "properties": {"value": {"type": "null"}}
+          }
+        }
+      ]
+    },
+    "ContentUnit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unit_id", "surface"],
+      "properties": {
+        "unit_id": {"type": "string", "minLength": 1},
+        "surface": {"$ref": "#/$defs/EvidenceEnvelope"},
+        "semantic_role": {"$ref": "#/$defs/EvidenceEnvelope"},
+        "coordinate": {"$ref": "#/$defs/SourceCoordinateEnvelope"}
+      }
+    },
+    "Relation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relation_id", "kind", "from_ref", "to_ref", "evidence_origin", "basis"],
+      "properties": {
+        "relation_id": {"type": "string", "minLength": 1},
+        "kind": {"type": "string", "minLength": 1},
+        "from_ref": {"type": "string", "minLength": 1},
+        "to_ref": {"type": "string", "minLength": 1},
+        "evidence_origin": {"enum": ["provider-explicit", "raiatea-derived"]},
+        "basis": {"type": "string", "minLength": 1}
+      }
+    },
+    "ProviderGrouping": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["group_id", "provider_ref", "label", "member_refs", "semantic_interpretation", "basis"],
+      "properties": {
+        "group_id": {"type": "string", "minLength": 1},
+        "provider_ref": {"type": "string", "minLength": 1},
+        "label": {"type": "string", "minLength": 1},
+        "member_refs": {"type": "array", "items": {"type": "string", "minLength": 1}},
+        "semantic_interpretation": {"const": false},
+        "basis": {"type": "string", "minLength": 1}
+      }
+    },
+    "ProviderEvidenceRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "evidence_id", "channel"],
+      "properties": {
+        "kind": {"const": "provider-evidence"},
+        "evidence_id": {"type": "string", "minLength": 1},
+        "channel": {"type": "string", "minLength": 1}
+      }
+    },
+    "NormalizedRepresentationRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "representation_id"],
+      "properties": {
+        "kind": {"const": "normalized-representation"},
+        "representation_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "ProducedRef": {
+      "oneOf": [
+        {"$ref": "#/$defs/ProviderEvidenceRef"},
+        {"$ref": "#/$defs/NormalizedRepresentationRef"}
+      ]
+    },
+    "ProviderEvidenceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "evidence_id", "source_ref", "provider", "route_profile", "channel", "native_status"],
+      "properties": {
+        "schema_version": {"const": "0.1.0"},
+        "evidence_id": {"type": "string", "minLength": 1},
+        "source_ref": {"$ref": "#/$defs/SourceReference"},
+        "provider": {"$ref": "#/$defs/ProviderRef"},
+        "route_profile": {"$ref": "#/$defs/RouteProfileRef"},
+        "channel": {"type": "string", "minLength": 1},
+        "native_status": {"$ref": "#/$defs/EvidenceEnvelope"},
+        "payload_locator": {"type": "string"},
+        "payload_fingerprint": {"type": "string"},
+        "groupings": {"type": "array", "items": {"$ref": "#/$defs/ProviderGrouping"}},
+        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/Diagnostic"}}
+      }
+    },
+    "NormalizedRepresentationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "representation_id", "source_ref", "units", "relations"],
+      "properties": {
+        "schema_version": {"const": "0.1.0"},
+        "representation_id": {"type": "string", "minLength": 1},
+        "source_ref": {"$ref": "#/$defs/SourceReference"},
+        "units": {"type": "array", "items": {"$ref": "#/$defs/ContentUnit"}},
+        "relations": {"type": "array", "items": {"$ref": "#/$defs/Relation"}},
+        "diagnostics": {"type": "array", "items": {"$ref": "#/$defs/Diagnostic"}}
+      }
+    },
+    "ScopedAssessment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["scope", "completeness", "integrity", "basis"],
+      "properties": {
+        "scope": {"type": "string", "minLength": 1},
+        "completeness": {"enum": ["complete", "partial", "unknown", "not-applicable"]},
+        "integrity": {"enum": ["valid", "degraded", "invalid", "unknown", "not-applicable"]},
+        "basis": {"type": "string", "minLength": 1}
+      }
+    },
+    "ProcessingOutcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["execution", "assessments", "derivation_basis"],
+      "properties": {
+        "execution": {
+          "enum": ["not-started", "completed", "failed", "rejected", "unsupported", "cancelled", "timeout", "unknown"]
+        },
+        "assessments": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/ScopedAssessment"}},
+        "derivation_basis": {"type": "string", "minLength": 1}
+      }
+    },
+    "ProcessingStage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["stage_id", "stage_kind", "executor", "input_refs", "outcome", "produced"],
+      "properties": {
+        "stage_id": {"type": "string", "minLength": 1},
+        "stage_kind": {"type": "string", "minLength": 1},
+        "executor": {"$ref": "#/$defs/StageExecutor"},
+        "input_refs": {"type": "array", "items": {"$ref": "#/$defs/ProducedRef"}},
+        "provider_status": {"$ref": "#/$defs/EvidenceEnvelope"},
+        "outcome": {"$ref": "#/$defs/ProcessingOutcome"},
+        "trigger_basis": {"type": "string"},
+        "parent_stage_id": {"type": ["string", "null"]},
+        "reconciliation_state": {"enum": ["not-applicable", "resolved", "partial", "unresolved", "not-measured"]},
+        "produced": {"type": "array", "items": {"$ref": "#/$defs/ProducedRef"}}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "executor": {
+                "properties": {"kind": {"const": "provider"}},
+                "required": ["kind"]
+              }
+            }
+          },
+          "then": {"required": ["provider_status"]}
+        },
+        {
+          "if": {
+            "properties": {
+              "executor": {
+                "properties": {"kind": {"const": "raiatea-core"}},
+                "required": ["kind"]
+              }
+            }
+          },
+          "then": {"not": {"required": ["provider_status"]}}
+        },
+        {
+          "if": {"properties": {"stage_kind": {"const": "ocr-fallback"}}},
+          "then": {"required": ["trigger_basis", "parent_stage_id", "reconciliation_state"]}
+        }
+      ]
+    },
+    "Diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message"],
+      "properties": {
+        "code": {"type": "string", "minLength": 1},
+        "severity": {"enum": ["info", "warning", "error"]},
+        "message": {"type": "string"}
+      }
+    },
+    "ProvenanceRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["started_at", "ended_at", "run_outcome_basis"],
+      "properties": {
+        "started_at": {"type": "string", "format": "date-time"},
+        "ended_at": {"type": "string", "format": "date-time"},
+        "run_outcome_basis": {"type": "string", "minLength": 1},
+        "provider_native_status_basis": {"type": "string"},
+        "environment_fingerprint": {"type": "string"},
+        "input_fingerprint": {"type": "string"}
+      }
+    }
+  }
+}

@@ -1,0 +1,132 @@
+name: P0 E-05b extraction contract
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/contracts/extraction/**"
+      - ".github/workflows/p0-e05b-contract.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/contracts/extraction/**"
+      - ".github/workflows/p0-e05b-contract.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-light:
+    name: E-05b semantic conformance / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile candidate contract tooling
+        run: python -m compileall -q elaboration/p0/contracts/extraction/0.1.0
+      - name: Run semantic conformance tests
+        run: |
+          python elaboration/p0/contracts/extraction/0.1.0/test_contract.py -v
+          python elaboration/p0/contracts/extraction/0.1.0/test_adapt_benchmark.py -v
+      - name: Validate positive examples with dependency-light harness
+        run: >-
+          python elaboration/p0/contracts/extraction/0.1.0/validate_contract.py
+          elaboration/p0/contracts/extraction/0.1.0/examples/poppler-native-pdf.json
+          elaboration/p0/contracts/extraction/0.1.0/examples/docling-rapidocr-staged.json
+          elaboration/p0/contracts/extraction/0.1.0/examples/direct-epub-normalized.json
+          elaboration/p0/contracts/extraction/0.1.0/examples/restricted-access-controlled.json
+          elaboration/p0/contracts/extraction/0.1.0/examples/restricted-before-provider.json
+
+  json-schema-reference:
+    name: E-05b JSON Schema Draft 2020-12 reference validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Install pinned JSON Schema validator
+        run: python -m pip install --disable-pip-version-check "jsonschema==4.26.0"
+      - name: Validate schema, examples and mapper adaptations
+        run: |
+          python - <<'PY'
+          import importlib.util
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator, FormatChecker
+
+          root = Path("elaboration/p0/contracts/extraction/0.1.0")
+          schema = json.loads((root / "processing-run.schema.json").read_text(encoding="utf-8"))
+          Draft202012Validator.check_schema(schema)
+          formats = FormatChecker()
+
+          def validator_for(def_name=None):
+              if def_name is None:
+                  return Draft202012Validator(schema, format_checker=formats)
+              wrapper = {
+                  "$schema": schema["$schema"],
+                  "$defs": schema["$defs"],
+                  "$ref": f"#/$defs/{def_name}",
+              }
+              Draft202012Validator.check_schema(wrapper)
+              return Draft202012Validator(wrapper, format_checker=formats)
+
+          def check(validator, value, label):
+              errors = sorted(validator.iter_errors(value), key=lambda error: list(error.path))
+              if errors:
+                  raise SystemExit("\n".join(f"{label}: {list(e.path)}: {e.message}" for e in errors))
+              print("PASS", label)
+
+          run_validator = validator_for()
+          representation_validator = validator_for("NormalizedRepresentationRecord")
+          evidence_validator = validator_for("ProviderEvidenceRecord")
+
+          for name in (
+              "poppler-native-pdf.json",
+              "docling-rapidocr-staged.json",
+              "restricted-access-controlled.json",
+              "restricted-before-provider.json",
+          ):
+              check(
+                  run_validator,
+                  json.loads((root / "examples" / name).read_text(encoding="utf-8")),
+                  name,
+              )
+
+          check(
+              representation_validator,
+              json.loads((root / "examples" / "direct-epub-normalized.json").read_text(encoding="utf-8")),
+              "direct-epub-normalized.json",
+          )
+
+          spec = importlib.util.spec_from_file_location("e05b_adapt", root / "adapt_benchmark.py")
+          adapt = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(adapt)
+
+          poppler_input = json.loads((root / "adapter_inputs" / "poppler-pdftohtml-observation.json").read_text(encoding="utf-8"))
+          poppler = adapt.adapt_poppler_observation(
+              poppler_input,
+              source_id="B01-PDF-001",
+              fingerprint="sha256:poppler-adaptation-example",
+          )
+          check(run_validator, poppler["run"], "adapted-poppler-run")
+          check(evidence_validator, poppler["provider_evidence"], "adapted-poppler-provider-evidence")
+          check(representation_validator, poppler["normalized_representation"], "adapted-poppler-normalized")
+
+          epub_input = json.loads((root / "adapter_inputs" / "direct-epub-observation.json").read_text(encoding="utf-8"))
+          epub = adapt.adapt_direct_epub_observation(
+              epub_input,
+              source_id="B02-EPUB-001",
+              fingerprint="sha256:8a013c2e95ec99e07a29a09072872abe0c7e2fc0ba92378db9088817230be933",
+              python_version="3.13.5",
+          )
+          check(run_validator, epub["run"], "adapted-direct-epub-run")
+          check(evidence_validator, epub["provider_evidence"], "adapted-direct-epub-provider-evidence")
+          check(representation_validator, epub["normalized_representation"], "adapted-direct-epub-normalized")
+          PY

@@ -1,0 +1,166 @@
+{
+  "schema_version": "0.1.0",
+  "run_id": "run-docling-rapidocr-001",
+  "source_ref": {
+    "source_id": "B01-PDF-007",
+    "source_class": "B-01",
+    "fingerprint": "sha256:example"
+  },
+  "rights_decision_ref": {"decision_id": "rights-001"},
+  "stages": [
+    {
+      "stage_id": "native-1",
+      "stage_kind": "native-extraction",
+      "executor": {
+        "kind": "provider",
+        "provider": {"provider_id": "docling", "version": "2.118.0"},
+        "route_profile": {
+          "route_profile_id": "docling-native-no-ocr",
+          "mode": "native",
+          "execution_context": "local"
+        }
+      },
+      "input_refs": [],
+      "provider_status": {
+        "evidence_state": "present",
+        "value_state": "populated",
+        "origin": "provider-native",
+        "basis": "Docling conversion status",
+        "channel": "provider-normalized",
+        "value": "success"
+      },
+      "outcome": {
+        "execution": "completed",
+        "assessments": [
+          {
+            "scope": "native-provider-evidence",
+            "completeness": "unknown",
+            "integrity": "unknown",
+            "basis": "Provider success does not establish complete visible-page coverage"
+          }
+        ],
+        "derivation_basis": "stage outcome is assessed separately from the Provider-native status"
+      },
+      "reconciliation_state": "not-applicable",
+      "produced": [
+        {"kind": "provider-evidence", "evidence_id": "native-raw", "channel": "lossless-json"}
+      ]
+    },
+    {
+      "stage_id": "ocr-1",
+      "stage_kind": "ocr-fallback",
+      "executor": {
+        "kind": "provider",
+        "provider": {"provider_id": "docling", "version": "2.118.0"},
+        "route_profile": {
+          "route_profile_id": "docling-2.118.0-rapidocr-3.9.2-torch-en-default",
+          "backend": "torch",
+          "mode": "ocr-fallback",
+          "model_revision": "rapidocr-3.9.2",
+          "payload_fingerprint": "sha256:131b4064...",
+          "execution_context": "local"
+        }
+      },
+      "parent_stage_id": "native-1",
+      "input_refs": [],
+      "provider_status": {
+        "evidence_state": "present",
+        "value_state": "populated",
+        "origin": "provider-native",
+        "basis": "Docling conversion status",
+        "channel": "provider-normalized",
+        "value": "success"
+      },
+      "outcome": {
+        "execution": "completed",
+        "assessments": [
+          {
+            "scope": "ocr-provider-evidence",
+            "completeness": "unknown",
+            "integrity": "unknown",
+            "basis": "Provider-native success alone does not prove exact OCR recovery"
+          }
+        ],
+        "derivation_basis": "stage outcome preserves OCR Provider status separately from Raiatea assessment"
+      },
+      "trigger_basis": "native-stage runtime assessment determined that additional visible-content evidence was required",
+      "reconciliation_state": "not-measured",
+      "produced": [
+        {"kind": "provider-evidence", "evidence_id": "ocr-raw", "channel": "lossless-json"}
+      ]
+    },
+    {
+      "stage_id": "normalize-1",
+      "stage_kind": "normalization",
+      "executor": {
+        "kind": "raiatea-core",
+        "operation_id": "normalize-native-and-ocr-evidence"
+      },
+      "parent_stage_id": "ocr-1",
+      "input_refs": [
+        {"kind": "provider-evidence", "evidence_id": "native-raw", "channel": "lossless-json"},
+        {"kind": "provider-evidence", "evidence_id": "ocr-raw", "channel": "lossless-json"}
+      ],
+      "outcome": {
+        "execution": "completed",
+        "assessments": [
+          {
+            "scope": "normalized-record-structure",
+            "completeness": "unknown",
+            "integrity": "valid",
+            "basis": "Core emitted a structurally valid representation while native/OCR reconciliation remains unestablished"
+          }
+        ],
+        "derivation_basis": "Raiatea Core normalization over both explicit ProviderEvidence inputs"
+      },
+      "reconciliation_state": "not-measured",
+      "produced": [
+        {"kind": "normalized-representation", "representation_id": "norm-staged-1"}
+      ]
+    }
+  ],
+  "outcome": {
+    "execution": "completed",
+    "assessments": [
+      {
+        "scope": "native-text",
+        "completeness": "unknown",
+        "integrity": "unknown",
+        "basis": "runtime Provider evidence alone does not establish authored-source completeness"
+      },
+      {
+        "scope": "raster-visible-text",
+        "completeness": "unknown",
+        "integrity": "unknown",
+        "basis": "no production-authoritative expected raster text is assumed by this contract record"
+      },
+      {
+        "scope": "native-ocr-reconciliation",
+        "completeness": "unknown",
+        "integrity": "unknown",
+        "basis": "stage provenance per emitted content unit is unavailable"
+      }
+    ],
+    "derivation_basis": "Raiatea orchestration assessment across explicit native, OCR and Core normalization stages"
+  },
+  "produced": [
+    {"kind": "provider-evidence", "evidence_id": "native-raw", "channel": "lossless-json"},
+    {"kind": "provider-evidence", "evidence_id": "ocr-raw", "channel": "lossless-json"},
+    {"kind": "normalized-representation", "representation_id": "norm-staged-1"}
+  ],
+  "provenance": {
+    "started_at": "2026-08-23T10:00:00Z",
+    "ended_at": "2026-08-23T10:00:04Z",
+    "run_outcome_basis": "Core orchestration over three explicit stage outcomes and their produced references",
+    "provider_native_status_basis": "Docling Provider-native conversion statuses",
+    "environment_fingerprint": "ubuntu-24.04+docling-2.118.0+rapidocr-3.9.2",
+    "input_fingerprint": "sha256:example"
+  },
+  "diagnostics": [
+    {
+      "code": "NATIVE_OCR_RECONCILIATION_NOT_MEASURED",
+      "severity": "warning",
+      "message": "The route does not expose enough per-unit stage attribution to resolve native/OCR reconciliation."
+    }
+  ]
+}

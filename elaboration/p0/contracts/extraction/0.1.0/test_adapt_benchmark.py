@@ -1,0 +1,187 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+from pathlib import Path
+import unittest
+
+ROOT = Path(__file__).resolve().parent
+
+VALIDATE_SPEC = importlib.util.spec_from_file_location("e05b_validate", ROOT / "validate_contract.py")
+VALIDATE = importlib.util.module_from_spec(VALIDATE_SPEC)
+assert VALIDATE_SPEC.loader is not None
+VALIDATE_SPEC.loader.exec_module(VALIDATE)
+
+ADAPT_SPEC = importlib.util.spec_from_file_location("e05b_adapt", ROOT / "adapt_benchmark.py")
+ADAPT = importlib.util.module_from_spec(ADAPT_SPEC)
+assert ADAPT_SPEC.loader is not None
+ADAPT_SPEC.loader.exec_module(ADAPT)
+
+
+class E05bBenchmarkAdaptationTests(unittest.TestCase):
+    def _input(self, name: str):
+        return json.loads((ROOT / "adapter_inputs" / name).read_text(encoding="utf-8"))
+
+    def _example(self, name: str):
+        return json.loads((ROOT / "examples" / name).read_text(encoding="utf-8"))
+
+    def _assert_provider_then_core_normalization(self, run: dict, provider_id: str, route_id: str):
+        self.assertEqual(len(run["stages"]), 2)
+        native, normalization = run["stages"]
+        self.assertEqual(native["executor"]["kind"], "provider")
+        self.assertEqual(native["executor"]["provider"]["provider_id"], provider_id)
+        self.assertEqual(native["executor"]["route_profile"]["route_profile_id"], route_id)
+        self.assertIn("provider_status", native)
+        self.assertIn("outcome", native)
+        self.assertEqual(normalization["executor"]["kind"], "raiatea-core")
+        self.assertEqual(normalization["stage_kind"], "normalization")
+        self.assertNotIn("provider_status", normalization)
+        self.assertTrue(normalization["input_refs"])
+        self.assertTrue(
+            all(item["kind"] == "normalized-representation" for item in normalization["produced"])
+        )
+
+    def test_poppler_mapper_shape_adapts_without_native_field_leakage(self):
+        observation = self._input("poppler-pdftohtml-observation.json")
+        bundle = ADAPT.adapt_poppler_observation(
+            observation,
+            source_id="B01-PDF-001",
+            fingerprint="sha256:poppler-adaptation-example",
+        )
+        VALIDATE.validate(bundle["run"])
+        VALIDATE.validate_provider_evidence(bundle["provider_evidence"])
+        VALIDATE.validate_representation(bundle["normalized_representation"])
+
+        self._assert_provider_then_core_normalization(
+            bundle["run"], "poppler", "pdftohtml-xml"
+        )
+        self.assertNotIn("provider", bundle["run"])
+        self.assertNotIn("route_profile", bundle["run"])
+        self.assertEqual(
+            bundle["run"]["outcome"]["assessments"][0]["completeness"],
+            "unknown",
+        )
+        first_unit = bundle["normalized_representation"]["units"][0]
+        self.assertEqual(first_unit["surface"]["origin"], "provider-native")
+        self.assertEqual(first_unit["coordinate"]["origin"], "raiatea-aligned")
+        coordinate = first_unit["coordinate"]["value"]
+        self.assertEqual(coordinate["kind"], "pdf-geometric")
+        serialized = json.dumps(bundle["normalized_representation"], sort_keys=True)
+        self.assertNotIn("native_bbox", serialized)
+        self.assertNotIn("mapped_coordinate_system", serialized)
+
+    def test_direct_epub_mapper_shape_adapts_to_logical_coordinates(self):
+        observation = self._input("direct-epub-observation.json")
+        bundle = ADAPT.adapt_direct_epub_observation(
+            observation,
+            source_id="B02-EPUB-001",
+            fingerprint="sha256:8a013c2e95ec99e07a29a09072872abe0c7e2fc0ba92378db9088817230be933",
+            python_version="3.13.5",
+        )
+        VALIDATE.validate(bundle["run"])
+        VALIDATE.validate_provider_evidence(bundle["provider_evidence"])
+        VALIDATE.validate_representation(bundle["normalized_representation"])
+
+        self._assert_provider_then_core_normalization(
+            bundle["run"], "python-stdlib", "direct-epub-stdlib"
+        )
+        coordinate_envelopes = [
+            unit["coordinate"]
+            for unit in bundle["normalized_representation"]["units"]
+        ]
+        self.assertTrue(all(item["origin"] == "provider-native" for item in coordinate_envelopes))
+        coordinates = [item["value"] for item in coordinate_envelopes]
+        self.assertTrue(all(item["kind"] == "epub-logical" for item in coordinates))
+        self.assertTrue(all("page_index" not in item for item in coordinates))
+        self.assertEqual(coordinates[0]["resource"], "OEBPS/ch1.xhtml")
+        self.assertEqual(coordinates[2]["spine_index"], 1)
+        self.assertEqual(
+            bundle["run"]["outcome"]["assessments"][0]["completeness"],
+            "unknown",
+        )
+
+    def test_explicit_epub_example_conforms(self):
+        VALIDATE.validate_representation(self._example("direct-epub-normalized.json"))
+
+    def test_epub_coordinate_rejects_pdf_page_fields(self):
+        value = self._example("direct-epub-normalized.json")
+        coordinate = value["units"][0]["coordinate"]["value"]
+        coordinate["page_index"] = 0
+        with self.assertRaisesRegex(VALIDATE.ContractError, "epub-must-not-use-pdf-fields"):
+            VALIDATE.validate_representation(value)
+
+    def test_access_control_attempt_retains_evidence_without_normalized_output(self):
+        value = self._example("restricted-access-controlled.json")
+        VALIDATE.validate(value)
+        self.assertEqual(value["outcome"]["execution"], "failed")
+        self.assertIn("rights_decision_ref", value)
+        self.assertTrue(value["produced"])
+        self.assertTrue(all(item["kind"] == "provider-evidence" for item in value["produced"]))
+        self.assertFalse(
+            any(item["kind"] == "normalized-representation" for item in value["produced"])
+        )
+
+    def test_provider_grouping_cannot_be_marked_as_semantic(self):
+        observation = self._input("poppler-pdftohtml-observation.json")
+        bundle = ADAPT.adapt_poppler_observation(
+            observation,
+            source_id="B01-PDF-001",
+            fingerprint="sha256:grouping-example",
+        )
+        evidence = bundle["provider_evidence"]
+        evidence["groupings"] = [
+            {
+                "group_id": "g1",
+                "provider_ref": "#/pictures/0",
+                "label": "picture",
+                "member_refs": ["block-0"],
+                "semantic_interpretation": True,
+                "basis": "negative conformance case",
+            }
+        ]
+        with self.assertRaisesRegex(VALIDATE.ContractError, "must-remain-nonsemantic"):
+            VALIDATE.validate_provider_evidence(evidence)
+
+    def test_malformed_provider_evidence_remains_explicit(self):
+        observation = self._input("poppler-pdftohtml-observation.json")
+        bundle = ADAPT.adapt_poppler_observation(
+            observation,
+            source_id="B01-PDF-001",
+            fingerprint="sha256:malformed-evidence-example",
+        )
+        evidence = bundle["provider_evidence"]
+        evidence["native_status"] = {
+            "evidence_state": "malformed",
+            "value_state": "unknown",
+            "origin": "provider-native",
+            "basis": "Provider result collection was structurally malformed",
+            "channel": "benchmark-normalized-view",
+        }
+        VALIDATE.validate_provider_evidence(evidence)
+        self.assertEqual(evidence["native_status"]["evidence_state"], "malformed")
+
+    def test_provider_explicit_and_raiatea_derived_relations_are_distinct(self):
+        value = self._example("direct-epub-normalized.json")
+        value["relations"].append(
+            {
+                "relation_id": "provider-link-1",
+                "kind": "link-target",
+                "from_ref": "intro-p",
+                "to_ref": "uri:https://example.invalid/details",
+                "evidence_origin": "provider-explicit",
+                "basis": "explicit href observed by the Provider mapper",
+            }
+        )
+        VALIDATE.validate_representation(value)
+        origins = {relation["evidence_origin"] for relation in value["relations"]}
+        self.assertEqual(origins, {"provider-explicit", "raiatea-derived"})
+
+    def test_relation_without_basis_is_rejected(self):
+        value = self._example("direct-epub-normalized.json")
+        del value["relations"][0]["basis"]
+        with self.assertRaisesRegex(VALIDATE.ContractError, "relation-0-basis-required"):
+            VALIDATE.validate_representation(value)
+
+
+if __name__ == "__main__":
+    unittest.main()

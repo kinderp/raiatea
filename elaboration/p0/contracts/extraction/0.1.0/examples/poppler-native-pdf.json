@@ -1,0 +1,107 @@
+{
+  "schema_version": "0.1.0",
+  "run_id": "run-poppler-native-001",
+  "source_ref": {
+    "source_id": "B01-PDF-001",
+    "source_class": "B-01",
+    "fingerprint": "sha256:example"
+  },
+  "stages": [
+    {
+      "stage_id": "native-1",
+      "stage_kind": "native-extraction",
+      "executor": {
+        "kind": "provider",
+        "provider": {"provider_id": "poppler", "version": "24.02.0"},
+        "route_profile": {
+          "route_profile_id": "pdftohtml-xml",
+          "mode": "native",
+          "execution_context": "local"
+        }
+      },
+      "input_refs": [],
+      "provider_status": {
+        "evidence_state": "present",
+        "value_state": "populated",
+        "origin": "provider-native",
+        "basis": "process exit and parsed XML",
+        "channel": "normalized-provider-view",
+        "value": "success"
+      },
+      "outcome": {
+        "execution": "completed",
+        "assessments": [
+          {
+            "scope": "provider-evidence-emission",
+            "completeness": "unknown",
+            "integrity": "unknown",
+            "basis": "Provider success and emitted XML do not establish complete or valid source coverage"
+          }
+        ],
+        "derivation_basis": "stage assessment preserves Provider status as evidence rather than outcome truth"
+      },
+      "reconciliation_state": "not-applicable",
+      "produced": [
+        {"kind": "provider-evidence", "evidence_id": "raw-poppler-1", "channel": "xml"}
+      ]
+    },
+    {
+      "stage_id": "normalize-1",
+      "stage_kind": "normalization",
+      "executor": {
+        "kind": "raiatea-core",
+        "operation_id": "normalize-provider-evidence"
+      },
+      "parent_stage_id": "native-1",
+      "input_refs": [
+        {"kind": "provider-evidence", "evidence_id": "raw-poppler-1", "channel": "xml"}
+      ],
+      "outcome": {
+        "execution": "completed",
+        "assessments": [
+          {
+            "scope": "normalized-record-structure",
+            "completeness": "unknown",
+            "integrity": "valid",
+            "basis": "normalization emitted a structurally valid representation while source completeness remains unestablished"
+          }
+        ],
+        "derivation_basis": "Raiatea Core normalization over explicit ProviderEvidence input"
+      },
+      "reconciliation_state": "not-applicable",
+      "produced": [
+        {"kind": "normalized-representation", "representation_id": "norm-1"}
+      ]
+    }
+  ],
+  "outcome": {
+    "execution": "completed",
+    "assessments": [
+      {
+        "scope": "source-text-surface",
+        "completeness": "unknown",
+        "integrity": "unknown",
+        "basis": "this runtime record has no authoritative source-completeness expectation"
+      },
+      {
+        "scope": "semantic-structure",
+        "completeness": "unknown",
+        "integrity": "unknown",
+        "basis": "the selected route exposes no Provider-native semantic-role evidence"
+      }
+    ],
+    "derivation_basis": "Raiatea orchestration assessment across Provider extraction and Core normalization stages"
+  },
+  "produced": [
+    {"kind": "provider-evidence", "evidence_id": "raw-poppler-1", "channel": "xml"},
+    {"kind": "normalized-representation", "representation_id": "norm-1"}
+  ],
+  "provenance": {
+    "started_at": "2026-08-23T10:00:00Z",
+    "ended_at": "2026-08-23T10:00:01Z",
+    "run_outcome_basis": "Core orchestration over explicit stage outcomes and produced references",
+    "provider_native_status_basis": "process exit and XML parser",
+    "environment_fingerprint": "ubuntu-24.04",
+    "input_fingerprint": "sha256:example"
+  }
+}

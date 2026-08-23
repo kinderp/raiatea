@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from pathlib import Path
 from typing import Any
 
 
@@ -97,6 +96,32 @@ def _scan_parameters(value: Any, key: str | None = None) -> None:
         _require(value is None or isinstance(value, (bool, int, float)), "unsupported-parameter-value")
 
 
+def _input_ref_ids(request: dict[str, Any]) -> list[str]:
+    refs: list[str] = []
+    for item in request.get("inputs", []):
+        if not isinstance(item, dict):
+            continue
+        if item.get("kind") == "asset-handle" and isinstance(item.get("handle"), dict):
+            refs.append(str(item["handle"].get("handle_id")))
+        elif item.get("kind") == "record-ref" and isinstance(item.get("record_ref"), dict):
+            refs.append(str(item["record_ref"].get("ref_id")))
+    return refs
+
+
+def _known_output_targets(request: dict[str, Any]) -> dict[str, str]:
+    targets: dict[str, str] = {}
+    for handle in request.get("output_targets", []):
+        _require(isinstance(handle, dict), "output-target-must-be-handle")
+        _require(handle.get("access") == "write-once-output", "output-target-must-be-write-once")
+        handle_id = handle.get("handle_id")
+        lease_id = handle.get("lease_id")
+        _require(isinstance(handle_id, str) and handle_id, "output-target-handle-id-required")
+        _require(isinstance(lease_id, str) and lease_id, "output-target-lease-id-required")
+        _require(handle_id not in targets, "duplicate-output-target-handle")
+        targets[handle_id] = lease_id
+    return targets
+
+
 def validate_invocation(request: dict[str, Any], manifest: dict[str, Any], handshake: dict[str, Any]) -> None:
     _require(request.get("record_type") == "invocation-request", "invocation-record-type-required")
     identity = handshake.get("identity", {})
@@ -118,6 +143,12 @@ def validate_invocation(request: dict[str, Any], manifest: dict[str, Any], hands
         _require(isinstance(item, dict), "invocation-input-must-be-object")
         _require(item.get("kind") in {"asset-handle", "record-ref"}, "inline-or-unknown-input-forbidden")
         _require("path" not in item and "content" not in item and "data" not in item, "inline-path-or-content-forbidden")
+        if item.get("kind") == "asset-handle":
+            handle = item.get("handle")
+            _require(isinstance(handle, dict), "input-handle-required")
+            _require(handle.get("access") == "read", "input-asset-handle-must-be-read")
+
+    _known_output_targets(request)
 
     runtime_context = request.get("runtime_context")
     _require(isinstance(runtime_context, dict), "runtime-context-required")
@@ -127,7 +158,12 @@ def validate_invocation(request: dict[str, Any], manifest: dict[str, Any], hands
         _require(set(lease) <= {"secret_name", "lease_id"}, "secret-lease-must-not-contain-value")
 
 
-def validate_result(result: dict[str, Any], request: dict[str, Any], manifest: dict[str, Any]) -> None:
+def validate_result(
+    result: dict[str, Any],
+    request: dict[str, Any],
+    manifest: dict[str, Any],
+    secret_values: set[str] | None = None,
+) -> None:
     _require(result.get("record_type") == "invocation-result", "result-record-type-required")
     _require(result.get("invocation_id") == request.get("invocation_id"), "result-invocation-id-mismatch")
     _require(result.get("runtime_instance_id") == request.get("runtime_instance_id"), "result-runtime-instance-mismatch")
@@ -142,6 +178,13 @@ def validate_result(result: dict[str, Any], request: dict[str, Any], manifest: d
     if status == "timeout":
         _require(error.get("code") == "timeout", "timeout-status-requires-timeout-error")
 
+    if isinstance(error, dict):
+        message = error.get("message")
+        _require(isinstance(message, str), "runtime-error-message-required")
+        for secret in secret_values or set():
+            if secret:
+                _require(secret not in message, "result-error-contains-secret-value")
+
     provenance = result.get("provenance")
     _require(isinstance(provenance, dict), "result-provenance-required")
     plugin = manifest.get("plugin", {})
@@ -150,7 +193,9 @@ def validate_result(result: dict[str, Any], request: dict[str, Any], manifest: d
     _require(provenance.get("runtime_instance_id") == request.get("runtime_instance_id"), "provenance-runtime-instance-mismatch")
     _require(provenance.get("invocation_id") == request.get("invocation_id"), "provenance-invocation-id-mismatch")
     _require(provenance.get("capability") == request.get("capability"), "provenance-capability-mismatch")
+    _require(provenance.get("input_refs") == _input_ref_ids(request), "provenance-input-refs-mismatch")
 
+    authorized_targets = _known_output_targets(request)
     output_ids: list[str] = []
     for output in result.get("outputs", []):
         _require(isinstance(output, dict), "output-must-be-object")
@@ -158,7 +203,11 @@ def validate_result(result: dict[str, Any], request: dict[str, Any], manifest: d
             handle = output.get("handle")
             _require(isinstance(handle, dict), "output-handle-required")
             _require(handle.get("access") == "write-once-output", "output-asset-handle-must-be-write-once")
-            output_ids.append(str(handle.get("handle_id")))
+            handle_id = handle.get("handle_id")
+            lease_id = handle.get("lease_id")
+            _require(handle_id in authorized_targets, "plugin-minted-output-handle-forbidden")
+            _require(authorized_targets.get(handle_id) == lease_id, "output-handle-lease-mismatch")
+            output_ids.append(str(handle_id))
         elif output.get("kind") == "record-ref":
             ref = output.get("record_ref")
             _require(isinstance(ref, dict), "output-record-ref-required")
@@ -176,6 +225,21 @@ def validate_result(result: dict[str, Any], request: dict[str, Any], manifest: d
                     ref.get("contract_id") == "raiatea.extraction.processing-run",
                     "extractor-record-output-must-reference-e05",
                 )
+
+
+def validate_cancellation_sequence(
+    cancel_request: dict[str, Any],
+    acknowledgement: dict[str, Any] | None,
+    result: dict[str, Any],
+) -> None:
+    _require(cancel_request.get("record_type") == "cancel-request", "cancel-request-required")
+    invocation_id = cancel_request.get("invocation_id")
+    _require(result.get("invocation_id") == invocation_id, "cancel-result-invocation-mismatch")
+    if acknowledgement is not None:
+        _require(acknowledgement.get("record_type") == "cancel-ack", "cancel-ack-record-type-required")
+        _require(acknowledgement.get("invocation_id") == invocation_id, "cancel-ack-invocation-mismatch")
+    if result.get("status") == "cancelled":
+        _require(isinstance(acknowledgement, dict) and acknowledgement.get("acknowledged") is True, "cooperative-cancel-requires-acknowledgement")
 
 
 def validate_diagnostic_no_secret_values(diagnostic: dict[str, Any], secret_values: set[str]) -> None:

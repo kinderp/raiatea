@@ -1,0 +1,135 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raiatea.invalid/contracts/plugins/1.0.0/plugin-manifest.schema.json",
+  "title": "Raiatea Plugin Manifest v1 candidate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest_version", "plugin", "raiatea_plugin_api", "families", "capabilities", "permissions", "entrypoint", "trust_tier"],
+  "properties": {
+    "manifest_version": {"const": "1.0.0"},
+    "plugin": {"$ref": "#/$defs/PluginIdentity"},
+    "raiatea_plugin_api": {"$ref": "#/$defs/VersionRange"},
+    "families": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"enum": ["source", "extractor", "transformer"]}},
+    "capabilities": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/Capability"}},
+    "permissions": {"$ref": "#/$defs/Permissions"},
+    "entrypoint": {"$ref": "#/$defs/Entrypoint"},
+    "trust_tier": {"enum": ["official", "verified", "community", "local"]},
+    "configuration_schema_ref": {"type": "string", "minLength": 1},
+    "provenance": {"$ref": "#/$defs/PluginProvenance"}
+  },
+  "$defs": {
+    "PluginIdentity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plugin_id", "name", "version"],
+      "properties": {
+        "plugin_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[.-][a-z0-9]+)+$"},
+        "name": {"type": "string", "minLength": 1},
+        "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:[-+][0-9A-Za-z.-]+)?$"}
+      }
+    },
+    "VersionRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min_inclusive", "max_exclusive"],
+      "properties": {
+        "min_inclusive": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "max_exclusive": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+      }
+    },
+    "ContractRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_id", "version_range"],
+      "properties": {
+        "contract_id": {"type": "string", "minLength": 1},
+        "version_range": {"$ref": "#/$defs/VersionRange"},
+        "record_kinds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "CapabilityProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_id", "family", "input_classes", "contracts"],
+      "properties": {
+        "profile_id": {"type": "string", "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"},
+        "family": {"enum": ["source", "extractor", "transformer"]},
+        "input_classes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "output_classes": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+        "contracts": {"type": "array", "items": {"$ref": "#/$defs/ContractRef"}},
+        "backend": {"type": "string"},
+        "mode": {"type": "string"},
+        "model_revision": {"type": "string"},
+        "payload_fingerprint": {"type": "string"},
+        "notes": {"type": "string"}
+      }
+    },
+    "Capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability_id", "profiles"],
+      "properties": {
+        "capability_id": {"enum": ["source.discover", "source.search", "source.resolve", "source.metadata", "source.poll", "source.subscribe", "source.acquire", "source.checkpoint", "extract.probe", "extract.run", "extract.capabilities", "transform.plan", "transform.run", "transform.capabilities"]},
+        "profiles": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/CapabilityProfile"}}
+      }
+    },
+    "NetworkPermission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["host", "scopes"],
+      "properties": {
+        "host": {"type": "string", "pattern": "^(?!\\*|.*\\.\\*$)[A-Za-z0-9.-]+$"},
+        "scopes": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "FilesystemPermission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["root", "mode"],
+      "properties": {
+        "root": {"type": "string", "minLength": 1},
+        "mode": {"enum": ["read", "read-write"]}
+      }
+    },
+    "ResourceHints": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "cpu_cores": {"type": "number", "exclusiveMinimum": 0},
+        "memory_mb": {"type": "integer", "minimum": 1},
+        "timeout_seconds": {"type": "integer", "minimum": 1}
+      }
+    },
+    "Permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["network", "filesystem", "secrets", "temporary_workspace"],
+      "properties": {
+        "network": {"type": "array", "items": {"$ref": "#/$defs/NetworkPermission"}},
+        "filesystem": {"type": "array", "items": {"$ref": "#/$defs/FilesystemPermission"}},
+        "secrets": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}},
+        "temporary_workspace": {"type": "boolean"},
+        "resource_hints": {"$ref": "#/$defs/ResourceHints"}
+      }
+    },
+    "Entrypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "command"],
+      "properties": {
+        "kind": {"const": "process"},
+        "command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "working_directory": {"type": "string"}
+      }
+    },
+    "PluginProvenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "publisher": {"type": "string"},
+        "source_repository": {"type": "string"},
+        "signature_metadata_ref": {"type": "string"}
+      }
+    }
+  }
+}

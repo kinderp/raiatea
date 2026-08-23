@@ -1,16 +1,16 @@
 # P0 Elaboration
 
-> Document maturity: `Draft`
+> Document maturity: `Accepted`
 >
 > Assertion status: `mixed`
 >
-> Version: 4.0.0-draft.2
+> Version: 4.0.0
 >
 > Last reviewed: 23 August 2026
 >
 > Accepted evidence baseline through: [PR #158](https://github.com/kinderp/raiatea/pull/158) / `c8a6d237`
 >
-> Current E-05 child: [#160](https://github.com/kinderp/raiatea/issues/160)
+> E-05a conceptual child: [#160](https://github.com/kinderp/raiatea/issues/160) / [PR #161](https://github.com/kinderp/raiatea/pull/161)
 >
 > Phase: **Elaboration — P0 risk reduction and architecture**
 >
@@ -116,10 +116,9 @@ not select a Provider or make the PDF/EPUB first slice `planned`.
 > Assertion status: `mixed`
 
 E-04 has **measured evidence accepted through its child PRs**, including final
-bounded B-01 evidence through PR #158. Parent issue #129 intentionally remains
-open while E-05a synthesizes the evidence package and the project determines
-formal E-04 closure. Do not read this section as a premature parent-phase
-acceptance claim.
+bounded B-01 evidence through PR #158. Parent issue #129 remains the canonical
+evidence parent; formal issue closure is a separate maintainer action following
+acceptance of the E-05a synthesis and does not change the measured facts.
 
 The benchmark harness and compact evidence under
 [`benchmark/evidence/`](benchmark/evidence/) cover the bounded B-01 PDF set and
@@ -153,33 +152,33 @@ footnotes/endnotes, semantic table/code/MathML, larger composites and malformed
 or missing-resource cases. Those gaps are recorded rather than silently treated
 as measured success.
 
-### E-04 conclusions that feed E-05
+### E-04 conclusions accepted by E-05a
 
 - Provider identity and RouteProfile identity are distinct;
-- Provider-native `success` is not completeness/integrity truth;
+- Provider-native `success` is not Raiatea outcome truth;
 - content preservation, semantic interpretation, relations and coordinates are
   independently partial;
 - evidence state and observed value/cardinality are distinct;
 - produced-output evidence is distinct from ProcessingOutcome;
-- Raw Extraction / Provider Evidence must remain distinguishable from Raiatea
-  Normalized Representation;
+- Raw Extraction / Provider Evidence and Normalized Representation are distinct;
 - Source Coordinates are source-class-specific and may be partial;
 - OCR/fallback is an explicit lineage stage, not a silent replacement;
+- completeness and integrity are scoped assessments with explicit runtime basis;
 - restricted/requires-authorization is a valid Core policy disposition;
-- benchmark gold shapes the contract but is not automatic production runtime
-  knowledge;
+- benchmark gold shapes the contract and conformance tests but is not automatic
+  production runtime knowledge;
 - no universal quality score is justified.
 
-The detailed synthesis is being drafted in
+The accepted synthesis is
 [`e04-evidence-synthesis.md`](e04-evidence-synthesis.md).
 
-## E-05 — current Provider-neutral extraction contract exploration
+## E-05 — Provider-neutral extraction contract exploration
 
-> Assertion status: `provisional-decision`
+> Assertion status: `mixed`
 
-E-05 parent issue: #159. Current bounded child: #160.
+E-05 parent issue: #159. E-05a conceptual model: #160 / PR #161.
 
-E-05a creates only:
+E-05a accepts only:
 
 - [`e04-evidence-synthesis.md`](e04-evidence-synthesis.md);
 - [`provider-neutral-extraction-contract.md`](provider-neutral-extraction-contract.md);
@@ -188,23 +187,32 @@ E-05a creates only:
 It deliberately does **not** freeze JSON Schema, Python classes, REST resources,
 database tables, Adapter SDK, plugin transport or Provider selection.
 
-The conceptual contract explores evidence-backed distinctions around:
+The accepted conceptual contract establishes evidence-backed boundaries around:
 
 - `ProviderRef` versus `RouteProfileRef`;
-- `ProcessingOutcome` technical/orchestration state rather than `success: bool`;
-- explicit produced-output references and evidence-state/value-state semantics;
-- scoped completeness and integrity with explicit runtime basis;
+- `EvidenceEnvelope<T>` with evidence-state separate from value-state;
+- Provider-native origin separate from Provider evidence channel;
+- explicit produced-output references rather than output-cardinality flags in
+  ProcessingOutcome;
+- `ProcessingOutcome = execution + scoped result assessments[]`;
+- completeness and integrity scoped to declared result/capability/evidence-family
+  scope with explicit runtime assessment basis;
+- stage outcomes separate from Core orchestration-level run outcome;
 - `ProviderEvidence` / Raw Extraction versus `NormalizedRepresentation`;
 - typed/extensible Source Coordinates for PDF and EPUB;
 - ContentUnits, relations, embedded assets and sparse structured evidence;
 - OCR/fallback ProcessingStage lineage;
 - diagnostics and provenance;
 - Core-owned RightsDecision/policy authority kept separate from technical
-  ProcessingOutcome.
+  ProcessingOutcome;
+- benchmark truth kept separate from production runtime assessment.
 
 #147 `ExtractorPlugin` is a downstream consumer of E-05 semantics. Plugin
 manifest, lifecycle, permissions, isolation and transport remain separate design
 work and must not introduce a parallel extraction result model.
+
+The next E-05 child may attempt a bounded machine-readable contract and
+conformance tests only from these accepted conceptual distinctions.
 
 ## E-02 survey candidates and current evidence boundary
 
@@ -233,9 +241,9 @@ The accepted Inception Review authorizes a bounded sequence:
 1. source taxonomy + rights/threat boundary — **completed** (#123/#124);
 2. current technology survey/build-buy-reuse — **completed** (#125/#126);
 3. rights-safe benchmark corpus/fixture/gold-data design — **completed** (#127/#128);
-4. source-class benchmark contract and baseline measurements — **measured child evidence; parent #129 open pending synthesis/closure**;
-5. Provider-neutral P0 contract exploration — **current** (#159; E-05a #160);
-6. Alfred reconciliation/integration evidence — after the relevant E-05 contract boundary is accepted;
+4. source-class benchmark contract and baseline measurements — **measured; synthesis accepted by E-05a; formal #129 closure handled separately**;
+5. Provider-neutral P0 contract exploration — **current** (#159); E-05a conceptual model accepted through #160/#161;
+6. Alfred reconciliation/integration evidence — after the relevant machine-readable E-05 boundary is accepted;
 7. evidence packages for G-01..G-07;
 8. separate first-slice promotion decision.
 
@@ -247,25 +255,29 @@ The accepted Inception Review authorizes a bounded sequence:
 - Alfred Observation does not grant processing or mutation authority.
 - Provider and Adapter are distinct.
 - Provider and RouteProfile are distinct.
-- Provider-native status is evidence, not Raiatea completeness/integrity truth.
-- ProcessingOutcome does not replace produced-output/field-level evidence state.
+- Provider-native status is evidence, not Raiatea outcome truth.
+- ProcessingOutcome does not replace produced-output or field-level evidence.
+- ProcessingOutcome carries execution plus scoped result assessments, not one
+  global completeness/integrity truth.
 - Raw Extraction / Provider Evidence and Normalized Representation are distinct.
 - Provider-native and Raiatea-derived facts retain distinct evidence basis.
+- Provider-native origin and Provider evidence channel are distinct.
 - Missing/partial/unavailable/ambiguous evidence is never silently converted to
   empty, zero or success.
 - Explicit empty is present evidence with an empty value, not unavailable
   evidence.
-- Completeness is scoped and requires an explicit runtime basis; it never implies
-  universal document completeness.
+- Completeness and integrity are scoped and require an explicit runtime basis;
+  they never imply universal document completeness/validity.
 - Benchmark gold does not become hidden production runtime knowledge.
 - PDF and EPUB Source Coordinate semantics remain distinct and extensible.
-- OCR/fallback stages preserve route/profile and lineage.
+- OCR/fallback stages preserve route/profile, trigger basis and lineage.
+- Stage outcomes and run orchestration outcome remain separately inspectable.
 - Processing Authority, Processing Rights and Redistribution Rights are
   distinct.
 - Rights evidence does not authorize processing; Raiatea Core owns the policy
   decision.
 - No Provider, database, vector store, graph store or public schema is selected
-  by E-01..E-05a evidence/model exploration.
+  by E-01..E-05a evidence/model work.
 - Externally hosted Provider routes mentioned by E-02 are existence evidence
   only and remain ineligible until the remote-route rule above is satisfied.
 - Provider-native representations such as DoclingDocument, Marker JSON, MinerU

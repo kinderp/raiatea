@@ -92,13 +92,26 @@
         "byte_length": {"type": "integer", "minimum": 0},
         "fingerprint": {"$ref": "#/$defs/Sha256"},
         "expires_at": {"type": "string", "format": "date-time"}
-      }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"access": {"const": "write-once-output"}}, "required": ["access"]},
+          "then": {"required": ["byte_length", "fingerprint"]}
+        }
+      ]
     },
     "OutputTargetHandle": {
-      "allOf": [
-        {"$ref": "#/$defs/AssetHandle"},
-        {"properties": {"access": {"const": "write-once-output"}}}
-      ]
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handle_id", "lease_id", "access"],
+      "properties": {
+        "handle_id": {"type": "string", "pattern": "^[A-Za-z0-9._:-]+$"},
+        "lease_id": {"type": "string", "pattern": "^[A-Za-z0-9._:-]+$"},
+        "access": {"const": "write-once-output"},
+        "media_type": {"type": "string", "minLength": 1},
+        "max_byte_length": {"type": "integer", "minimum": 0},
+        "expires_at": {"type": "string", "format": "date-time"}
+      }
     },
     "SecretLeaseRef": {
       "type": "object",
@@ -166,7 +179,7 @@
           "required": ["kind", "handle"],
           "properties": {
             "kind": {"const": "asset-handle"},
-            "handle": {"$ref": "#/$defs/OutputTargetHandle"}
+            "handle": {"$ref": "#/$defs/AssetHandle"}
           }
         },
         {

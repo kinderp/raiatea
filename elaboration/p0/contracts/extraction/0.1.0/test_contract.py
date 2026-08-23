@@ -22,6 +22,13 @@ class E05bConformanceTests(unittest.TestCase):
     def test_docling_rapidocr_staged_example_conforms(self):
         VALIDATE.validate(self._load("docling-rapidocr-staged.json"))
 
+    def test_restricted_before_provider_example_conforms(self):
+        value = self._load("restricted-before-provider.json")
+        VALIDATE.validate(value)
+        self.assertEqual(value["stages"], [])
+        self.assertEqual(value["produced"], [])
+        self.assertEqual(value["outcome"]["execution"], "restricted")
+
     def test_boolean_success_is_rejected(self):
         value = self._load("poppler-native-pdf.json")
         value["outcome"]["success"] = True
@@ -34,9 +41,16 @@ class E05bConformanceTests(unittest.TestCase):
         with self.assertRaisesRegex(VALIDATE.ContractError, "scope-required"):
             VALIDATE.validate(value)
 
-    def test_provider_and_route_identity_cannot_collapse(self):
+    def test_run_cannot_own_provider_route_identity(self):
         value = self._load("poppler-native-pdf.json")
-        value["provider"]["route_profile_id"] = "pdftohtml-xml"
+        value["provider"] = {"provider_id": "poppler", "version": "24.02.0"}
+        with self.assertRaisesRegex(VALIDATE.ContractError, "run-must-not-own-provider-route-identity"):
+            VALIDATE.validate(value)
+
+    def test_provider_and_route_identity_cannot_collapse_inside_provider_stage(self):
+        value = self._load("poppler-native-pdf.json")
+        executor = value["stages"][0]["executor"]
+        executor["provider"]["route_profile_id"] = "pdftohtml-xml"
         with self.assertRaisesRegex(VALIDATE.ContractError, "provider-and-route-profile-must-remain-distinct"):
             VALIDATE.validate(value)
 
@@ -64,6 +78,77 @@ class E05bConformanceTests(unittest.TestCase):
         value["outcome"]["policy"] = "allowed"
         with self.assertRaisesRegex(VALIDATE.ContractError, "processing-outcome-must-not-own-policy"):
             VALIDATE.validate(value)
+
+    def test_provider_stage_requires_provider_status(self):
+        value = self._load("poppler-native-pdf.json")
+        del value["stages"][0]["provider_status"]
+        with self.assertRaisesRegex(VALIDATE.ContractError, "provider-status-required"):
+            VALIDATE.validate(value)
+
+    def test_core_stage_cannot_have_provider_status(self):
+        value = self._load("poppler-native-pdf.json")
+        value["stages"][1]["provider_status"] = {
+            "evidence_state": "measured",
+            "value_state": "present",
+            "basis": "invalid test input",
+            "value": "success",
+        }
+        with self.assertRaisesRegex(VALIDATE.ContractError, "core-stage-must-not-have-provider-status"):
+            VALIDATE.validate(value)
+
+    def test_provider_status_does_not_mechanically_determine_stage_outcome(self):
+        value = self._load("poppler-native-pdf.json")
+        self.assertEqual(value["stages"][0]["provider_status"]["value"], "success")
+        value["stages"][0]["outcome"]["execution"] = "failed"
+        value["stages"][0]["outcome"]["derivation_basis"] = (
+            "Core validation rejected malformed Provider evidence despite Provider-native success"
+        )
+        VALIDATE.validate(value)
+        self.assertEqual(value["stages"][0]["outcome"]["execution"], "failed")
+
+    def test_native_provider_stage_cannot_produce_normalized_representation(self):
+        value = self._load("poppler-native-pdf.json")
+        value["stages"][0]["produced"].append(
+            {"kind": "normalized-representation", "representation_id": "invalid-native-normalized"}
+        )
+        with self.assertRaisesRegex(VALIDATE.ContractError, "normalized-output-requires-normalization-or-alignment"):
+            VALIDATE.validate(value)
+
+    def test_normalized_output_requires_prior_input_lineage(self):
+        value = self._load("poppler-native-pdf.json")
+        value["stages"][1]["input_refs"] = []
+        with self.assertRaisesRegex(VALIDATE.ContractError, "normalized-output-requires-input-lineage"):
+            VALIDATE.validate(value)
+
+    def test_stage_input_must_reference_prior_output(self):
+        value = self._load("poppler-native-pdf.json")
+        value["stages"][1]["input_refs"] = [
+            {"kind": "provider-evidence", "evidence_id": "unknown", "channel": "xml"}
+        ]
+        with self.assertRaisesRegex(VALIDATE.ContractError, "input-must-reference-prior-produced-output"):
+            VALIDATE.validate(value)
+
+    def test_run_produced_ref_requires_stage_producer(self):
+        value = self._load("poppler-native-pdf.json")
+        value["produced"].append(
+            {"kind": "provider-evidence", "evidence_id": "unproduced", "channel": "diagnostic"}
+        )
+        with self.assertRaisesRegex(VALIDATE.ContractError, "run-produced-ref-must-have-stage-producer"):
+            VALIDATE.validate(value)
+
+    def test_explicit_empty_coordinate_requires_null_value(self):
+        value = self._load("direct-epub-normalized.json")
+        coordinate = value["units"][0]["coordinate"]
+        coordinate.update(
+            {
+                "evidence_state": "measured",
+                "value_state": "explicit-empty",
+                "basis": "Provider explicitly exposed no coordinate",
+                "value": {},
+            }
+        )
+        with self.assertRaisesRegex(VALIDATE.ContractError, "explicit-empty-must-use-null"):
+            VALIDATE.validate_representation(value)
 
 
 if __name__ == "__main__":

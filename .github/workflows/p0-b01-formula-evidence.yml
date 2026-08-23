@@ -25,8 +25,11 @@ jobs:
           python-version: "3.12.14"
       - name: Compile benchmark tooling
         run: python -m compileall -q elaboration/p0/benchmark
-      - name: Run formula fixture tests
-        run: python -m unittest elaboration/p0/benchmark/tests/test_b01_formula_fixture.py -v
+      - name: Run formula fixture/scoring tests
+        run: |
+          python -m unittest elaboration/p0/benchmark/tests/test_b01_formula_fixture.py -v
+          python -m unittest elaboration/p0/benchmark/tests/test_b01_formula_scoring.py -v
+          python -m unittest elaboration/p0/benchmark/tests/test_docling_formula_evidence.py -v
       - name: Verify deterministic formula fixture
         run: |
           mkdir -p "${RUNNER_TEMP}/raiatea-b01-formula-fixture"
@@ -65,15 +68,16 @@ jobs:
           echo "${EXPECTED_PDFTOTEXT_SHA256}  /usr/bin/pdftotext" | sha256sum -c -
           echo "${EXPECTED_PDFTOHTML_SHA256}  /usr/bin/pdftohtml" | sha256sum -c -
           echo "${EXPECTED_PDFINFO_SHA256}  /usr/bin/pdfinfo" | sha256sum -c -
-      - name: Run raw B01-PDF-006 measurement
+      - name: Run scored B01-PDF-006 measurement
         run: |
           OUT="${RUNNER_TEMP}/raiatea-b01-formula-poppler"
           mkdir -p "${OUT}"
-          python elaboration/p0/benchmark/routes/measure_b01_formula_evidence.py poppler \
+          python elaboration/p0/benchmark/routes/measure_b01_formula_scored_evidence.py poppler \
             --output "${OUT}" \
             --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
             > "${OUT}/stdout-report.json"
           test -s "${OUT}/b01-results.json"
+          test -s "${OUT}/b01-formula-evidence.json"
           test -s "${OUT}/observations/B01-PDF-006__pdftotext-bbox-layout.json"
           test -s "${OUT}/observations/B01-PDF-006__pdftohtml-xml.json"
       - uses: actions/upload-artifact@v4
@@ -114,17 +118,18 @@ jobs:
           curl --fail --location --retry 3 --retry-delay 2 "${TIKA_URL}" \
             --output "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar"
           echo "${TIKA_SHA512}  ${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" | sha512sum -c -
-      - name: Run raw B01-PDF-006 measurement
+      - name: Run scored B01-PDF-006 measurement
         run: |
           OUT="${RUNNER_TEMP}/raiatea-b01-formula-tika"
           mkdir -p "${OUT}"
-          python elaboration/p0/benchmark/routes/measure_b01_formula_evidence.py tika \
+          python elaboration/p0/benchmark/routes/measure_b01_formula_scored_evidence.py tika \
             --output "${OUT}" \
             --tika-jar "${RUNNER_TEMP}/raiatea-tika/tika-app-${TIKA_VERSION}.jar" \
             --config elaboration/p0/benchmark/config/tika-pdf-native-no-ocr.xml \
             --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
             > "${OUT}/stdout-report.json"
           test -s "${OUT}/tika-b01-results.json"
+          test -s "${OUT}/b01-formula-evidence.json"
           test -s "${OUT}/observations/B01-PDF-006__tika-app-3.3.2-xhtml.json"
       - uses: actions/upload-artifact@v4
         with:
@@ -179,7 +184,7 @@ jobs:
             --model-lock "${DOCLING_MODEL_LOCK}" \
             --artifacts-path "${RUNNER_TEMP}/docling-models" \
             --output "${RUNNER_TEMP}/docling-reference-verification.json"
-      - name: Run raw B01-PDF-006 measurement offline
+      - name: Run scored B01-PDF-006 measurement offline
         env:
           HF_HUB_OFFLINE: "1"
           TRANSFORMERS_OFFLINE: "1"
@@ -189,13 +194,14 @@ jobs:
           OUT="${RUNNER_TEMP}/raiatea-b01-formula-docling"
           CACHE="${RUNNER_TEMP}/docling-measured-cache"
           mkdir -p "${OUT}" "${CACHE}"
-          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/measure_b01_formula_evidence.py docling \
+          "${RUNNER_TEMP}/docling-venv/bin/python" elaboration/p0/benchmark/routes/measure_b01_formula_scored_evidence.py docling \
             --output "${OUT}" \
             --artifacts-path "${RUNNER_TEMP}/docling-models" \
             --cache-root "${CACHE}" \
             --evidence-source-commit "${EVIDENCE_SOURCE_COMMIT}" \
             > "${OUT}/stdout-report.json"
           test -s "${OUT}/docling-b01-results.json"
+          test -s "${OUT}/b01-formula-evidence.json"
           test -s "${OUT}/raw/B01-PDF-006__docling.json"
           test -s "${OUT}/observations/B01-PDF-006__docling.json"
       - uses: actions/upload-artifact@v4

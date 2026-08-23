@@ -48,20 +48,32 @@ jobs:
           python-version: "3.12.14"
       - name: Install pinned validator
         run: python -m pip install --disable-pip-version-check "jsonschema==4.26.0"
-      - name: Validate schema and examples
+      - name: Validate schema, examples and negative entrypoint case
         run: |
           python - <<'PY'
+          import copy
           import json
           from pathlib import Path
           from jsonschema import Draft202012Validator
+
           root = Path("elaboration/p0/contracts/plugins/1.0.0")
           schema = json.loads((root / "plugin-manifest.schema.json").read_text(encoding="utf-8"))
           Draft202012Validator.check_schema(schema)
           validator = Draft202012Validator(schema)
+
+          examples = {}
           for name in ("local-read-only-source.json", "benchmark-backed-extractor.json", "minimal-transformer.json"):
               value = json.loads((root / "examples" / name).read_text(encoding="utf-8"))
+              examples[name] = value
               errors = sorted(validator.iter_errors(value), key=lambda e: list(e.path))
               if errors:
                   raise SystemExit("\n".join(f"{name}: {list(e.path)}: {e.message}" for e in errors))
               print("PASS", name)
+
+          bad = copy.deepcopy(examples["benchmark-backed-extractor.json"])
+          bad["entrypoint"]["command"] = ["raiatea-benchmark-extractor", "--token=secret"]
+          errors = list(validator.iter_errors(bad))
+          if not errors:
+              raise SystemExit("free-form entrypoint arguments unexpectedly passed JSON Schema")
+          print("PASS negative free-form entrypoint rejected")
           PY

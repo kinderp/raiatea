@@ -4,7 +4,7 @@
 >
 > Assertion status: `mixed`
 >
-> Version: 4.0.0-draft.1
+> Version: 4.0.0-draft.2
 >
 > Last reviewed: 23 August 2026
 >
@@ -115,9 +115,15 @@ not select a Provider or make the PDF/EPUB first slice `planned`.
 
 > Assertion status: `mixed`
 
-E-04 is the accepted measured input to E-05. The benchmark harness and compact
-evidence under [`benchmark/evidence/`](benchmark/evidence/) now cover the bounded
-B-01 PDF evidence set and a minimal B-02 EPUB comparison.
+E-04 has **measured evidence accepted through its child PRs**, including final
+bounded B-01 evidence through PR #158. Parent issue #129 intentionally remains
+open while E-05a synthesizes the evidence package and the project determines
+formal E-04 closure. Do not read this section as a premature parent-phase
+acceptance claim.
+
+The benchmark harness and compact evidence under
+[`benchmark/evidence/`](benchmark/evidence/) cover the bounded B-01 PDF set and
+a minimal B-02 EPUB comparison.
 
 ### B-01 PDF evidence now includes
 
@@ -153,17 +159,18 @@ as measured success.
 - Provider-native `success` is not completeness/integrity truth;
 - content preservation, semantic interpretation, relations and coordinates are
   independently partial;
-- missing evidence is not zero or success;
+- evidence state and observed value/cardinality are distinct;
+- produced-output evidence is distinct from ProcessingOutcome;
 - Raw Extraction / Provider Evidence must remain distinguishable from Raiatea
   Normalized Representation;
 - Source Coordinates are source-class-specific and may be partial;
 - OCR/fallback is an explicit lineage stage, not a silent replacement;
-- restricted/requires-authorization is a valid terminal processing outcome;
-- negative/security evidence may remain partial or not measured even when no
-  side effect is observed;
+- restricted/requires-authorization is a valid Core policy disposition;
+- benchmark gold shapes the contract but is not automatic production runtime
+  knowledge;
 - no universal quality score is justified.
 
-The detailed synthesis for contract work is now being drafted in
+The detailed synthesis is being drafted in
 [`e04-evidence-synthesis.md`](e04-evidence-synthesis.md).
 
 ## E-05 — current Provider-neutral extraction contract exploration
@@ -184,14 +191,16 @@ database tables, Adapter SDK, plugin transport or Provider selection.
 The conceptual contract explores evidence-backed distinctions around:
 
 - `ProviderRef` versus `RouteProfileRef`;
-- structured multi-axis `ProcessingOutcome` rather than `success: bool`;
-- explicit evidence availability/partiality;
+- `ProcessingOutcome` technical/orchestration state rather than `success: bool`;
+- explicit produced-output references and evidence-state/value-state semantics;
+- scoped completeness and integrity with explicit runtime basis;
 - `ProviderEvidence` / Raw Extraction versus `NormalizedRepresentation`;
 - typed/extensible Source Coordinates for PDF and EPUB;
 - ContentUnits, relations, embedded assets and sparse structured evidence;
 - OCR/fallback ProcessingStage lineage;
-- diagnostics, provenance and restricted/policy outcomes;
-- rights evidence versus Core-owned `RightsDecisionRef`.
+- diagnostics and provenance;
+- Core-owned RightsDecision/policy authority kept separate from technical
+  ProcessingOutcome.
 
 #147 `ExtractorPlugin` is a downstream consumer of E-05 semantics. Plugin
 manifest, lifecycle, permissions, isolation and transport remain separate design
@@ -224,7 +233,7 @@ The accepted Inception Review authorizes a bounded sequence:
 1. source taxonomy + rights/threat boundary — **completed** (#123/#124);
 2. current technology survey/build-buy-reuse — **completed** (#125/#126);
 3. rights-safe benchmark corpus/fixture/gold-data design — **completed** (#127/#128);
-4. source-class benchmark contract and baseline measurements — **measured; synthesis entering E-05** (#129, B-01 through #158, B-02 through #134);
+4. source-class benchmark contract and baseline measurements — **measured child evidence; parent #129 open pending synthesis/closure**;
 5. Provider-neutral P0 contract exploration — **current** (#159; E-05a #160);
 6. Alfred reconciliation/integration evidence — after the relevant E-05 contract boundary is accepted;
 7. evidence packages for G-01..G-07;
@@ -239,10 +248,16 @@ The accepted Inception Review authorizes a bounded sequence:
 - Provider and Adapter are distinct.
 - Provider and RouteProfile are distinct.
 - Provider-native status is evidence, not Raiatea completeness/integrity truth.
+- ProcessingOutcome does not replace produced-output/field-level evidence state.
 - Raw Extraction / Provider Evidence and Normalized Representation are distinct.
 - Provider-native and Raiatea-derived facts retain distinct evidence basis.
 - Missing/partial/unavailable/ambiguous evidence is never silently converted to
   empty, zero or success.
+- Explicit empty is present evidence with an empty value, not unavailable
+  evidence.
+- Completeness is scoped and requires an explicit runtime basis; it never implies
+  universal document completeness.
+- Benchmark gold does not become hidden production runtime knowledge.
 - PDF and EPUB Source Coordinate semantics remain distinct and extensible.
 - OCR/fallback stages preserve route/profile and lineage.
 - Processing Authority, Processing Rights and Redistribution Rights are

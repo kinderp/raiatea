@@ -2,6 +2,7 @@
 """Core-side conformance harness for the provisional local process transport."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import importlib.util
 from pathlib import Path
 import subprocess
@@ -45,6 +46,10 @@ class RemoteProtocolError(HarnessError):
         self.remote_message = message
 
 
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
 class LocalProcessHarness:
     """Small synchronous harness; it validates semantics independently of framing."""
 
@@ -54,6 +59,9 @@ class LocalProcessHarness:
         self.process: subprocess.Popen[bytes] | None = None
         self.handshake_record: dict[str, Any] | None = None
         self.diagnostics: list[dict[str, Any]] = []
+        self.process_events: list[dict[str, Any]] = []
+        self.lifecycle_events: list[dict[str, Any]] = []
+        self._runtime_state: str | None = None
         self._rpc_counter = 0
         self._seen_response_ids: set[str | int | None] = set()
         self.last_transport_id: str | int | None = None
@@ -68,11 +76,44 @@ class LocalProcessHarness:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
+        self.process_events.append({"event": "process-started", "observed_at": _now()})
 
     def _require_process(self) -> subprocess.Popen[bytes]:
         if self.process is None:
             raise HarnessError("plugin-process-not-started")
         return self.process
+
+    def _transition(self, target: str, basis: str) -> None:
+        if self.handshake_record is None or self._runtime_state is None:
+            raise HarnessError("runtime-lifecycle-before-validated-handshake")
+        record = {
+            "record_type": "lifecycle-transition",
+            "runtime_instance_id": self.handshake_record["identity"]["runtime_instance_id"],
+            "from": self._runtime_state,
+            "to": target,
+            "basis": basis,
+            "observed_at": _now(),
+        }
+        try:
+            RUNTIME.validate_transition(record)
+        except Exception as exc:
+            raise HarnessError(f"generated-lifecycle-transition-invalid:{exc}") from exc
+        self.lifecycle_events.append(record)
+        self._runtime_state = target
+
+    def _record_process_exit(self, returncode: int | None, phase: str) -> None:
+        if self.handshake_record is None:
+            self.process_events.append(
+                {
+                    "event": "process-exited-before-handshake",
+                    "returncode": returncode,
+                    "phase": phase,
+                    "observed_at": _now(),
+                }
+            )
+            return
+        if self._runtime_state in {"starting", "ready", "stopping"}:
+            self._transition("failed", f"child process exited during {phase}; returncode={returncode}")
 
     def _next_rpc_id(self) -> str:
         self._rpc_counter += 1
@@ -83,13 +124,16 @@ class LocalProcessHarness:
         if process.stdin is None:
             raise HarnessError("plugin-stdin-unavailable")
         if process.poll() is not None:
+            self._record_process_exit(process.returncode, "before-write")
             raise ProcessExited(process.returncode, "before-write")
         frame = encode_frame(message)
         try:
             process.stdin.write(frame)
             process.stdin.flush()
         except BrokenPipeError as exc:
-            raise ProcessExited(process.poll(), "write") from exc
+            returncode = process.poll()
+            self._record_process_exit(returncode, "write")
+            raise ProcessExited(returncode, "write") from exc
 
     def _read_message(self, phase: str) -> dict[str, Any]:
         process = self._require_process()
@@ -103,6 +147,7 @@ class LocalProcessHarness:
                     returncode = process.wait(timeout=0.2)
                 except subprocess.TimeoutExpired:
                     pass
+            self._record_process_exit(returncode, phase)
             raise ProcessExited(returncode, phase)
         try:
             return decode_frame(raw)
@@ -168,11 +213,15 @@ class LocalProcessHarness:
         except Exception as exc:
             raise HarnessError(f"handshake-runtime-contract-invalid:{exc}") from exc
         self.handshake_record = result
+        self._runtime_state = "starting"
+        self._transition("ready", "validated runtime handshake over candidate transport")
         return result
 
     def invoke(self, request: dict[str, Any], *, secret_values: set[str] | None = None) -> dict[str, Any]:
         if self.handshake_record is None:
             raise HarnessError("invoke-before-handshake")
+        if self._runtime_state != "ready":
+            raise HarnessError(f"invoke-runtime-not-ready:{self._runtime_state}")
         try:
             RUNTIME.validate_invocation(request, self.manifest, self.handshake_record)
         except Exception as exc:
@@ -192,6 +241,8 @@ class LocalProcessHarness:
     def cancel(self, cancel_request: dict[str, Any]) -> dict[str, Any]:
         if self.handshake_record is None:
             raise HarnessError("cancel-before-handshake")
+        if self._runtime_state != "ready":
+            raise HarnessError(f"cancel-runtime-not-ready:{self._runtime_state}")
         if cancel_request.get("record_type") != "cancel-request":
             raise HarnessError("invalid-cancel-request-record")
         result = self._request("raiatea.cancel", cancel_request)
@@ -205,6 +256,8 @@ class LocalProcessHarness:
         process = self.process
         if process is None:
             return
+        if self.handshake_record is not None and self._runtime_state == "ready":
+            self._transition("stopping", "Core requested synthetic harness shutdown")
         try:
             if process.stdin is not None and not process.stdin.closed:
                 process.stdin.close()
@@ -217,6 +270,8 @@ class LocalProcessHarness:
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=2)
+        if self.handshake_record is not None and self._runtime_state == "stopping":
+            self._transition("stopped", "child process terminated after Core shutdown request")
         if process.stderr is not None:
             try:
                 self._stderr_cache += process.stderr.read().decode("utf-8", errors="replace")

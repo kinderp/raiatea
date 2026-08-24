@@ -45,6 +45,37 @@ def _all_coordinate_values(representation: dict):
                 yield value
 
 
+def _assert_no_public_path_fields(value) -> None:
+    if isinstance(value, dict):
+        for key, child in value.items():
+            normalized = str(key).strip().lower().replace("-", "_")
+            if normalized in {"path", "relative_path", "host_path", "filesystem_path"}:
+                raise AssertionError(f"public proof record leaked path field: {key}")
+            _assert_no_public_path_fields(child)
+    elif isinstance(value, list):
+        for child in value:
+            _assert_no_public_path_fields(child)
+
+
+def _validate_b02_epub_representation(representation: dict) -> None:
+    """Proof-level cross-record guard exposed by the first real B-02 plugin.
+
+    E-05 0.1.0 validates each SourceCoordinate variant internally but does not yet
+    bind source_ref.source_class to a coordinate family. The v1d proof therefore
+    adds this bounded B-02 conformance assertion rather than silently changing the
+    accepted E-05 contract inside a transport-validation PR.
+    """
+    E05.validate_representation(representation)
+    source_ref = representation.get("source_ref")
+    if not isinstance(source_ref, dict) or source_ref.get("source_class") != "B-02":
+        raise E05.ContractError("v1d-b02-source-class-required")
+    for value in _all_coordinate_values(representation):
+        if value.get("kind") != "epub-logical":
+            raise E05.ContractError("v1d-b02-requires-epub-logical-coordinate")
+        if "page_index" in value or "bbox_points_bottom_left" in value:
+            raise E05.ContractError("v1d-b02-must-not-carry-pdf-coordinate-fields")
+
+
 class SourceProofTests(unittest.TestCase):
     def setUp(self):
         self.runtime = S.reset_runtime()
@@ -66,10 +97,7 @@ class SourceProofTests(unittest.TestCase):
         serialized = json.dumps(bundle, sort_keys=True)
         self.assertNotIn(str(self.runtime["source_root"].resolve()), serialized)
         self.assertNotIn("relative_path", serialized)
-        for record in bundle["records"]:
-            pass
-        for record in bundle["records"]:
-            self.assertNotIn("path", record.lower())
+        _assert_no_public_path_fields(bundle["records"])
         for row in bundle["records"]:
             self.assertFalse(row.get("location_exposed", True))
             self.assertTrue(row["fingerprint"].startswith("sha256:"))
@@ -139,6 +167,7 @@ class EpubExtractorProofTests(unittest.TestCase):
         self.assertEqual(kinds, {"processing-run", "provider-evidence", "normalized-representation"})
 
         normalized = _find_record(bundle, "NormalizedRepresentationRecord")
+        _validate_b02_epub_representation(normalized)
         coordinates = list(_all_coordinate_values(normalized))
         self.assertTrue(coordinates)
         self.assertTrue(all(value["kind"] == "epub-logical" for value in coordinates))
@@ -147,7 +176,14 @@ class EpubExtractorProofTests(unittest.TestCase):
 
         provider = _find_record(bundle, "ProviderEvidenceRecord")
         self.assertEqual(provider["provider"]["provider_id"], "python-stdlib")
-        self.assertEqual(provider["route_profile"]["route_profile_id"], "epub-direct-stdlib")
+        self.assertEqual(provider["route_profile"]["route_profile_id"], "direct-epub-stdlib")
+        extractor_profiles = {
+            profile["profile_id"]
+            for capability in self.manifest["capabilities"]
+            if capability["capability_id"] == "extract.run"
+            for profile in capability["profiles"]
+        }
+        self.assertIn("epub-direct-stdlib", extractor_profiles)
 
     def test_wrong_media_type_is_structured_runtime_failure(self):
         with LocalProcessHarness(S.extractor_command(), self.manifest) as harness:
@@ -189,7 +225,7 @@ class EpubExtractorProofTests(unittest.TestCase):
             "bbox_points_bottom_left": [0.0, 0.0, 10.0, 10.0],
         }
         with self.assertRaises(E05.ContractError):
-            E05.validate_representation(normalized)
+            _validate_b02_epub_representation(normalized)
 
 
 if __name__ == "__main__":

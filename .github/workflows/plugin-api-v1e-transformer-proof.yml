@@ -1,0 +1,78 @@
+name: Plugin API v1e transformer proof
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/contracts/transformations/**"
+      - "elaboration/p0/plugins/proofs/v1e/**"
+      - ".github/workflows/plugin-api-v1e-transformer-proof.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/contracts/transformations/**"
+      - "elaboration/p0/plugins/proofs/v1e/**"
+      - ".github/workflows/plugin-api-v1e-transformer-proof.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    name: v1e Transformer proof / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile proof and contract tooling
+        run: >-
+          python -m compileall -q
+          elaboration/p0/contracts/transformations/0.1.0
+          elaboration/p0/plugins/proofs/v1e
+      - name: Run transformation contract tests
+        run: python elaboration/p0/contracts/transformations/0.1.0/test_transformation.py -v
+      - name: Run real TransformerPlugin proof
+        run: python -m unittest elaboration.p0.plugins.proofs.v1e.test_transformer_proof -v
+      - name: Re-run accepted v1c transport suite
+        run: python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport.py -v
+      - name: Re-run accepted v1b runtime suite
+        run: python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime.py -v
+      - name: Re-run accepted v1a manifest suite
+        run: python elaboration/p0/contracts/plugins/1.0.0/test_manifest.py -v
+
+  schema-reference:
+    name: v1e transformation and manifest schema validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Install pinned JSON Schema validator
+        run: python -m pip install --disable-pip-version-check "jsonschema==4.26.0"
+      - name: Validate transformation schema and proof manifest
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+
+          transform_root = Path("elaboration/p0/contracts/transformations/0.1.0")
+          transform_schema = json.loads((transform_root / "transformation.schema.json").read_text(encoding="utf-8"))
+          Draft202012Validator.check_schema(transform_schema)
+
+          plugin_root = Path("elaboration/p0/contracts/plugins/1.0.0")
+          plugin_schema = json.loads((plugin_root / "plugin-manifest.schema.json").read_text(encoding="utf-8"))
+          manifest = json.loads(Path("elaboration/p0/plugins/proofs/v1e/manifest.json").read_text(encoding="utf-8"))
+          validator = Draft202012Validator(plugin_schema)
+          errors = sorted(validator.iter_errors(manifest), key=lambda e: list(e.path))
+          if errors:
+              raise SystemExit("\n".join(f"manifest: {list(e.path)}: {e.message}" for e in errors))
+          print("PASS transformation schema")
+          print("PASS TransformerPlugin manifest")
+          PY

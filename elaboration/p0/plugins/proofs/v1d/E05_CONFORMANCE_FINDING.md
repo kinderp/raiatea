@@ -14,25 +14,25 @@ Consequently, a mutated EPUB `NormalizedRepresentationRecord` carrying a structu
 
 ## Resolution
 
-The E-05 semantic validator now enforces for known source classes:
+The canonical E-05 semantic validator now enforces the coordinate family for source classes already established by accepted evidence:
 
 ```text
-pdf  -> populated coordinate kind must be pdf-geometric
-epub -> populated coordinate kind must be epub-logical
+B-01 / pdf  -> populated coordinate kind must be pdf-geometric
+B-02 / epub -> populated coordinate kind must be epub-logical
 ```
 
 The rule applies only when coordinate evidence is populated. Empty/unavailable coordinate evidence remains valid without inventing a coordinate kind. Unknown/future source classes remain conservative: the validator does not guess a family mapping that E-05 has not defined.
 
-Direct tests cover:
+Direct E-05 tests cover:
 
-- EPUB + epub-logical -> pass;
-- EPUB + pdf-geometric -> fail;
-- PDF + pdf-geometric -> pass;
-- PDF + epub-logical -> fail;
+- B-02 EPUB + epub-logical -> pass;
+- B-02 EPUB + pdf-geometric -> fail;
+- B-01 PDF + pdf-geometric -> pass;
+- B-01 PDF + epub-logical -> fail;
 - empty coordinate evidence -> pass;
 - unknown future source class -> no invented mapping.
 
-The v1d Extractor proof also mutates its real out-of-process EPUB result to a PDF coordinate and requires the canonical E-05 validator to reject it.
+The v1d Extractor proof also mutates its real out-of-process B-02 EPUB result to a PDF coordinate and requires the canonical E-05 validator to reject it.
 
 ## Versioning decision
 

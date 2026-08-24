@@ -1,0 +1,56 @@
+{
+  "manifest_version": "1.0.0",
+  "plugin": {
+    "plugin_id": "org.raiatea.newline-transformer-proof",
+    "name": "Raiatea Newline Transformer Proof",
+    "version": "0.1.0"
+  },
+  "raiatea_plugin_api": {
+    "min_inclusive": "1.0.0",
+    "max_exclusive": "2.0.0"
+  },
+  "families": ["transformer"],
+  "capabilities": [
+    {
+      "capability_id": "transform.run",
+      "profiles": [
+        {
+          "profile_id": "normalize-newlines-v1",
+          "family": "transformer",
+          "input_classes": ["text/plain; charset=utf-8"],
+          "output_classes": ["derived-artifact", "transformation-record"],
+          "contracts": [
+            {
+              "contract_id": "raiatea.transformation.record",
+              "version_range": {
+                "min_inclusive": "0.1.0",
+                "max_exclusive": "0.2.0"
+              },
+              "record_kinds": ["DerivedArtifactRecord", "TransformationRecord"]
+            }
+          ],
+          "mode": "deterministic-newline-normalization"
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": [],
+    "filesystem": [],
+    "secrets": [],
+    "temporary_workspace": false,
+    "resource_hints": {
+      "cpu_cores": 1,
+      "memory_mb": 64,
+      "timeout_seconds": 10
+    }
+  },
+  "entrypoint": {
+    "kind": "process",
+    "command": ["python", "-m", "elaboration.p0.plugins.proofs.v1e.newline_transformer_plugin"]
+  },
+  "trust_tier": "official",
+  "provenance": {
+    "publisher": "Raiatea"
+  }
+}

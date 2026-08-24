@@ -56,10 +56,10 @@ def records():
     derived = {
         "schema_version": "0.1.0",
         "record_kind": "DerivedArtifactRecord",
-        "artifact": output,
+        "artifact": copy.deepcopy(output),
         "derivation": {
             "relationship": "derived-from",
-            "source_artifact": source,
+            "source_artifact": copy.deepcopy(source),
             "transformation_id": "transform:1",
         },
     }

@@ -43,6 +43,12 @@ EXECUTION_STATES = {
     "timeout",
     "unknown",
 }
+KNOWN_SOURCE_COORDINATE_KIND = {
+    "B-01": "pdf-geometric",
+    "B-02": "epub-logical",
+    "pdf": "pdf-geometric",
+    "epub": "epub-logical",
+}
 
 
 def _require(condition: bool, message: str) -> None:
@@ -112,6 +118,21 @@ def _validate_coordinate(value: Any, label: str) -> None:
         _require("page_index" not in coordinate and "bbox_points_bottom_left" not in coordinate, f"{label}-epub-must-not-use-pdf-fields")
     else:
         raise ContractError(f"{label}-unknown-coordinate-kind")
+
+
+def _validate_coordinate_for_source(value: Any, label: str, source_class: str) -> None:
+    _validate_coordinate(value, label)
+    if not isinstance(value, dict) or value.get("value_state") != "populated":
+        return
+    expected = KNOWN_SOURCE_COORDINATE_KIND.get(source_class)
+    if expected is None:
+        return
+    coordinate = value.get("value")
+    _require(isinstance(coordinate, dict), f"{label}-populated-coordinate-must-be-object")
+    _require(
+        coordinate.get("kind") == expected,
+        f"{label}-coordinate-kind-incompatible-with-source-class:{source_class}:{expected}",
+    )
 
 
 def _validate_outcome(value: Any, label: str) -> None:
@@ -260,6 +281,10 @@ def validate_representation(record: dict[str, Any]) -> None:
     _require(bool(record.get("representation_id")), "representation-id-required")
     _require("provider" not in record and "route_profile" not in record, "normalized-representation-must-not-own-provider-identity")
     _require("rights" not in record and "policy" not in record, "normalized-representation-must-not-own-policy")
+    source_ref = record.get("source_ref")
+    _require(isinstance(source_ref, dict), "normalized-representation-source-ref-required")
+    source_class = source_ref.get("source_class")
+    _require(isinstance(source_class, str) and source_class, "normalized-representation-source-class-required")
     units = record.get("units")
     _require(isinstance(units, list), "normalized-units-required")
     unit_ids: set[str] = set()
@@ -273,7 +298,7 @@ def validate_representation(record: dict[str, Any]) -> None:
         if "semantic_role" in unit:
             _validate_evidence(unit["semantic_role"], f"unit-{index}-semantic-role")
         if "coordinate" in unit:
-            _validate_coordinate(unit["coordinate"], f"unit-{index}-coordinate")
+            _validate_coordinate_for_source(unit["coordinate"], f"unit-{index}-coordinate", source_class)
     relations = record.get("relations")
     _require(isinstance(relations, list), "normalized-relations-required")
     relation_ids: set[str] = set()

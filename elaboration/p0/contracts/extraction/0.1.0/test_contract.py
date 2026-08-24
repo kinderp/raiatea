@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import importlib.util
 import json
 from pathlib import Path
@@ -215,6 +216,117 @@ class E05bConformanceTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(VALIDATE.ContractError, "empty-must-use-null"):
             VALIDATE.validate_representation(value)
+
+    def test_b02_epub_logical_coordinate_passes(self):
+        value = self._load("direct-epub-normalized.json")
+        self.assertEqual(value["source_ref"]["source_class"], "B-02")
+        VALIDATE.validate_representation(value)
+
+    def test_b02_pdf_coordinate_is_rejected(self):
+        value = self._load("direct-epub-normalized.json")
+        target = next(unit for unit in value["units"] if unit.get("coordinate", {}).get("value_state") == "populated")
+        target["coordinate"]["value"] = {
+            "kind": "pdf-geometric",
+            "page_index": 0,
+            "bbox_points_bottom_left": [0.0, 0.0, 10.0, 10.0],
+        }
+        with self.assertRaisesRegex(VALIDATE.ContractError, "coordinate-kind-incompatible-with-source-class"):
+            VALIDATE.validate_representation(value)
+
+    def test_b01_pdf_coordinate_passes(self):
+        value = self._load("poppler-native-pdf.json")
+        value = copy.deepcopy(value)
+        value["source_ref"]["source_class"] = "B-01"
+        # The run example is not a NormalizedRepresentationRecord; use a minimal representation.
+        representation = {
+            "schema_version": "0.1.0",
+            "representation_id": "pdf-known-family",
+            "source_ref": value["source_ref"],
+            "units": [
+                {
+                    "unit_id": "u1",
+                    "surface": {
+                        "evidence_state": "present",
+                        "value_state": "populated",
+                        "origin": "provider-native",
+                        "basis": "test surface",
+                        "value": "hello",
+                    },
+                    "coordinate": {
+                        "evidence_state": "present",
+                        "value_state": "populated",
+                        "origin": "provider-native",
+                        "basis": "test PDF coordinate",
+                        "value": {
+                            "kind": "pdf-geometric",
+                            "page_index": 0,
+                            "bbox_points_bottom_left": [0.0, 0.0, 10.0, 10.0],
+                        },
+                    },
+                }
+            ],
+            "relations": [],
+        }
+        VALIDATE.validate_representation(representation)
+
+    def test_b01_epub_coordinate_is_rejected(self):
+        representation = {
+            "schema_version": "0.1.0",
+            "representation_id": "pdf-wrong-family",
+            "source_ref": {"source_id": "pdf-test", "source_class": "B-01"},
+            "units": [
+                {
+                    "unit_id": "u1",
+                    "surface": {
+                        "evidence_state": "present",
+                        "value_state": "populated",
+                        "origin": "provider-native",
+                        "basis": "test surface",
+                        "value": "hello",
+                    },
+                    "coordinate": {
+                        "evidence_state": "present",
+                        "value_state": "populated",
+                        "origin": "provider-native",
+                        "basis": "wrong EPUB coordinate",
+                        "value": {
+                            "kind": "epub-logical",
+                            "resource": "chapter.xhtml",
+                            "fragment": "p1",
+                            "spine_index": 0,
+                        },
+                    },
+                }
+            ],
+            "relations": [],
+        }
+        with self.assertRaisesRegex(VALIDATE.ContractError, "coordinate-kind-incompatible-with-source-class"):
+            VALIDATE.validate_representation(representation)
+
+    def test_empty_known_family_coordinate_remains_valid(self):
+        value = self._load("direct-epub-normalized.json")
+        coordinate = value["units"][0]["coordinate"]
+        coordinate.update(
+            {
+                "evidence_state": "present",
+                "value_state": "empty",
+                "origin": "provider-native",
+                "basis": "Provider explicitly exposed no coordinate",
+                "value": None,
+            }
+        )
+        VALIDATE.validate_representation(value)
+
+    def test_unknown_source_class_does_not_invent_coordinate_mapping(self):
+        value = self._load("direct-epub-normalized.json")
+        value["source_ref"]["source_class"] = "future-source-family"
+        target = next(unit for unit in value["units"] if unit.get("coordinate", {}).get("value_state") == "populated")
+        target["coordinate"]["value"] = {
+            "kind": "pdf-geometric",
+            "page_index": 0,
+            "bbox_points_bottom_left": [0.0, 0.0, 10.0, 10.0],
+        }
+        VALIDATE.validate_representation(value)
 
 
 if __name__ == "__main__":

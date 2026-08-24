@@ -1,0 +1,88 @@
+name: Plugin API v1d proof plugins
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/plugins/proofs/v1d/**"
+      - ".github/workflows/plugin-api-v1d-proofs.yml"
+      - "elaboration/p0/contracts/plugins/**"
+      - "elaboration/p0/contracts/extraction/0.1.0/**"
+      - "elaboration/p0/benchmark/routes/epub_routes.py"
+      - "elaboration/p0/benchmark/generate_fixtures.py"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/plugins/proofs/v1d/**"
+      - ".github/workflows/plugin-api-v1d-proofs.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  proof-integration:
+    name: v1d Source+EPUB proofs / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile proof and accepted contract tooling
+        run: >-
+          python -m compileall -q
+          elaboration/p0/plugins/proofs/v1d
+          elaboration/p0/contracts/plugins/transport/0.1.0
+          elaboration/p0/contracts/plugins/runtime/1.0.0
+          elaboration/p0/contracts/plugins/1.0.0
+          elaboration/p0/contracts/extraction/0.1.0
+          elaboration/p0/benchmark/routes/epub_routes.py
+          elaboration/p0/benchmark/generate_fixtures.py
+      - name: Run real Source and EPUB Extractor proofs
+        run: python -m unittest elaboration.p0.plugins.proofs.v1d.test_proof_plugins -v
+      - name: Re-run accepted v1c transport candidate suite
+        run: |
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_process_lifecycle_binding.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_stderr_drain.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_notification_bounds.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport_directionality.py -v
+      - name: Re-run accepted v1b runtime suite
+        run: |
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime.py -v
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime_handle_bounds.py -v
+      - name: Re-run accepted v1a manifest suite
+        run: python elaboration/p0/contracts/plugins/1.0.0/test_manifest.py -v
+
+  schema-reference:
+    name: v1d manifest and E-05 schema reference validation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Install pinned JSON Schema validator
+        run: python -m pip install --disable-pip-version-check "jsonschema==4.26.0"
+      - name: Validate proof manifests against accepted v1a schema
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+
+          repo = Path('.')
+          schema = json.loads((repo / 'elaboration/p0/contracts/plugins/1.0.0/plugin-manifest.schema.json').read_text())
+          validator = Draft202012Validator(schema)
+          for name in ('local-read-only-source-proof.json', 'direct-epub-extractor-proof.json'):
+              path = repo / 'elaboration/p0/plugins/proofs/v1d/manifests' / name
+              value = json.loads(path.read_text())
+              errors = sorted(validator.iter_errors(value), key=lambda e: list(e.path))
+              if errors:
+                  raise SystemExit('\n'.join(f'{name}: {list(e.path)}: {e.message}' for e in errors))
+              print('PASS', name)
+          PY

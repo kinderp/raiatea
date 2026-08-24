@@ -57,25 +57,6 @@ def _assert_no_public_path_fields(value) -> None:
             _assert_no_public_path_fields(child)
 
 
-def _validate_b02_epub_representation(representation: dict) -> None:
-    """Proof-level cross-record guard exposed by the first real B-02 plugin.
-
-    E-05 0.1.0 validates each SourceCoordinate variant internally but does not yet
-    bind source_ref.source_class to a coordinate family. The v1d proof therefore
-    adds this bounded B-02 conformance assertion rather than silently changing the
-    accepted E-05 contract inside a transport-validation PR.
-    """
-    E05.validate_representation(representation)
-    source_ref = representation.get("source_ref")
-    if not isinstance(source_ref, dict) or source_ref.get("source_class") != "B-02":
-        raise E05.ContractError("v1d-b02-source-class-required")
-    for value in _all_coordinate_values(representation):
-        if value.get("kind") != "epub-logical":
-            raise E05.ContractError("v1d-b02-requires-epub-logical-coordinate")
-        if "page_index" in value or "bbox_points_bottom_left" in value:
-            raise E05.ContractError("v1d-b02-must-not-carry-pdf-coordinate-fields")
-
-
 class SourceProofTests(unittest.TestCase):
     def setUp(self):
         self.runtime = S.reset_runtime()
@@ -167,7 +148,7 @@ class EpubExtractorProofTests(unittest.TestCase):
         self.assertEqual(kinds, {"processing-run", "provider-evidence", "normalized-representation"})
 
         normalized = _find_record(bundle, "NormalizedRepresentationRecord")
-        _validate_b02_epub_representation(normalized)
+        E05.validate_representation(normalized)
         coordinates = list(_all_coordinate_values(normalized))
         self.assertTrue(coordinates)
         self.assertTrue(all(value["kind"] == "epub-logical" for value in coordinates))
@@ -224,8 +205,8 @@ class EpubExtractorProofTests(unittest.TestCase):
             "page_index": 0,
             "bbox_points_bottom_left": [0.0, 0.0, 10.0, 10.0],
         }
-        with self.assertRaises(E05.ContractError):
-            _validate_b02_epub_representation(normalized)
+        with self.assertRaisesRegex(E05.ContractError, "coordinate-kind-incompatible-with-source-class"):
+            E05.validate_representation(normalized)
 
 
 if __name__ == "__main__":

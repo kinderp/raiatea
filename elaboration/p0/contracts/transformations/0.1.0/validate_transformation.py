@@ -23,11 +23,15 @@ def sha256_bytes(payload: bytes) -> str:
 
 def _validate_artifact_ref(value: Any, label: str) -> None:
     _require(isinstance(value, dict), f"{label}-must-be-object")
-    for key in ("artifact_id", "handle_id", "fingerprint", "media_type"):
+    for key in ("artifact_id", "fingerprint", "media_type"):
         _require(isinstance(value.get(key), str) and value.get(key), f"{label}-{key}-required")
     _require(isinstance(value.get("byte_length"), int) and value["byte_length"] >= 0, f"{label}-byte-length-invalid")
     _require(str(value["fingerprint"]).startswith("sha256:") and len(value["fingerprint"]) == 71, f"{label}-fingerprint-invalid")
-    for forbidden in ("path", "host_path", "filesystem_path", "rights", "rights_grant", "authorized"):
+    for forbidden in (
+        "handle_id", "lease_id", "expires_at",
+        "path", "host_path", "filesystem_path",
+        "rights", "rights_grant", "authorized",
+    ):
         _require(forbidden not in value, f"{label}-forbidden-field:{forbidden}")
 
 
@@ -46,7 +50,6 @@ def validate_transformation(record: dict[str, Any]) -> None:
     input_artifact = record["input_artifact"]
     output_artifact = record["output_artifact"]
     _require(input_artifact["artifact_id"] != output_artifact["artifact_id"], "derived-artifact-identity-must-differ-from-input")
-    _require(input_artifact["handle_id"] != output_artifact["handle_id"], "input-output-handle-must-differ")
     _require(isinstance(record.get("parameters"), dict), "parameters-must-be-object")
     _require(record.get("deterministic") is True, "proof-transformation-must-be-deterministic")
     _require(isinstance(record.get("started_at"), str) and record["started_at"], "started-at-required")

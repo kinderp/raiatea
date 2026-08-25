@@ -1,1 +1,156 @@
-TEMP2
+{
+  "contract": {
+    "name": "raiatea-p0-benchmark-redistribution-rights",
+    "version": "1.0.0",
+    "scope": "benchmark-redistribution-rights-only",
+    "decision_issue": 131,
+    "decision_date": "2026-08-25",
+    "repository_wide_license_decision": false
+  },
+  "policy": {
+    "fixture_and_gold_license": "CC-BY-4.0",
+    "fixture_and_gold_license_url": "https://creativecommons.org/licenses/by/4.0/",
+    "attribution_required": true,
+    "attribution": "Raiatea P0 Benchmark — Raiatea project contributors; source: https://github.com/kinderp/raiatea/tree/main/elaboration/p0/benchmark; licensed under CC BY 4.0",
+    "generator_code_license": "Apache-2.0",
+    "generator_code_license_url": "https://www.apache.org/licenses/LICENSE-2.0",
+    "generator_paths": [
+      "elaboration/p0/benchmark/generate_fixtures.py",
+      "elaboration/p0/benchmark/b01_pdf_007_fixture.py",
+      "elaboration/p0/benchmark/b01_pdf_negative_fixtures.py"
+    ],
+    "remote_provider": "denied",
+    "remote_provider_note": "Redistribution licensing does not authorize externally hosted Provider processing. Provider-policy and Processing Rights evidence remain separate."
+  },
+  "historical_evidence_boundary": {
+    "preserve_pinned_manifests": true,
+    "note": "The inline redistribution fields in historically benchmark-pinned manifests record the rights state at their measurement-era commits. This overlay is the current authoritative redistribution-rights evidence and supersedes those historical fields for current public redistribution without rewriting benchmark measurement inputs."
+  },
+  "fixtures": [
+    {
+      "id": "B01-PDF-001",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B01-PDF-002",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B01-PDF-003",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B01-PDF-004",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B01-PDF-005",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B01-PDF-006",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B01-PDF-007",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B01-PDF-NEG-001",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B01-PDF-NEG-002",
+      "origin": "generated-from-project-assets",
+      "generator_tool": "qpdf",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied",
+      "note": "CC BY 4.0 applies to Raiatea's project-created fixture content/output; qpdf itself retains its independent license."
+    },
+    {
+      "id": "B02-EPUB-001",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B02-EPUB-002",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B02-EPUB-NEG-001",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    },
+    {
+      "id": "B02-EPUB-NEG-002",
+      "origin": "project-created",
+      "redistribution": "CC-BY-4.0",
+      "public_rights_safe": true,
+      "attribution_required": true,
+      "remote_provider": "denied"
+    }
+  ],
+  "gold_reference_data": {
+    "license": "CC-BY-4.0",
+    "public_rights_safe": true,
+    "attribution_required": true,
+    "covered_paths": [
+      "elaboration/p0/benchmark/manifests/gold.json",
+      "elaboration/p0/benchmark/manifests/fixtures.json"
+    ],
+    "covered_scope": "Project-authored fixture metadata and gold/reference assertions for the fixture IDs listed in this overlay. Third-party Provider raw outputs and unrelated measured evidence are excluded unless separately licensed."
+  },
+  "explicit_exclusions": [
+    "Raiatea Core and product implementation",
+    "benchmark Provider routes and scorers unless separately licensed",
+    "benchmark tests and workflows unless separately licensed",
+    "third-party Provider raw outputs, libraries, tools, models, fonts and assets",
+    "private/non-distributable exploratory corpus material",
+    "Raiatea names, logos and trademarks",
+    "other repositories and projects"
+  ]
+}

@@ -24,8 +24,14 @@ class CoreAccessError(ValueError):
 
 _ALLOWED_SCOPE_CAPABILITIES = frozenset({"observe", "read-for-processing"})
 _MUTATION_CAPABILITIES = frozenset({"write", "move", "delete", "organize"})
-_FORBIDDEN_PUBLIC_HANDLE_KEYS = frozenset(
-    {"path", "root", "relative_path", "host_path", "filesystem_path"}
+_READ_HANDLE_KEYS = frozenset(
+    {"handle_id", "lease_id", "access", "media_type", "byte_length", "fingerprint", "expires_at"}
+)
+_OUTPUT_TARGET_KEYS = frozenset(
+    {"handle_id", "lease_id", "access", "media_type", "max_byte_length", "expires_at"}
+)
+_COMPLETED_OUTPUT_KEYS = frozenset(
+    {"handle_id", "lease_id", "access", "media_type", "byte_length", "fingerprint", "expires_at"}
 )
 
 
@@ -92,9 +98,14 @@ def _relative_parts(value: object) -> tuple[str, ...]:
     return tuple(parts)
 
 
-def _public_record_has_no_path_authority(value: dict[str, object]) -> None:
-    leaked = sorted(set(value) & _FORBIDDEN_PUBLIC_HANDLE_KEYS)
-    _require(not leaked, f"public-handle-path-authority-forbidden:{leaked[0] if leaked else ''}")
+def _require_exact_public_keys(
+    value: dict[str, object], expected: frozenset[str], label: str
+) -> None:
+    actual = set(value)
+    missing = sorted(expected - actual)
+    extra = sorted(actual - expected)
+    _require(not missing, f"{label}-missing-field:{missing[0] if missing else ''}")
+    _require(not extra, f"{label}-unknown-field:{extra[0] if extra else ''}")
 
 
 @dataclass(frozen=True)
@@ -204,6 +215,8 @@ class _OutputLease:
     expires_at: datetime
     filename: str
     completed: bool = False
+    completed_byte_length: int | None = None
+    completed_fingerprint: str | None = None
 
 
 def _read_posix(scope: _ScopeState, parts: tuple[str, ...]) -> bytes:
@@ -309,7 +322,13 @@ def _read_windows(scope: _ScopeState, parts: tuple[str, ...]) -> bytes:
     close_handle.argtypes = [wintypes.HANDLE]
     close_handle.restype = wintypes.BOOL
     read_file = kernel32.ReadFile
-    read_file.argtypes = [wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p]
+    read_file.argtypes = [
+        wintypes.HANDLE,
+        ctypes.c_void_p,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+        ctypes.c_void_p,
+    ]
     read_file.restype = wintypes.BOOL
 
     candidate = scope.root.joinpath(*parts)
@@ -407,7 +426,6 @@ class AssetBroker:
         handle_id = self._new_id("asset")
         lease_id = self._new_id("lease")
         expiry = self._expiry(ttl_seconds)
-        fingerprint = _sha256(payload)
         lease = _ReadLease(
             scope_id=scope_id,
             relative_parts=parts,
@@ -415,7 +433,7 @@ class AssetBroker:
             lease_id=lease_id,
             media_type=media_type,
             byte_length=len(payload),
-            fingerprint=fingerprint,
+            fingerprint=_sha256(payload),
             expires_at=expiry,
         )
         self._reads[handle_id] = lease
@@ -424,15 +442,16 @@ class AssetBroker:
             "lease_id": lease_id,
             "access": "read",
             "media_type": media_type,
-            "byte_length": len(payload),
-            "fingerprint": fingerprint,
+            "byte_length": lease.byte_length,
+            "fingerprint": lease.fingerprint,
             "expires_at": _iso_utc(expiry),
         }
-        _public_record_has_no_path_authority(public)
+        _require_exact_public_keys(public, _READ_HANDLE_KEYS, "read-handle")
         return public
 
     def read_asset(self, public_handle: dict[str, object]) -> bytes:
         _require(isinstance(public_handle, dict), "read-handle-required")
+        _require_exact_public_keys(public_handle, _READ_HANDLE_KEYS, "read-handle")
         handle_id = public_handle.get("handle_id")
         _require(isinstance(handle_id, str) and handle_id, "read-handle-id-required")
         lease = self._reads.get(handle_id)
@@ -442,9 +461,11 @@ class AssetBroker:
         _require(public_handle.get("media_type") == lease.media_type, "read-handle-media-type-mismatch")
         _require(public_handle.get("byte_length") == lease.byte_length, "read-handle-byte-length-mismatch")
         _require(public_handle.get("fingerprint") == lease.fingerprint, "read-handle-fingerprint-mismatch")
-        _require(_parse_timestamp(public_handle.get("expires_at"), "read-handle-expires-at") == lease.expires_at, "read-handle-expiry-mismatch")
+        _require(
+            _parse_timestamp(public_handle.get("expires_at"), "read-handle-expires-at") == lease.expires_at,
+            "read-handle-expiry-mismatch",
+        )
         _require(self._clock().astimezone(timezone.utc) <= lease.expires_at, "read-handle-expired")
-        _public_record_has_no_path_authority(public_handle)
 
         scope = self._scopes.require_capability(lease.scope_id, "read-for-processing")
         payload = _safe_read(scope, lease.relative_parts)
@@ -481,7 +502,7 @@ class AssetBroker:
             "max_byte_length": max_byte_length,
             "expires_at": _iso_utc(expiry),
         }
-        _public_record_has_no_path_authority(public)
+        _require_exact_public_keys(public, _OUTPUT_TARGET_KEYS, "output-target")
         return public
 
     def _write_output_bytes(self, filename: str, payload: bytes) -> None:
@@ -504,11 +525,15 @@ class AssetBroker:
 
         candidate = self._output_root / filename
         try:
-            descriptor = os.open(candidate, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0), 0o600)
+            descriptor = os.open(
+                candidate,
+                os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_BINARY", 0),
+                0o600,
+            )
         except OSError as exc:
             raise CoreAccessError("output-create-failed") from exc
         try:
-            final = Path(candidate).resolve(strict=True)
+            final = candidate.resolve(strict=True)
             _require(_windows_path_inside(str(self._output_root), str(final)), "output-scope-escape")
             _require(not _is_symlink_or_reparse(final), "output-symlink-or-reparse-forbidden")
             view = memoryview(payload)
@@ -530,6 +555,7 @@ class AssetBroker:
 
     def write_output(self, public_target: dict[str, object], payload: bytes) -> dict[str, object]:
         _require(isinstance(public_target, dict), "output-target-required")
+        _require_exact_public_keys(public_target, _OUTPUT_TARGET_KEYS, "output-target")
         _require(isinstance(payload, bytes), "output-payload-must-be-bytes")
         handle_id = public_target.get("handle_id")
         _require(isinstance(handle_id, str) and handle_id, "output-target-id-required")
@@ -540,32 +566,49 @@ class AssetBroker:
         _require(public_target.get("access") == "write-once-output", "output-target-access-required")
         _require(public_target.get("media_type") == lease.media_type, "output-target-media-type-mismatch")
         _require(public_target.get("max_byte_length") == lease.max_byte_length, "output-target-byte-budget-mismatch")
-        _require(_parse_timestamp(public_target.get("expires_at"), "output-target-expires-at") == lease.expires_at, "output-target-expiry-mismatch")
+        _require(
+            _parse_timestamp(public_target.get("expires_at"), "output-target-expires-at") == lease.expires_at,
+            "output-target-expiry-mismatch",
+        )
         _require(self._clock().astimezone(timezone.utc) <= lease.expires_at, "output-target-expired")
         _require(len(payload) <= lease.max_byte_length, "output-exceeds-core-byte-budget")
-        _public_record_has_no_path_authority(public_target)
 
         self._write_output_bytes(lease.filename, payload)
         lease.completed = True
+        lease.completed_byte_length = len(payload)
+        lease.completed_fingerprint = _sha256(payload)
         completed: dict[str, object] = {
             "handle_id": lease.handle_id,
             "lease_id": lease.lease_id,
             "access": "write-once-output",
             "media_type": lease.media_type,
-            "byte_length": len(payload),
-            "fingerprint": _sha256(payload),
+            "byte_length": lease.completed_byte_length,
+            "fingerprint": lease.completed_fingerprint,
             "expires_at": _iso_utc(lease.expires_at),
         }
-        _public_record_has_no_path_authority(completed)
+        _require_exact_public_keys(completed, _COMPLETED_OUTPUT_KEYS, "completed-output")
         return completed
+
+    def _safe_read_output(self, lease: _OutputLease) -> bytes:
+        output_scope = _ScopeState(
+            scope_id="__core-output__",
+            root=self._output_root,
+            canonical_root=str(self._output_root),
+            capabilities=(),
+            posix_root_fd=self._output_root_fd,
+        )
+        return _safe_read(output_scope, (lease.filename,))
 
     def read_completed_output(self, handle_id: str, lease_id: str) -> bytes:
         lease = self._outputs.get(handle_id)
         _require(lease is not None and lease.completed, "completed-output-unknown")
         _require(lease.lease_id == lease_id, "completed-output-lease-mismatch")
-        path = self._output_root / lease.filename
-        _require(path.is_file() and not _is_symlink_or_reparse(path), "completed-output-file-invalid")
-        return path.read_bytes()
+        _require(lease.completed_byte_length is not None, "completed-output-byte-length-missing")
+        _require(lease.completed_fingerprint is not None, "completed-output-fingerprint-missing")
+        payload = self._safe_read_output(lease)
+        _require(len(payload) == lease.completed_byte_length, "completed-output-content-changed")
+        _require(_sha256(payload) == lease.completed_fingerprint, "completed-output-content-changed")
+        return payload
 
     def close(self) -> None:
         if self._output_root_fd is not None:

@@ -128,9 +128,12 @@ def _sha256(payload: bytes) -> str:
     return "sha256:" + hashlib.sha256(payload).hexdigest()
 
 
-def _validate_plan(plan: tuple[tuple[str, str, str], ...], label: str) -> None:
+def _canonical_plan(
+    plan: tuple[tuple[str, str, str], ...], label: str
+) -> tuple[tuple[str, str, str], ...]:
     if not isinstance(plan, tuple):
         raise G07ProofError(f"{label}-must-be-tuple")
+    normalized: list[tuple[str, str, str]] = []
     for criterion in plan:
         if (
             not isinstance(criterion, tuple)
@@ -138,13 +141,19 @@ def _validate_plan(plan: tuple[tuple[str, str, str], ...], label: str) -> None:
             or not all(isinstance(part, str) and part for part in criterion)
         ):
             raise G07ProofError(f"{label}-criterion-invalid")
+        normalized.append((criterion[0], criterion[1], criterion[2]))
+    return tuple(sorted(normalized))
 
 
 def _state_to_payload(state: BoundedCatalogState) -> dict[str, Any]:
-    if not isinstance(state.catalog_revision, int) or isinstance(state.catalog_revision, bool) or state.catalog_revision < 0:
+    if (
+        not isinstance(state.catalog_revision, int)
+        or isinstance(state.catalog_revision, bool)
+        or state.catalog_revision < 0
+    ):
         raise G07ProofError("catalog-revision-invalid")
 
-    logical_items = []
+    logical_items: list[dict[str, Any]] = []
     seen_logical_ids: set[str] = set()
     for item in sorted(state.logical_items, key=lambda row: row.logical_id):
         _require_text(item.logical_id, "logical-id")
@@ -154,7 +163,7 @@ def _state_to_payload(state: BoundedCatalogState) -> dict[str, Any]:
         seen_logical_ids.add(item.logical_id)
         logical_items.append({"logical_id": item.logical_id, "title": item.title})
 
-    locations = []
+    locations: list[dict[str, Any]] = []
     seen_location_ids: set[str] = set()
     for location in sorted(state.locations, key=lambda row: row.location_id):
         _require_text(location.location_id, "location-id")
@@ -180,7 +189,7 @@ def _state_to_payload(state: BoundedCatalogState) -> dict[str, Any]:
             }
         )
 
-    provenance = []
+    provenance: list[dict[str, Any]] = []
     seen_provenance_ids: set[str] = set()
     for record in sorted(state.provenance, key=lambda row: row.provenance_id):
         _require_text(record.provenance_id, "provenance-id")
@@ -201,11 +210,11 @@ def _state_to_payload(state: BoundedCatalogState) -> dict[str, Any]:
             }
         )
 
-    views = []
+    views: list[dict[str, Any]] = []
     seen_view_ids: set[str] = set()
     for view in sorted(state.views, key=lambda row: row.view_id):
         _require_text(view.view_id, "view-id")
-        _validate_plan(view.normalized_plan, "view-plan")
+        plan = _canonical_plan(view.normalized_plan, "view-plan")
         if not isinstance(view.projection, tuple) or not view.projection:
             raise G07ProofError("view-projection-invalid")
         if not all(isinstance(name, str) and name for name in view.projection):
@@ -215,24 +224,24 @@ def _state_to_payload(state: BoundedCatalogState) -> dict[str, Any]:
         seen_view_ids.add(view.view_id)
         views.append(
             {
-                "normalized_plan": [list(item) for item in view.normalized_plan],
+                "normalized_plan": [list(item) for item in plan],
                 "projection": list(view.projection),
                 "view_id": view.view_id,
             }
         )
 
-    rules = []
+    rules: list[dict[str, Any]] = []
     seen_collection_ids: set[str] = set()
     for rule in sorted(state.smart_collection_rules, key=lambda row: row.collection_id):
         _require_text(rule.collection_id, "collection-id")
-        _validate_plan(rule.normalized_plan, "smart-rule-plan")
+        plan = _canonical_plan(rule.normalized_plan, "smart-rule-plan")
         if rule.collection_id in seen_collection_ids:
             raise G07ProofError("collection-id-duplicate")
         seen_collection_ids.add(rule.collection_id)
         rules.append(
             {
                 "collection_id": rule.collection_id,
-                "normalized_plan": [list(item) for item in rule.normalized_plan],
+                "normalized_plan": [list(item) for item in plan],
             }
         )
 
@@ -249,18 +258,19 @@ def _state_to_payload(state: BoundedCatalogState) -> dict[str, Any]:
 def export_catalog(state: BoundedCatalogState) -> bytes:
     payload = _state_to_payload(state)
     payload_bytes = _canonical_json_bytes(payload)
-    envelope = {
-        "payload": payload,
-        "payload_sha256": _sha256(payload_bytes),
-        "schema_version": PROOF_SCHEMA_VERSION,
-    }
-    return _canonical_json_bytes(envelope)
+    return _canonical_json_bytes(
+        {
+            "payload": payload,
+            "payload_sha256": _sha256(payload_bytes),
+            "schema_version": PROOF_SCHEMA_VERSION,
+        }
+    )
 
 
 def _parse_plan(value: Any, label: str) -> tuple[tuple[str, str, str], ...]:
     if not isinstance(value, list):
         raise G07ProofError(f"{label}-must-be-array")
-    result = []
+    result: list[tuple[str, str, str]] = []
     for criterion in value:
         if (
             not isinstance(criterion, list)
@@ -298,8 +308,7 @@ def restore_catalog(export_bytes: bytes) -> BoundedCatalogState:
         },
         "catalog-payload",
     )
-    actual_digest = _sha256(_canonical_json_bytes(payload))
-    if actual_digest != expected_digest:
+    if _sha256(_canonical_json_bytes(payload)) != expected_digest:
         raise G07ProofError("backup-integrity-mismatch")
 
     revision = payload["catalog_revision"]
@@ -312,7 +321,7 @@ def restore_catalog(export_bytes: bytes) -> BoundedCatalogState:
             raise G07ProofError(f"{name}-must-be-array")
         return value
 
-    logical_items = []
+    logical_items: list[LogicalItem] = []
     for raw in require_array("logical_items"):
         row = _require_exact_keys(raw, {"logical_id", "title"}, "logical-item")
         logical_items.append(
@@ -322,7 +331,7 @@ def restore_catalog(export_bytes: bytes) -> BoundedCatalogState:
             )
         )
 
-    locations = []
+    locations: list[LocationRecord] = []
     for raw in require_array("locations"):
         row = _require_exact_keys(
             raw,
@@ -338,7 +347,7 @@ def restore_catalog(export_bytes: bytes) -> BoundedCatalogState:
             )
         )
 
-    provenance = []
+    provenance: list[ProvenanceRecord] = []
     for raw in require_array("provenance"):
         row = _require_exact_keys(
             raw,
@@ -354,7 +363,7 @@ def restore_catalog(export_bytes: bytes) -> BoundedCatalogState:
             )
         )
 
-    views = []
+    views: list[ViewRecord] = []
     for raw in require_array("views"):
         row = _require_exact_keys(raw, {"normalized_plan", "projection", "view_id"}, "view")
         projection = row["projection"]
@@ -370,7 +379,7 @@ def restore_catalog(export_bytes: bytes) -> BoundedCatalogState:
             )
         )
 
-    rules = []
+    rules: list[SmartCollectionRuleRecord] = []
     for raw in require_array("smart_collection_rules"):
         row = _require_exact_keys(raw, {"collection_id", "normalized_plan"}, "smart-rule")
         rules.append(
@@ -388,10 +397,7 @@ def restore_catalog(export_bytes: bytes) -> BoundedCatalogState:
         views=tuple(views),
         smart_collection_rules=tuple(rules),
     )
-    # Re-run all referential/duplicate/value validation and canonicalize the
-    # ordering before the caller may accept restored state.
-    canonical_payload = _state_to_payload(state)
-    if canonical_payload != payload:
+    if _state_to_payload(state) != payload:
         raise G07ProofError("backup-payload-not-canonical")
     return state
 
@@ -429,8 +435,6 @@ def build_core_authority(scopes: Iterable[ScopeGrant]) -> CoreAuthorityConfig:
         if scope.scope_id in seen:
             raise G07ProofError("scope-id-duplicate")
         seen.add(scope.scope_id)
-        # Revalidate even preconstructed dataclass instances; callers may not
-        # bypass Core capability/root rules by instantiating ScopeGrant directly.
         validated = create_core_scope(scope.scope_id, scope.root, scope.capabilities)
         if validated != scope:
             raise G07ProofError("scope-not-canonical")
@@ -445,61 +449,43 @@ def authorize_request(
     _require_text(request.capability, "request-capability")
     if request.capability in _MUTATION_CAPABILITIES:
         return AuthorizationDecision(
-            allowed=False,
-            scope_id=request.scope_id,
-            capability=request.capability,
-            normalized_path=None,
-            reason="mutation-capability-not-granted-by-proof",
+            False,
+            request.scope_id,
+            request.capability,
+            None,
+            "mutation-capability-not-granted-by-proof",
         )
 
     grant = next((scope for scope in authority.scopes if scope.scope_id == request.scope_id), None)
     if grant is None:
-        return AuthorizationDecision(
-            allowed=False,
-            scope_id=request.scope_id,
-            capability=request.capability,
-            normalized_path=None,
-            reason="unknown-scope-id",
-        )
-
+        return AuthorizationDecision(False, request.scope_id, request.capability, None, "unknown-scope-id")
     if request.capability not in grant.capabilities:
-        return AuthorizationDecision(
-            allowed=False,
-            scope_id=request.scope_id,
-            capability=request.capability,
-            normalized_path=None,
-            reason="capability-not-granted",
-        )
+        return AuthorizationDecision(False, request.scope_id, request.capability, None, "capability-not-granted")
 
     try:
         requested_path = _canonical_absolute_path(request.path, "request-path")
     except G07ProofError as exc:
-        return AuthorizationDecision(
-            allowed=False,
-            scope_id=request.scope_id,
-            capability=request.capability,
-            normalized_path=None,
-            reason=str(exc),
-        )
+        return AuthorizationDecision(False, request.scope_id, request.capability, None, str(exc))
 
     root = _canonical_absolute_path(grant.root, "scope-root")
-    root_parts = root.parts
-    path_parts = requested_path.parts
-    if len(path_parts) < len(root_parts) or path_parts[: len(root_parts)] != root_parts:
+    if (
+        len(requested_path.parts) < len(root.parts)
+        or requested_path.parts[: len(root.parts)] != root.parts
+    ):
         return AuthorizationDecision(
-            allowed=False,
-            scope_id=request.scope_id,
-            capability=request.capability,
-            normalized_path=str(requested_path),
-            reason="path-outside-scope",
+            False,
+            request.scope_id,
+            request.capability,
+            str(requested_path),
+            "path-outside-scope",
         )
 
     return AuthorizationDecision(
-        allowed=True,
-        scope_id=request.scope_id,
-        capability=request.capability,
-        normalized_path=str(requested_path),
-        reason="authorized-by-existing-core-scope",
+        True,
+        request.scope_id,
+        request.capability,
+        str(requested_path),
+        "authorized-by-existing-core-scope",
     )
 
 
@@ -515,7 +501,6 @@ def assert_authority_shapes_minimal() -> None:
         "root_override",
     }
     for record_type in (ScopeGrant, ExternalRequest, AuthorizationDecision):
-        names = {field.name for field in fields(record_type)}
-        overlap = sorted(names & forbidden)
+        overlap = sorted({field.name for field in fields(record_type)} & forbidden)
         if overlap:
             raise G07ProofError(f"authority-record-forbidden-field:{overlap[0]}")

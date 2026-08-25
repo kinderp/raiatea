@@ -1,0 +1,178 @@
+name: VS1d local EPUB extraction
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1d-epub-extraction.yml"
+      - "elaboration/p0/contracts/plugins/**"
+      - "elaboration/p0/contracts/extraction/0.1.0/**"
+      - "elaboration/p0/benchmark/generate_fixtures.py"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1d-epub-extraction.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  vs1d:
+    name: VS1d / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile VS1 and accepted extraction/plugin tooling
+        run: >-
+          python -m compileall -q
+          prototype/p0_vs1
+          elaboration/p0/contracts/plugins/runtime/1.0.0
+          elaboration/p0/contracts/plugins/transport/0.1.0
+          elaboration/p0/contracts/plugins/1.0.0
+          elaboration/p0/contracts/extraction/0.1.0
+          elaboration/p0/plugins/proofs/v1d
+          elaboration/p0/benchmark/generate_fixtures.py
+      - name: Run VS1a regressions
+        run: python -m unittest prototype.p0_vs1.test_vs1a -v
+      - name: Run VS1b regressions
+        run: |
+          python -m unittest prototype.p0_vs1.test_alfred_observation -v
+          python -m unittest prototype.p0_vs1.test_vs1b_reconciliation -v
+          python -m unittest prototype.p0_vs1.test_vs1b_inventory_fence -v
+      - name: Run VS1c regressions
+        run: |
+          python -m unittest prototype.p0_vs1.test_vs1c -v
+          python -m unittest prototype.p0_vs1.test_vs1c_environment -v
+          python -m unittest prototype.p0_vs1.test_vs1c_limits -v
+      - name: Run VS1d product extraction tests
+        run: python -m unittest prototype.p0_vs1.test_vs1d -v
+      - name: Validate product extractor manifest
+        run: python elaboration/p0/contracts/plugins/1.0.0/validate_manifest.py prototype/p0_vs1/plugins/direct_epub/manifest.json
+      - name: Re-run accepted E-05 semantic and adapter suites
+        run: |
+          python elaboration/p0/contracts/extraction/0.1.0/test_contract.py -v
+          python elaboration/p0/contracts/extraction/0.1.0/test_adapt_benchmark.py -v
+      - name: Re-run accepted Runtime v1b tests
+        run: |
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime.py -v
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime_handle_bounds.py -v
+      - name: Re-run accepted transport tests
+        run: |
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_process_lifecycle_binding.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_stderr_drain.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_notification_bounds.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport_directionality.py -v
+      - name: Re-run accepted manifest tests
+        run: python elaboration/p0/contracts/plugins/1.0.0/test_manifest.py -v
+      - name: Re-run real v1d Source and EPUB Extractor proofs
+        run: python -m unittest elaboration.p0.plugins.proofs.v1d.test_proof_plugins -v
+
+  schema-reference:
+    name: VS1d product + E-05 JSON Schema reference
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Install pinned JSON Schema validator
+        run: python -m pip install --disable-pip-version-check "jsonschema==4.26.0"
+      - name: Validate product extractor manifest against accepted schema
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from jsonschema import Draft202012Validator
+          repo = Path('.')
+          schema = json.loads((repo / 'elaboration/p0/contracts/plugins/1.0.0/plugin-manifest.schema.json').read_text())
+          manifest = json.loads((repo / 'prototype/p0_vs1/plugins/direct_epub/manifest.json').read_text())
+          errors = sorted(Draft202012Validator(schema).iter_errors(manifest), key=lambda e: list(e.path))
+          if errors:
+              raise SystemExit('\n'.join(f'{list(e.path)}: {e.message}' for e in errors))
+          print('PASS prototype/p0_vs1/plugins/direct_epub/manifest.json')
+          PY
+      - name: Validate actual Core-normalized VS1d E-05 records against accepted schema
+        run: |
+          python - <<'PY'
+          import hashlib
+          import importlib.util
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+          import tempfile
+          from jsonschema import Draft202012Validator
+
+          from prototype.p0_vs1.epub_e05_adapter import adapt_direct_epub_observation
+          from prototype.p0_vs1.epub_observation_contract import build_provider_observation_bundle
+          from prototype.p0_vs1.extraction_contract import build_extraction_bundle
+          from prototype.p0_vs1.plugins.direct_epub.route import parse_direct_epub
+
+          repo = Path('.')
+          generator_path = repo / 'elaboration/p0/benchmark/generate_fixtures.py'
+          spec = importlib.util.spec_from_file_location('vs1d_schema_generator', generator_path)
+          generator = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(generator)
+
+          with tempfile.TemporaryDirectory() as temporary:
+              epub = Path(temporary) / 'B02-EPUB-001.epub'
+              generator.generate_epub_spine(epub)
+              fingerprint = 'sha256:' + hashlib.sha256(epub.read_bytes()).hexdigest()
+              source_ref_id = 'source-ref:' + '1' * 64
+              observation = parse_direct_epub(epub)
+              provider_bundle = build_provider_observation_bundle(
+                  source_ref_id=source_ref_id,
+                  source_fingerprint=fingerprint,
+                  python_version='3.12.14',
+                  observation=observation,
+              )
+              started_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+              adapted = adapt_direct_epub_observation(
+                  provider_bundle['observation'],
+                  source_id=source_ref_id,
+                  fingerprint=fingerprint,
+                  python_version=provider_bundle['provider']['version'],
+                  started_at=started_at,
+                  ended_at=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              )
+              bundle = build_extraction_bundle(
+                  source_ref_id=source_ref_id,
+                  source_fingerprint=fingerprint,
+                  adapted=adapted,
+              )
+
+          schema = json.loads((repo / 'elaboration/p0/contracts/extraction/0.1.0/processing-run.schema.json').read_text())
+          definitions = schema['$defs']
+          kind_to_schema = {
+              'ProcessingRunRecord': schema,
+              'ProviderEvidenceRecord': {
+                  '$schema': schema['$schema'],
+                  '$defs': definitions,
+                  '$ref': '#/$defs/ProviderEvidenceRecord',
+              },
+              'NormalizedRepresentationRecord': {
+                  '$schema': schema['$schema'],
+                  '$defs': definitions,
+                  '$ref': '#/$defs/NormalizedRepresentationRecord',
+              },
+          }
+          for ref in bundle['record_refs']:
+              record = bundle['records'][ref['ref_id']]
+              validator = Draft202012Validator(kind_to_schema[ref['record_kind']])
+              errors = sorted(validator.iter_errors(record), key=lambda e: list(e.path))
+              if errors:
+                  raise SystemExit('\n'.join(
+                      f"{ref['record_kind']} {list(e.path)}: {e.message}" for e in errors
+                  ))
+              print('PASS', ref['record_kind'], ref['ref_id'])
+          PY

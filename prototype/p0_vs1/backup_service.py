@@ -28,6 +28,7 @@ from prototype.p0_vs1.reconciliation import (
     validate_state as validate_vs1b_state,
 )
 from prototype.p0_vs1.search_contract import (
+    SMART_COLLECTION_VERSION,
     build_smart_collection,
     canonical_json_bytes,
     run_search,
@@ -96,6 +97,10 @@ def _authority_smart_rules(vs1e: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for raw in value:
         _require(isinstance(raw, dict), "backup-smart-collection-invalid")
+        _require(
+            raw.get("collection_version") == SMART_COLLECTION_VERSION,
+            "backup-smart-collection-version-unsupported",
+        )
         collection_id = raw.get("collection_id")
         rule = raw.get("rule")
         _require(
@@ -126,6 +131,10 @@ def build_backup_authority(
     validate_vs1c_state(vs1c, scope_ref)
     validate_vs1d_state(vs1d, scope_ref)
     _require(vs1b["freshness"]["status"] == "fresh", "backup-upstream-not-fresh")
+    _require(
+        vs1e.get("state_version") == VS1E_STATE_VERSION,
+        "backup-vs1e-version-unsupported",
+    )
     _require(vs1e.get("scope_ref") == scope_ref, "backup-vs1e-scope-mismatch")
 
     # Rebuild the derived index from authority instead of trusting the persisted
@@ -133,7 +142,9 @@ def build_backup_authority(
     try:
         build_search_index(catalog_snapshot, scope_ref)
     except SearchServiceError as exc:
-        raise BackupServiceError(f"backup-upstream-search-basis-invalid:{exc}") from exc
+        raise BackupServiceError(
+            f"backup-upstream-search-basis-invalid:{exc}"
+        ) from exc
 
     authority = {
         "vs1b": deepcopy(vs1b),
@@ -160,13 +171,17 @@ def _current_present_signature(vs1b: dict[str, Any]) -> list[dict[str, Any]]:
             "media_type": row["media_type"],
         }
         for row in vs1b["entries"]
-        if row["superseded_by"] is None and row["availability"] == "known-present"
+        if row["superseded_by"] is None
+        and row["availability"] == "known-present"
     ]
     rows.sort(key=lambda row: row["entry_id"])
     return rows
 
 
-def _restored_unverified_vs1b(value: dict[str, Any], scope_ref: str) -> dict[str, Any]:
+def _restored_unverified_vs1b(
+    value: dict[str, Any],
+    scope_ref: str,
+) -> dict[str, Any]:
     result = deepcopy(value)
     validate_vs1b_state(result, scope_ref)
     result["freshness"] = {
@@ -196,7 +211,9 @@ def _restore_vs1e(
         index = build_search_index(synthetic, scope_ref)
         current_basis = current_upstream_basis_fingerprint(synthetic, scope_ref)
     except SearchServiceError as exc:
-        raise BackupServiceError(f"restore-upstream-lineage-not-current:{exc}") from exc
+        raise BackupServiceError(
+            f"restore-upstream-lineage-not-current:{exc}"
+        ) from exc
 
     views: list[dict[str, Any]] = []
     for raw in authority["views"]:
@@ -212,7 +229,10 @@ def _restore_vs1e(
             current_upstream_basis_fingerprint=current_basis,
             plan=raw["rule"],
         )
-        _require(result["freshness"] == "fresh", "restore-smart-rule-index-not-fresh")
+        _require(
+            result["freshness"] == "fresh",
+            "restore-smart-rule-index-not-fresh",
+        )
         collection = build_smart_collection(
             raw["collection_id"],
             raw["rule"],
@@ -276,13 +296,17 @@ class CatalogBackupService:
             backup["scope_ref"] == self._scope_ref,
             "restore-backup-scope-mismatch",
         )
-        _require(target_store.load() is None, "restore-target-store-must-be-empty")
+        _require(
+            target_store.load() is None,
+            "restore-target-store-must-be-empty",
+        )
 
         authority = backup["authority"]
         expected_present = _current_present_signature(authority["vs1b"])
         base_payload = {
             "vs1b": _restored_unverified_vs1b(
-                authority["vs1b"], self._scope_ref
+                authority["vs1b"],
+                self._scope_ref,
             ),
             "vs1c": deepcopy(authority["vs1c"]),
             "vs1d": deepcopy(authority["vs1d"]),
@@ -310,7 +334,10 @@ class CatalogBackupService:
                     f"restore-physical-reconciliation-failed:{exc}"
                 ) from exc
             reconciled = temp_store.load()
-            _require(reconciled is not None, "restore-temporary-catalog-missing")
+            _require(
+                reconciled is not None,
+                "restore-temporary-catalog-missing",
+            )
             validate_vs1b_state(reconciled.payload["vs1b"], self._scope_ref)
             _require(
                 _current_present_signature(reconciled.payload["vs1b"])
@@ -330,11 +357,16 @@ class CatalogBackupService:
             validate_vs1e_state(final_payload["vs1e"], self._scope_ref)
 
         # Re-check emptiness after the potentially long physical reconciliation.
-        _require(target_store.load() is None, "restore-target-store-changed-during-restore")
+        _require(
+            target_store.load() is None,
+            "restore-target-store-changed-during-restore",
+        )
         try:
             saved = target_store.save(final_payload, expected_revision=0)
         except CatalogStoreError as exc:
-            raise BackupServiceError("restore-target-store-changed-during-commit") from exc
+            raise BackupServiceError(
+                "restore-target-store-changed-during-commit"
+            ) from exc
         _require(saved.revision == 1, "restore-target-revision-unexpected")
         return {
             "status": "completed",

@@ -31,6 +31,11 @@ _FORBIDDEN_TRANSIENT_KEYS = frozenset(
         "document_bytes",
     }
 )
+_FORBIDDEN_TRANSIENT_VALUE_PREFIXES = (
+    "plugin-input:",
+    "plugin-output:",
+    "lease:",
+)
 
 
 class BackupContractError(ValueError):
@@ -96,6 +101,11 @@ def _assert_no_transient_authority(value: Any, *, trail: str = "authority") -> N
     elif isinstance(value, list):
         for index, child in enumerate(value):
             _assert_no_transient_authority(child, trail=f"{trail}[{index}]")
+    elif isinstance(value, str):
+        _require(
+            not value.startswith(_FORBIDDEN_TRANSIENT_VALUE_PREFIXES),
+            f"backup-transient-reference-forbidden:{trail}",
+        )
 
 
 def _canonical_vs1b(value: dict[str, Any], scope_ref: str) -> dict[str, Any]:

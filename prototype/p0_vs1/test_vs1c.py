@@ -200,7 +200,9 @@ class PrivatePluginIOTests(unittest.TestCase):
                 completed = plugin_write_output(output_target, b"bundle")
             broker = json.loads(io.broker_path.read_text(encoding="utf-8"))
             filename = broker["output_handles"][output_target["handle_id"]]["filename"]
-            (io.outputs / filename).write_bytes(b"tampered")
+            # Same length as "bundle": this exercises fingerprint validation,
+            # not the earlier and independently valid byte-length guard.
+            (io.outputs / filename).write_bytes(b"bundlx")
             with self.assertRaisesRegex(PluginIOError, "fingerprint-mismatch"):
                 io.read_completed_output(output_target, completed)
 

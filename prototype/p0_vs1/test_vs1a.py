@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 import hashlib
 import importlib.util
@@ -164,7 +165,7 @@ class CoreAssetBrokerTests(unittest.TestCase):
                 "scope:library", "linked.epub", media_type="application/epub+zip"
             )
 
-    def test_unknown_wrong_access_and_wrong_lease_handles_fail(self) -> None:
+    def test_unknown_wrong_access_wrong_lease_and_extra_fields_fail(self) -> None:
         handle = self.broker.issue_read_handle(
             "scope:library", "book.epub", media_type="application/epub+zip"
         )
@@ -180,6 +181,10 @@ class CoreAssetBrokerTests(unittest.TestCase):
         wrong_access["access"] = "write-once-output"
         with self.assertRaisesRegex(CoreAccessError, "read-handle-access-required"):
             self.broker.read_asset(wrong_access)
+        extra = dict(handle)
+        extra["rights_grant"] = True
+        with self.assertRaisesRegex(CoreAccessError, "read-handle-unknown-field:rights_grant"):
+            self.broker.read_asset(extra)
 
     def test_expired_read_handle_fails(self) -> None:
         handle = self.broker.issue_read_handle(
@@ -215,6 +220,28 @@ class CoreAssetBrokerTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(CoreAccessError, "output-target-already-written"):
             self.broker.write_output(target, b"again")
+
+    def test_output_target_rejects_unknown_authority_fields(self) -> None:
+        target = self.broker.issue_output_target(
+            media_type="application/json", max_byte_length=1024
+        )
+        extra = dict(target)
+        extra["path"] = "/tmp/attacker-controlled"
+        with self.assertRaisesRegex(CoreAccessError, "output-target-unknown-field:path"):
+            self.broker.write_output(extra, b"{}")
+
+    def test_completed_output_tampering_is_detected(self) -> None:
+        target = self.broker.issue_output_target(
+            media_type="application/json", max_byte_length=1024
+        )
+        result = self.broker.write_output(target, b'{"ok":true}')
+        output_files = list(self.output_root.glob("*.bin"))
+        self.assertEqual(len(output_files), 1)
+        output_files[0].write_bytes(b"tampered")
+        with self.assertRaisesRegex(CoreAccessError, "completed-output-content-changed"):
+            self.broker.read_completed_output(
+                str(result["handle_id"]), str(result["lease_id"])
+            )
 
     def test_output_byte_budget_and_expiry_fail_closed(self) -> None:
         small = self.broker.issue_output_target(
@@ -300,7 +327,7 @@ class CatalogStateStoreTests(unittest.TestCase):
     def tearDown(self) -> None:
         self.temp.cleanup()
 
-    def test_save_load_and_revision_compare_and_swap(self) -> None:
+    def test_save_load_and_revision_guard(self) -> None:
         first_payload = {"items": [], "freshness": "unknown"}
         first = self.store.save(first_payload, expected_revision=0)
         self.assertEqual(first.revision, 1)
@@ -314,6 +341,26 @@ class CatalogStateStoreTests(unittest.TestCase):
 
         with self.assertRaisesRegex(CatalogStoreError, "catalog-stale-expected-revision"):
             self.store.save({"items": []}, expected_revision=1)
+
+    def test_same_store_instance_serializes_competing_revision_writes(self) -> None:
+        def write(value: str) -> tuple[str, object]:
+            try:
+                return ("ok", self.store.save({"writer": value}, expected_revision=0))
+            except CatalogStoreError as exc:
+                return ("error", str(exc))
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            results = list(executor.map(write, ("a", "b")))
+        statuses = sorted(status for status, _ in results)
+        self.assertEqual(statuses, ["error", "ok"])
+        self.assertIn(
+            "catalog-stale-expected-revision",
+            [value for status, value in results if status == "error"],
+        )
+        loaded = self.store.load()
+        self.assertIsNotNone(loaded)
+        assert loaded is not None
+        self.assertEqual(loaded.revision, 1)
 
     def test_serialization_is_canonical_and_integrity_checked(self) -> None:
         snapshot = self.store.save({"z": 1, "a": {"b": 2}}, expected_revision=0)

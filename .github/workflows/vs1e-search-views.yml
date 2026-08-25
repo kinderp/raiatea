@@ -38,6 +38,7 @@ jobs:
         run: |
           python -m unittest prototype.p0_vs1.test_vs1e -v
           python -m unittest prototype.p0_vs1.test_vs1e_snapshot_consistency -v
+          python -m unittest prototype.p0_vs1.test_vs1e_query_hardening -v
       - name: Re-run accepted G-06 deterministic proof
         working-directory: elaboration/p0/gates/g06
         run: python -m unittest test_search_view_proof.py -v

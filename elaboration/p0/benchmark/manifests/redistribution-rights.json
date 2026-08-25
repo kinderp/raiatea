@@ -22,6 +22,13 @@
     "remote_provider": "denied",
     "remote_provider_note": "Redistribution licensing does not authorize externally hosted Provider processing. Provider-policy and Processing Rights evidence remain separate."
   },
+  "validation": {
+    "licensing_document": "elaboration/p0/benchmark/LICENSING.md",
+    "notice_document": "elaboration/p0/benchmark/NOTICE.md",
+    "rights_decision_document": "elaboration/p0/benchmark-rights-decision-2026-08-25.md",
+    "regression_test": "elaboration/p0/benchmark/tests/test_benchmark_licensing.py",
+    "g02_closure_document": "elaboration/p0/e07-g02-closure.md"
+  },
   "historical_evidence_boundary": {
     "preserve_pinned_manifests": true,
     "note": "The inline redistribution fields in historically benchmark-pinned manifests record the rights state at their measurement-era commits. This overlay is the current authoritative redistribution-rights evidence and supersedes those historical fields for current public redistribution without rewriting benchmark measurement inputs."

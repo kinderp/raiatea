@@ -1,0 +1,45 @@
+name: P0 benchmark licensing
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/benchmark/LICENSING.md"
+      - "elaboration/p0/benchmark/NOTICE.md"
+      - "elaboration/p0/benchmark/manifests/redistribution-rights.json"
+      - "elaboration/p0/benchmark/tests/test_benchmark_licensing.py"
+      - "elaboration/p0/benchmark-rights-decision-2026-08-25.md"
+      - "elaboration/p0/e07-g02-closure.md"
+      - ".github/workflows/p0-benchmark-licensing.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/benchmark/LICENSING.md"
+      - "elaboration/p0/benchmark/NOTICE.md"
+      - "elaboration/p0/benchmark/manifests/redistribution-rights.json"
+      - "elaboration/p0/benchmark/tests/test_benchmark_licensing.py"
+      - "elaboration/p0/benchmark-rights-decision-2026-08-25.md"
+      - "elaboration/p0/e07-g02-closure.md"
+      - ".github/workflows/p0-benchmark-licensing.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  licensing:
+    name: Licensing / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Validate JSON overlay
+        run: python -m json.tool elaboration/p0/benchmark/manifests/redistribution-rights.json > /dev/null
+        shell: bash
+      - name: Run licensing regressions
+        working-directory: elaboration/p0/benchmark/tests
+        run: python -m unittest test_benchmark_licensing.py -v

@@ -26,16 +26,32 @@ listed in `manifests/fixtures.json` under `coverage_gaps`.
 
 ## Rights state
 
-Raiatea currently has no explicit repository/fixture redistribution license.
-Therefore these project-created fixture definitions are **rights pending**:
+The maintainer decision in issue #131 established a **benchmark-scoped split
+license**:
 
-- redistribution: `not-established`;
-- `public_rights_safe`: `false`;
-- external remote Provider: `denied`;
-- maintainer decision: issue #131.
+- eligible project-created/generated fixture content, generated fixture
+  documents, fixture metadata and gold/reference data: **CC BY 4.0**;
+- the three fixture-generator source files listed in `LICENSING.md`:
+  **Apache-2.0**;
+- external/remote Provider processing: still **denied/not authorized** by this
+  redistribution decision;
+- Raiatea Core, Provider routes/scorers/tests/workflows, third-party material and
+  the rest of the repository: **not licensed or relicensed by this decision**.
 
-Do not describe the generated material as a public rights-safe benchmark corpus
-until #131 is resolved and the manifest is updated with actual evidence.
+Current authoritative redistribution evidence is in:
+
+- [`LICENSING.md`](LICENSING.md);
+- [`NOTICE.md`](NOTICE.md);
+- [`manifests/redistribution-rights.json`](manifests/redistribution-rights.json).
+
+The inline `not-established` fields in older benchmark-pinned manifests are
+**historical measurement-era evidence**. They are intentionally left byte-stable
+where possible; the redistribution-rights overlay supersedes them for current
+redistribution policy without rewriting prior benchmark provenance.
+
+Required CC BY attribution is documented in `NOTICE.md`. This licensing decision
+does not authorize remote Providers and does not convert third-party or private
+material into redistributable content.
 
 ## Generate fixtures
 
@@ -277,7 +293,7 @@ python -m unittest discover \
 Tests cover:
 
 - benchmark-only contract markers;
-- fail-closed rights state;
+- benchmark licensing/rights-overlay coherence while preserving historical pinned rights state;
 - deterministic regeneration;
 - valid basic PDF structure;
 - B-01 Poppler XML/XHTML mappings and top-left → bottom-left coordinate conversion;

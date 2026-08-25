@@ -3,7 +3,7 @@
 > Parent promotion: [#187](https://github.com/kinderp/raiatea/issues/187)  
 > Accepted VS1a: [#188](https://github.com/kinderp/raiatea/issues/188) / PR [#189](https://github.com/kinderp/raiatea/pull/189) / `0bd70df`  
 > Current micro-step: [#190](https://github.com/kinderp/raiatea/issues/190) — VS1b / PR [#191](https://github.com/kinderp/raiatea/pull/191)  
-> Status: **VS1b implementation under final review**
+> Status: **VS1b implementation frozen for review**
 
 This directory contains the executable product-prototype path for the first
 promoted Raiatea vertical slice.

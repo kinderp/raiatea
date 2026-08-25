@@ -225,7 +225,10 @@ while the scan is in progress, the guarded save fails and the stale inventory is
 not published as current truth.
 
 This is a single-Core-process optimistic publication fence built on the VS1a
-revision guard. It is not a distributed snapshot protocol.
+revision guard. It is not a distributed snapshot protocol. VS1b also does not
+yet own a live Alfred process or concurrent delivery scheduler: the future live
+integration must serialize or retry surfaced stale-write failures rather than
+silently dropping them.
 
 ## Security and platform claims
 

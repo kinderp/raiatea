@@ -1,0 +1,40 @@
+name: VS1e deterministic search Views and Smart Collections
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1e-search-views.yml"
+      - "elaboration/p0/gates/g06/**"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1e-search-views.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  vs1e:
+    name: VS1e / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile VS1e and accepted G-06 proof
+        run: >-
+          python -m compileall -q
+          prototype/p0_vs1
+          elaboration/p0/gates/g06
+      - name: Run VS1e product search tests
+        run: python -m unittest prototype.p0_vs1.test_vs1e -v
+      - name: Re-run accepted G-06 deterministic proof
+        run: python -m unittest elaboration.p0.gates.g06.test_search_view_proof -v

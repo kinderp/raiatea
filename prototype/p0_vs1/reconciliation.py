@@ -50,11 +50,20 @@ def _path_inside(root: str, candidate: str) -> bool:
         return False
 
 
-class Vs1ObservationScopeRegistry(ScopeRegistry):
-    """VS1b internal extension of the accepted Core-owned scope registry.
+def _valid_sha256(value: Any) -> bool:
+    return (
+        isinstance(value, str)
+        and value.startswith("sha256:")
+        and len(value) == 71
+        and all(char in "0123456789abcdef" for char in value[7:])
+    )
 
-    It adds observation-path translation and internal inventory root access only;
-    registration/authority semantics remain inherited unchanged from VS1a.
+
+class Vs1ObservationScopeRegistry(ScopeRegistry):
+    """Internal VS1b extension of the VS1a Core-owned scope registry.
+
+    It adds observation-path translation and inventory-root access only;
+    registration and authority semantics remain inherited from VS1a.
     """
 
     def observation_relative_path(self, scope_id: str, observed_path: str) -> str:
@@ -70,7 +79,10 @@ class Vs1ObservationScopeRegistry(ScopeRegistry):
         if relative == ".":
             return "."
         result = Path(relative).as_posix()
-        _require(result not in {"", ".", ".."} and not result.startswith("../"), "observation-relative-path-invalid")
+        _require(
+            result not in {"", ".", ".."} and not result.startswith("../"),
+            "observation-relative-path-invalid",
+        )
         return result
 
     def _inventory_root(self, scope_id: str) -> tuple[Path, int | None]:
@@ -78,12 +90,30 @@ class Vs1ObservationScopeRegistry(ScopeRegistry):
         return scope.root, scope.posix_root_fd
 
 
+def _inventory_item_from_handle(relative: str, handle: dict[str, object]) -> dict[str, Any]:
+    fingerprint = handle.get("fingerprint")
+    byte_length = handle.get("byte_length")
+    media_type = handle.get("media_type")
+    _require(_valid_sha256(fingerprint), "inventory-handle-fingerprint-invalid")
+    _require(
+        isinstance(byte_length, int) and not isinstance(byte_length, bool) and byte_length >= 0,
+        "inventory-handle-byte-length-invalid",
+    )
+    _require(media_type == EPUB_MEDIA_TYPE, "inventory-handle-media-type-invalid")
+    return {
+        "location": relative,
+        "fingerprint": fingerprint,
+        "byte_length": byte_length,
+        "media_type": media_type,
+    }
+
+
 def _scan_posix_epubs(
     scopes: Vs1ObservationScopeRegistry,
     broker: AssetBroker,
     scope_id: str,
 ) -> list[dict[str, Any]]:
-    root, root_fd = scopes._inventory_root(scope_id)
+    _, root_fd = scopes._inventory_root(scope_id)
     _require(root_fd is not None, "inventory-posix-root-fd-required")
     stack: list[tuple[tuple[str, ...], int]] = [((), os.dup(root_fd))]
     discovered: list[dict[str, Any]] = []
@@ -124,14 +154,7 @@ def _scan_posix_epubs(
                         )
                     except CoreAccessError as exc:
                         raise ReconciliationError("inventory-safe-read-failed") from exc
-                    discovered.append(
-                        {
-                            "location": relative,
-                            "fingerprint": handle["fingerprint"],
-                            "byte_length": handle["byte_length"],
-                            "media_type": handle["media_type"],
-                        }
-                    )
+                    discovered.append(_inventory_item_from_handle(relative, handle))
             finally:
                 os.close(directory_fd)
     except Exception:
@@ -150,12 +173,10 @@ def _scan_path_epubs(
     broker: AssetBroker,
     scope_id: str,
 ) -> list[dict[str, Any]]:
-    """Path-based contract scan used on non-POSIX CI.
+    """Path-based contract scan for non-POSIX CI.
 
-    Live Alfred observation remains Linux/inotify only. The final content read is
-    still authorized through the VS1a Windows opened-handle broker, while this
-    traversal rejects reparse entries and fails if a scanned directory changes
-    into a reparse point during the scan.
+    Live Alfred observation remains Linux/inotify only. Final bytes still cross
+    the VS1a opened-handle broker; traversal itself rejects reparse entries.
     """
 
     root, _ = scopes._inventory_root(scope_id)
@@ -167,7 +188,10 @@ def _scan_path_epubs(
             directory_info = os.lstat(directory)
         except OSError as exc:
             raise ReconciliationError("inventory-directory-stat-failed") from exc
-        _require(not _is_symlink_or_reparse_stat(directory_info), "inventory-directory-reparse-forbidden")
+        _require(
+            not _is_symlink_or_reparse_stat(directory_info),
+            "inventory-directory-reparse-forbidden",
+        )
         try:
             with os.scandir(directory) as iterator:
                 entries = sorted(iterator, key=lambda entry: entry.name.casefold())
@@ -198,14 +222,7 @@ def _scan_path_epubs(
                 )
             except CoreAccessError as exc:
                 raise ReconciliationError("inventory-safe-read-failed") from exc
-            discovered.append(
-                {
-                    "location": relative,
-                    "fingerprint": handle["fingerprint"],
-                    "byte_length": handle["byte_length"],
-                    "media_type": handle["media_type"],
-                }
-            )
+            discovered.append(_inventory_item_from_handle(relative, handle))
     discovered.sort(key=lambda item: item["location"])
     return discovered
 
@@ -260,16 +277,45 @@ def _validate_entry(value: Any) -> dict[str, Any]:
         "superseded_by",
     }
     _require(set(value) == expected, "vs1b-entry-shape-invalid")
-    for key in ("entry_id", "logical_candidate_id", "stored_instance_id", "current_location", "fingerprint", "media_type", "reconciliation_status"):
+    for key in (
+        "entry_id",
+        "logical_candidate_id",
+        "stored_instance_id",
+        "current_location",
+        "media_type",
+        "reconciliation_status",
+    ):
         _require(isinstance(value[key], str) and value[key], f"vs1b-entry-{key}-invalid")
-    _require(isinstance(value["location_history"], list) and all(isinstance(item, str) for item in value["location_history"]), "vs1b-entry-history-invalid")
-    _require(isinstance(value["byte_length"], int) and not isinstance(value["byte_length"], bool) and value["byte_length"] >= 0, "vs1b-entry-byte-length-invalid")
-    _require(value["availability"] in {"known-present", "unavailable-or-unknown", "confirmed-missing-at-location"}, "vs1b-entry-availability-invalid")
+    _require(_valid_sha256(value["fingerprint"]), "vs1b-entry-fingerprint-invalid")
+    _require(
+        isinstance(value["location_history"], list)
+        and all(isinstance(item, str) and item for item in value["location_history"]),
+        "vs1b-entry-history-invalid",
+    )
+    _require(
+        isinstance(value["byte_length"], int)
+        and not isinstance(value["byte_length"], bool)
+        and value["byte_length"] >= 0,
+        "vs1b-entry-byte-length-invalid",
+    )
+    _require(
+        value["availability"]
+        in {"known-present", "unavailable-or-unknown", "confirmed-missing-at-location"},
+        "vs1b-entry-availability-invalid",
+    )
     identity = value["filesystem_identity"]
     if identity is not None:
-        _require(isinstance(identity, dict) and set(identity) == {"device_id", "inode_id"}, "vs1b-entry-identity-invalid")
+        _require(
+            isinstance(identity, dict)
+            and set(identity) == {"device_id", "inode_id"}
+            and all(isinstance(item, int) and not isinstance(item, bool) and item > 0 for item in identity.values()),
+            "vs1b-entry-identity-invalid",
+        )
     superseded = value["superseded_by"]
-    _require(superseded is None or (isinstance(superseded, str) and superseded), "vs1b-entry-superseded-invalid")
+    _require(
+        superseded is None or (isinstance(superseded, str) and superseded),
+        "vs1b-entry-superseded-invalid",
+    )
     return value
 
 
@@ -287,26 +333,54 @@ def validate_state(value: Any, scope_id: str) -> dict[str, Any]:
     _require(set(value) == expected, "vs1b-state-shape-invalid")
     _require(value["state_version"] == VS1B_STATE_VERSION, "vs1b-state-version-unsupported")
     _require(value["scope_id"] == scope_id, "vs1b-state-scope-mismatch")
+
     freshness = value["freshness"]
-    _require(isinstance(freshness, dict) and set(freshness) == {"status", "reason"}, "vs1b-freshness-shape-invalid")
-    _require(freshness["status"] in {"unknown", "reconcile-required", "fresh"}, "vs1b-freshness-status-invalid")
-    _require(isinstance(freshness["reason"], str) and freshness["reason"], "vs1b-freshness-reason-invalid")
+    _require(
+        isinstance(freshness, dict) and set(freshness) == {"status", "reason"},
+        "vs1b-freshness-shape-invalid",
+    )
+    _require(
+        freshness["status"] in {"unknown", "reconcile-required", "fresh"},
+        "vs1b-freshness-status-invalid",
+    )
+    _require(
+        isinstance(freshness["reason"], str) and freshness["reason"],
+        "vs1b-freshness-reason-invalid",
+    )
+
     stream = value["stream"]
     _require(
         isinstance(stream, dict)
-        and set(stream) == {"last_seq", "last_reconciled_seq", "recent_record_ids", "history_compacted"},
+        and set(stream)
+        == {"last_seq", "last_reconciled_seq", "recent_record_ids", "history_compacted"},
         "vs1b-stream-shape-invalid",
     )
     for key in ("last_seq", "last_reconciled_seq"):
         seq = stream[key]
-        _require(seq is None or (isinstance(seq, int) and not isinstance(seq, bool) and seq > 0), f"vs1b-stream-{key}-invalid")
+        _require(
+            seq is None or (isinstance(seq, int) and not isinstance(seq, bool) and seq > 0),
+            f"vs1b-stream-{key}-invalid",
+        )
     recent = stream["recent_record_ids"]
-    _require(isinstance(recent, list) and len(recent) <= MAX_RECENT_RECORD_IDS, "vs1b-stream-recent-invalid")
-    _require(len(recent) == len(set(recent)) and all(isinstance(item, str) and item for item in recent), "vs1b-stream-recent-invalid")
+    _require(
+        isinstance(recent, list)
+        and len(recent) <= MAX_RECENT_RECORD_IDS
+        and len(recent) == len(set(recent))
+        and all(isinstance(item, str) and item for item in recent),
+        "vs1b-stream-recent-invalid",
+    )
     _require(isinstance(stream["history_compacted"], bool), "vs1b-stream-compacted-invalid")
+
     log = value["observation_log"]
-    _require(isinstance(log, list) and len(log) <= MAX_OBSERVATION_LOG, "vs1b-observation-log-invalid")
-    _require(isinstance(value["observation_log_compacted"], bool), "vs1b-observation-log-compacted-invalid")
+    _require(
+        isinstance(log, list) and len(log) <= MAX_OBSERVATION_LOG,
+        "vs1b-observation-log-invalid",
+    )
+    _require(
+        isinstance(value["observation_log_compacted"], bool),
+        "vs1b-observation-log-compacted-invalid",
+    )
+
     entries = value["entries"]
     _require(isinstance(entries, list), "vs1b-entries-invalid")
     seen_entry_ids: set[str] = set()
@@ -368,9 +442,7 @@ def _active_entries_at(state: dict[str, Any], location: str) -> list[dict[str, A
 
 
 def _location_is_within(location: str, prefix: str) -> bool:
-    if prefix == ".":
-        return True
-    return location == prefix or location.startswith(prefix.rstrip("/") + "/")
+    return prefix == "." or location == prefix or location.startswith(prefix.rstrip("/") + "/")
 
 
 def _apply_observation(state: dict[str, Any], adapted: dict[str, Any]) -> None:
@@ -406,9 +478,8 @@ def _apply_observation(state: dict[str, Any], adapted: dict[str, Any]) -> None:
         for entry in state["entries"]:
             if entry["superseded_by"] is not None:
                 continue
-            if (
-                entry["current_location"] == location
-                or (is_directory and _location_is_within(entry["current_location"], location))
+            if entry["current_location"] == location or (
+                is_directory and _location_is_within(entry["current_location"], location)
             ):
                 entry["availability"] = "confirmed-missing-at-location"
                 entry["reconciliation_status"] = "delete-observed"
@@ -486,7 +557,10 @@ def _reconcile_entries(state: dict[str, Any], inventory: list[dict[str, Any]]) -
     for entry in state["entries"]:
         if entry["superseded_by"] is not None:
             continue
-        if entry["entry_id"] not in seen_active_entry_ids and entry["availability"] != "confirmed-missing-at-location":
+        if (
+            entry["entry_id"] not in seen_active_entry_ids
+            and entry["availability"] != "confirmed-missing-at-location"
+        ):
             entry["availability"] = "confirmed-missing-at-location"
             entry["reconciliation_status"] = "missing-after-bounded-inventory"
 
@@ -525,39 +599,46 @@ class Vs1bReconciliationEngine:
         return deepcopy(state)
 
     def consume_jsonl(self, line: str) -> dict[str, Any]:
-        # Parse/adapt before loading or modifying persisted state. Malformed or
-        # out-of-scope input therefore cannot advance the checkpoint.
+        # Adapt before touching persistence. Malformed/out-of-scope evidence cannot
+        # advance the sequence checkpoint.
         adapted = self._adapter.adapt_jsonl(self._scope_id, line)
         revision, payload, state = self._load()
         source_record_id = adapted["source_record_id"]
-        recent = state["stream"]["recent_record_ids"]
-        if source_record_id in recent:
-            return {"status": "duplicate", "source_record_id": source_record_id, "revision": revision}
+        if source_record_id in state["stream"]["recent_record_ids"]:
+            return {
+                "status": "duplicate",
+                "source_record_id": source_record_id,
+                "revision": revision,
+            }
 
         seq = adapted.get("source_seq")
         last_seq = state["stream"]["last_seq"]
-        apply_record = True
+        catalog_was_fresh = state["freshness"]["status"] == "fresh"
+        continuity_trusted = False
         disposition = "applied"
 
         if seq is None:
             _freshness_required(state, "alfred:sequence-unavailable")
-            apply_record = False
             disposition = "continuity-unproven-not-applied"
         elif last_seq is None:
             state["stream"]["last_seq"] = seq
             _freshness_required(state, "alfred:stream-baseline-unproven")
-            apply_record = False
             disposition = "baseline-unproven-not-applied"
         elif seq == last_seq + 1:
             state["stream"]["last_seq"] = seq
+            continuity_trusted = True
         elif seq > last_seq + 1:
             state["stream"]["last_seq"] = seq
             _freshness_required(state, "alfred:sequence-gap")
-            disposition = "applied-after-gap"
+            disposition = "gap-not-applied"
         else:
             _freshness_required(state, "alfred:old-or-out-of-order-record")
-            apply_record = False
             disposition = "old-or-out-of-order-not-applied"
+
+        apply_record = continuity_trusted
+        if continuity_trusted and adapted["authoritative_catalog_evidence"] and not catalog_was_fresh:
+            apply_record = False
+            disposition = "catalog-not-fresh-not-applied"
 
         _remember_source_record(state, source_record_id)
         _append_observation(state, adapted, disposition)
@@ -575,11 +656,14 @@ class Vs1bReconciliationEngine:
         }
 
     def reconcile_inventory(self) -> dict[str, Any]:
-        # Do not mutate persisted state until the full bounded scan succeeds.
+        # No persisted state is changed until the complete scan succeeds.
         inventory = scan_epub_inventory(self._scopes, self._broker, self._scope_id)
         revision, payload, state = self._load()
         _reconcile_entries(state, inventory)
-        state["freshness"] = {"status": "fresh", "reason": "bounded-inventory-complete"}
+        state["freshness"] = {
+            "status": "fresh",
+            "reason": "bounded-inventory-complete",
+        }
         state["stream"]["last_reconciled_seq"] = state["stream"]["last_seq"]
         validate_state(state, self._scope_id)
         payload["vs1b"] = state

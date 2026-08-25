@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 from prototype.p0_vs1.local_process_client import (
+    LocalPluginProcessClient,
     LocalPluginProcessError,
     build_child_environment,
     normalize_product_command,
@@ -59,6 +60,25 @@ class Vs1cChildEnvironmentTests(unittest.TestCase):
             command[1:],
             ["-m", "prototype.p0_vs1.plugins.local_source.plugin"],
         )
+
+    def test_unresponsive_plugin_handshake_times_out_and_can_be_closed(self) -> None:
+        client = LocalPluginProcessClient(
+            [sys.executable, "-c", "import time; time.sleep(5)"],
+            {"permissions": {"resource_hints": {"timeout_seconds": 30}}},
+        )
+        try:
+            with patch(
+                "prototype.p0_vs1.local_process_client.HANDSHAKE_TIMEOUT_SECONDS",
+                0.2,
+            ):
+                with self.assertRaisesRegex(
+                    LocalPluginProcessError,
+                    "response-timeout",
+                ):
+                    client.handshake()
+        finally:
+            client.close()
+        self.assertIsNone(client.process)
 
 
 if __name__ == "__main__":

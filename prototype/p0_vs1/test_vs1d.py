@@ -294,7 +294,7 @@ class EpubExtractionProductTests(Vs1dFixture):
         self.assertIn("concurrent_marker", persisted)
         self.assertNotIn("vs1d", persisted)
 
-    def test_official_manifest_is_local_pathless_and_provider_observation_only(self) -> None:
+    def test_official_manifest_is_local_pathless_and_e05_compatible(self) -> None:
         manifest = json.loads(DEFAULT_MANIFEST_PATH.read_text(encoding="utf-8"))
         self.assertEqual(manifest["plugin"]["plugin_id"], OFFICIAL_EXTRACTOR_PLUGIN_ID)
         self.assertEqual(manifest["permissions"]["network"], [])
@@ -308,7 +308,12 @@ class EpubExtractionProductTests(Vs1dFixture):
             profile["output_classes"],
             ["vs1d-direct-epub-provider-observation"],
         )
-        self.assertEqual(profile["contracts"], [])
+        self.assertEqual(len(profile["contracts"]), 1)
+        self.assertEqual(
+            profile["contracts"][0]["contract_id"],
+            "raiatea.extraction.processing-run",
+        )
+        self.assertNotIn("record_kinds", profile["contracts"][0])
 
 
 class UnsafeEpubExtractionTests(Vs1dFixture):

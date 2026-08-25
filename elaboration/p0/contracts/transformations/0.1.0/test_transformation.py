@@ -79,6 +79,18 @@ class TransformationContractTests(unittest.TestCase):
         with self.assertRaisesRegex(V.TransformationContractError, "input-artifact-handle_id-required"):
             V.validate_transformation(transformation)
 
+    def test_unknown_artifact_ref_field_fails(self):
+        transformation, _ = records()
+        transformation["input_artifact"]["opaque_extra"] = "not-in-schema"
+        with self.assertRaisesRegex(V.TransformationContractError, "input-artifact-unexpected-field:opaque_extra"):
+            V.validate_transformation(transformation)
+
+    def test_unknown_top_level_field_fails(self):
+        transformation, _ = records()
+        transformation["opaque_extra"] = "not-in-schema"
+        with self.assertRaisesRegex(V.TransformationContractError, "transformation-record-unexpected-field:opaque_extra"):
+            V.validate_transformation(transformation)
+
     def test_same_artifact_identity_fails(self):
         transformation, _ = records()
         transformation["output_artifact"]["artifact_id"] = transformation["input_artifact"]["artifact_id"]

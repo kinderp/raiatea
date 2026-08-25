@@ -114,7 +114,21 @@ def _validate_manifest_policy(manifest: dict[str, Any]) -> None:
         profile.get("output_classes") == ["vs1d-direct-epub-provider-observation"],
         "extractor-output-class-invalid",
     )
-    _require(profile.get("contracts") == [], "extractor-plugin-must-not-claim-core-e05-contract")
+    contracts = profile.get("contracts")
+    _require(
+        isinstance(contracts, list) and len(contracts) == 1,
+        "extractor-e05-compatibility-contract-required",
+    )
+    contract = contracts[0]
+    _require(
+        isinstance(contract, dict)
+        and contract.get("contract_id") == "raiatea.extraction.processing-run",
+        "extractor-e05-compatibility-contract-invalid",
+    )
+    _require(
+        "record_kinds" not in contract,
+        "extractor-provider-observation-must-not-claim-e05-record-kinds",
+    )
     entrypoint = manifest.get("entrypoint")
     _require(isinstance(entrypoint, dict), "extractor-entrypoint-required")
     _require(entrypoint.get("kind") == "process", "extractor-entrypoint-kind-invalid")

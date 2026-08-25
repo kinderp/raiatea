@@ -4,6 +4,11 @@
 The payload is intentionally opaque to this module. Later VS1 increments own the
 domain records. Only the internal storage envelope, revision and integrity rules
 are defined here.
+
+VS1a has one Core process and one CatalogStateStore owner. The expected-revision
+check is an optimistic guard inside that owner; it is not advertised as a
+cross-process compare-and-swap primitive. A process-wide/multi-host catalog
+writer protocol is deliberately outside VS1a.
 """
 from __future__ import annotations
 
@@ -14,6 +19,7 @@ import os
 from pathlib import Path
 import stat
 import tempfile
+import threading
 from typing import Any
 
 
@@ -81,13 +87,14 @@ class CatalogSnapshot:
 
 
 class CatalogStateStore:
-    """One-file internal state store with compare-and-swap revision semantics."""
+    """One-file internal state store owned by one VS1 Core process."""
 
     def __init__(self, path: Path) -> None:
         _require(isinstance(path, Path) and path.is_absolute(), "catalog-path-must-be-absolute")
         _assert_parent_safe(path)
         _assert_target_not_reparse(path)
         self._path = path
+        self._lock = threading.RLock()
 
     @property
     def path(self) -> Path:
@@ -123,7 +130,7 @@ class CatalogStateStore:
         _require(raw == canonical, "catalog-envelope-not-canonical")
         return CatalogSnapshot(revision=revision, payload=payload)
 
-    def load(self) -> CatalogSnapshot | None:
+    def _load_unlocked(self) -> CatalogSnapshot | None:
         _assert_parent_safe(self._path)
         _assert_target_not_reparse(self._path)
         if not os.path.lexists(os.fspath(self._path)):
@@ -134,6 +141,10 @@ class CatalogStateStore:
             raise CatalogStoreError("catalog-read-failed") from exc
         return self._decode(raw)
 
+    def load(self) -> CatalogSnapshot | None:
+        with self._lock:
+            return self._load_unlocked()
+
     def save(self, payload: dict[str, Any], *, expected_revision: int) -> CatalogSnapshot:
         _require(isinstance(payload, dict), "catalog-payload-must-be-object")
         _require(
@@ -142,49 +153,53 @@ class CatalogStateStore:
             and expected_revision >= 0,
             "catalog-expected-revision-invalid",
         )
-        current = self.load()
-        current_revision = 0 if current is None else current.revision
-        _require(current_revision == expected_revision, "catalog-stale-expected-revision")
+        with self._lock:
+            current = self._load_unlocked()
+            current_revision = 0 if current is None else current.revision
+            _require(current_revision == expected_revision, "catalog-stale-expected-revision")
 
-        new_revision = current_revision + 1
-        payload_bytes = _canonical_json(payload)
-        envelope = {
-            "store_version": STORE_VERSION,
-            "revision": new_revision,
-            "payload_sha256": _sha256(payload_bytes),
-            "payload": payload,
-        }
-        encoded = _canonical_json(envelope)
+            new_revision = current_revision + 1
+            payload_bytes = _canonical_json(payload)
+            envelope = {
+                "store_version": STORE_VERSION,
+                "revision": new_revision,
+                "payload_sha256": _sha256(payload_bytes),
+                "payload": payload,
+            }
+            encoded = _canonical_json(envelope)
 
-        _assert_parent_safe(self._path)
-        _assert_target_not_reparse(self._path)
-        descriptor, temporary_name = tempfile.mkstemp(
-            prefix=f".{self._path.name}.",
-            suffix=".tmp",
-            dir=self._path.parent,
-        )
-        temporary = Path(temporary_name)
-        try:
-            with os.fdopen(descriptor, "wb", closefd=True) as stream:
-                stream.write(encoded)
-                stream.flush()
-                os.fsync(stream.fileno())
+            _assert_parent_safe(self._path)
             _assert_target_not_reparse(self._path)
-            os.replace(temporary, self._path)
-            if os.name != "nt":
-                parent_fd = os.open(self._path.parent, os.O_RDONLY | os.O_DIRECTORY)
-                try:
-                    os.fsync(parent_fd)
-                finally:
-                    os.close(parent_fd)
-        except Exception:
+            descriptor, temporary_name = tempfile.mkstemp(
+                prefix=f".{self._path.name}.",
+                suffix=".tmp",
+                dir=self._path.parent,
+            )
+            temporary = Path(temporary_name)
             try:
-                temporary.unlink(missing_ok=True)
-            except OSError:
-                pass
-            raise
+                with os.fdopen(descriptor, "wb", closefd=True) as stream:
+                    stream.write(encoded)
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                _assert_target_not_reparse(self._path)
+                os.replace(temporary, self._path)
+                if os.name != "nt":
+                    parent_fd = os.open(self._path.parent, os.O_RDONLY | os.O_DIRECTORY)
+                    try:
+                        os.fsync(parent_fd)
+                    finally:
+                        os.close(parent_fd)
+            except Exception:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise
 
-        loaded = self.load()
-        _require(loaded is not None and loaded.revision == new_revision, "catalog-post-write-verification-failed")
-        _require(loaded.payload == payload, "catalog-post-write-payload-mismatch")
-        return loaded
+            loaded = self._load_unlocked()
+            _require(
+                loaded is not None and loaded.revision == new_revision,
+                "catalog-post-write-verification-failed",
+            )
+            _require(loaded.payload == payload, "catalog-post-write-payload-mismatch")
+            return loaded

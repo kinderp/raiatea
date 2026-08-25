@@ -14,7 +14,7 @@ import stat
 from typing import Any
 
 from prototype.p0_vs1.alfred_observation import AlfredObservationAdapter
-from prototype.p0_vs1.catalog_store import CatalogStateStore
+from prototype.p0_vs1.catalog_store import CatalogStateStore, CatalogStoreError
 from prototype.p0_vs1.core_access import AssetBroker, CoreAccessError, ScopeRegistry
 
 
@@ -308,7 +308,10 @@ def _validate_entry(value: Any) -> dict[str, Any]:
         _require(
             isinstance(identity, dict)
             and set(identity) == {"device_id", "inode_id"}
-            and all(isinstance(item, int) and not isinstance(item, bool) and item > 0 for item in identity.values()),
+            and all(
+                isinstance(item, int) and not isinstance(item, bool) and item > 0
+                for item in identity.values()
+            ),
             "vs1b-entry-identity-invalid",
         )
     superseded = value["superseded_by"]
@@ -656,9 +659,12 @@ class Vs1bReconciliationEngine:
         }
 
     def reconcile_inventory(self) -> dict[str, Any]:
-        # No persisted state is changed until the complete scan succeeds.
-        inventory = scan_epub_inventory(self._scopes, self._broker, self._scope_id)
+        # Capture the persisted revision before scanning. If Alfred evidence or
+        # another reconciliation changes state while the scan is in progress,
+        # the guarded save below must fail instead of publishing a stale scan as
+        # fresh catalog truth.
         revision, payload, state = self._load()
+        inventory = scan_epub_inventory(self._scopes, self._broker, self._scope_id)
         _reconcile_entries(state, inventory)
         state["freshness"] = {
             "status": "fresh",
@@ -667,7 +673,10 @@ class Vs1bReconciliationEngine:
         state["stream"]["last_reconciled_seq"] = state["stream"]["last_seq"]
         validate_state(state, self._scope_id)
         payload["vs1b"] = state
-        saved = self._store.save(payload, expected_revision=revision)
+        try:
+            saved = self._store.save(payload, expected_revision=revision)
+        except CatalogStoreError as exc:
+            raise ReconciliationError("inventory-state-changed-during-scan") from exc
         return {
             "revision": saved.revision,
             "inventory_count": len(inventory),

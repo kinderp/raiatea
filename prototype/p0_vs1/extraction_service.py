@@ -398,6 +398,24 @@ class LocalEpubExtractionService:
             result=result,
         )
 
+        # The extractor worked from the exact private copy created above. Before
+        # publishing that representation, re-open the original source through the
+        # already-issued VS1a handle. If the source was replaced, moved, removed or
+        # changed while the plugin ran, VS1a's handle fingerprint/length boundary
+        # fails and the older representation is not promoted as current content.
+        try:
+            final_source_bytes = self._source_broker.read_asset(source_handle)
+        except CoreAccessError as exc:
+            raise EpubExtractionError(
+                f"extraction-source-changed-during-plugin-run:{exc}"
+            ) from exc
+        _require(
+            len(final_source_bytes) == source_ref["byte_length"]
+            and hashlib.sha256(final_source_bytes).hexdigest()
+            == source_ref["fingerprint"].removeprefix("sha256:"),
+            "extraction-source-changed-during-plugin-run",
+        )
+
         payload = deepcopy(catalog_snapshot.payload)
         existing: list[dict[str, Any]] = []
         prior = payload.get("vs1d")

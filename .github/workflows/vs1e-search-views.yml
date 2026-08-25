@@ -35,6 +35,9 @@ jobs:
           prototype/p0_vs1
           elaboration/p0/gates/g06
       - name: Run VS1e product search tests
-        run: python -m unittest prototype.p0_vs1.test_vs1e -v
+        run: |
+          python -m unittest prototype.p0_vs1.test_vs1e -v
+          python -m unittest prototype.p0_vs1.test_vs1e_snapshot_consistency -v
       - name: Re-run accepted G-06 deterministic proof
-        run: python -m unittest elaboration.p0.gates.g06.test_search_view_proof -v
+        working-directory: elaboration/p0/gates/g06
+        run: python -m unittest test_search_view_proof.py -v

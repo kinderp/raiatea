@@ -80,7 +80,7 @@ jobs:
         run: python -m unittest elaboration.p0.plugins.proofs.v1d.test_proof_plugins -v
 
   schema-reference:
-    name: VS1d product manifest JSON Schema reference
+    name: VS1d product + E-05 JSON Schema reference
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -102,4 +102,75 @@ jobs:
           if errors:
               raise SystemExit('\n'.join(f'{list(e.path)}: {e.message}' for e in errors))
           print('PASS prototype/p0_vs1/plugins/direct_epub/manifest.json')
+          PY
+      - name: Validate representative VS1d E-05 records against accepted schema
+        run: |
+          python - <<'PY'
+          import hashlib
+          import importlib.util
+          import json
+          from pathlib import Path
+          import tempfile
+          from jsonschema import Draft202012Validator
+
+          from prototype.p0_vs1.extraction_contract import build_extraction_bundle
+
+          repo = Path('.')
+          generator_path = repo / 'elaboration/p0/benchmark/generate_fixtures.py'
+          route_path = repo / 'elaboration/p0/benchmark/routes/epub_routes.py'
+          adapter_path = repo / 'elaboration/p0/contracts/extraction/0.1.0/adapt_benchmark.py'
+
+          def load(name, path):
+              spec = importlib.util.spec_from_file_location(name, path)
+              module = importlib.util.module_from_spec(spec)
+              assert spec.loader is not None
+              spec.loader.exec_module(module)
+              return module
+
+          generator = load('vs1d_schema_generator', generator_path)
+          route = load('vs1d_schema_route', route_path)
+          adapter = load('vs1d_schema_adapter', adapter_path)
+
+          with tempfile.TemporaryDirectory() as temporary:
+              epub = Path(temporary) / 'B02-EPUB-001.epub'
+              generator.generate_epub_spine(epub)
+              fingerprint = 'sha256:' + hashlib.sha256(epub.read_bytes()).hexdigest()
+              source_ref_id = 'source-ref:' + '1' * 64
+              observation = route.parse_direct_epub(epub)
+              adapted = adapter.adapt_direct_epub_observation(
+                  observation,
+                  source_id=source_ref_id,
+                  fingerprint=fingerprint,
+                  python_version='3.12.14',
+              )
+              bundle = build_extraction_bundle(
+                  source_ref_id=source_ref_id,
+                  source_fingerprint=fingerprint,
+                  adapted=adapted,
+              )
+
+          schema = json.loads((repo / 'elaboration/p0/contracts/extraction/0.1.0/processing-run.schema.json').read_text())
+          definitions = schema['$defs']
+          kind_to_schema = {
+              'ProcessingRunRecord': schema,
+              'ProviderEvidenceRecord': {
+                  '$schema': schema['$schema'],
+                  '$defs': definitions,
+                  '$ref': '#/$defs/ProviderEvidenceRecord',
+              },
+              'NormalizedRepresentationRecord': {
+                  '$schema': schema['$schema'],
+                  '$defs': definitions,
+                  '$ref': '#/$defs/NormalizedRepresentationRecord',
+              },
+          }
+          for ref in bundle['record_refs']:
+              record = bundle['records'][ref['ref_id']]
+              validator = Draft202012Validator(kind_to_schema[ref['record_kind']])
+              errors = sorted(validator.iter_errors(record), key=lambda e: list(e.path))
+              if errors:
+                  raise SystemExit('\n'.join(
+                      f"{ref['record_kind']} {list(e.path)}: {e.message}" for e in errors
+                  ))
+              print('PASS', ref['record_kind'], ref['ref_id'])
           PY

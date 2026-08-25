@@ -1,0 +1,34 @@
+name: E-07a G-03 reconciliation proof
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/gates/g03/**"
+      - ".github/workflows/e07a-g03-reconciliation-proof.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/gates/g03/**"
+      - ".github/workflows/e07a-g03-reconciliation-proof.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    name: G-03 / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile proof
+        run: python -m compileall -q elaboration/p0/gates/g03
+      - name: Run conservative reconciliation proof
+        working-directory: elaboration/p0/gates/g03
+        run: python -m unittest test_reconciliation_proof.py -v

@@ -10,9 +10,9 @@ VS1c gave Raiatea a replaceable, path-free `SourceReference` for each current
 local EPUB source. VS1d adds the next product capability:
 
 > **Raiatea can resolve an accepted SourceReference to the current local EPUB,
-> extract its content and structure through a replaceable ExtractorPlugin, and
-> retain the resulting E-05 records with real product provenance and EPUB source
-> coordinates in the persistent catalog.**
+> extract its content and structure through a replaceable ExtractorPlugin, then
+> normalize and retain the resulting E-05 records with real product provenance
+> and EPUB source coordinates in the persistent catalog.**
 
 Before VS1d:
 
@@ -38,11 +38,13 @@ Core-private extractor workspace copy
         ↓
 official direct EPUB ExtractorPlugin
         ↓
-product direct EPUB parser + product E-05 adapter
+provider-native DirectEpubObservation
         ↓
-E-05 ProcessingRun / ProviderEvidence / NormalizedRepresentation
+Raiatea Core E-05 adapter
         ↓
-Core validation + physical-source fence + revision-fenced persistence
+ProcessingRun / ProviderEvidence / NormalizedRepresentation
+        ↓
+physical-source fence + revision-fenced persistence
 ```
 
 ## Path and byte boundary
@@ -109,14 +111,22 @@ extract.run / epub-direct-stdlib
 
 The product implementation carries forward the behavior previously proven by
 the benchmark route, but runtime product code no longer imports the benchmark
-parser or the benchmark-only E-05 adapter.
+parser or benchmark-only adapter.
 
-Product-owned components are:
+Product-owned components are now deliberately split by ownership:
 
 ```text
 prototype/p0_vs1/plugins/direct_epub/route.py
-prototype/p0_vs1/plugins/direct_epub/e05_adapter.py
+    provider-side EPUB parser
+
 prototype/p0_vs1/plugins/direct_epub/plugin.py
+    out-of-process ExtractorPlugin transport boundary
+
+prototype/p0_vs1/epub_observation_contract.py
+    bounded provider-observation contract
+
+prototype/p0_vs1/epub_e05_adapter.py
+    Core-owned E-05 normalization
 ```
 
 The benchmark generator remains test-fixture infrastructure only.
@@ -127,12 +137,36 @@ The parser:
 - rejects absolute, traversal, backslash and other unsafe package-member names;
 - parses container, OPF manifest/spine, XHTML blocks and navigation;
 - records active-content presence without executing it;
-- emits package/resource/fragment evidence for later E-05 normalization.
+- emits package/resource/fragment evidence.
 
-The product E-05 adapter emits the `official-local-extractor` channel and uses
-real extraction start/end timestamps. No `benchmark-normalized-view`, benchmark
-payload locator or fixed benchmark timestamp is allowed in persisted product
-provenance.
+## Provider evidence != Core normalization
+
+A key VS1d review rule is:
+
+```text
+ExtractorPlugin observation
+        !=
+Raiatea Core normalized representation
+```
+
+The plugin now emits only a bounded `DirectEpubProviderObservationBundle` through
+its write-once output target. It does **not** claim E-05 record refs and it does
+not create a stage whose executor is `raiatea-core`.
+
+After validating the provider bundle, Raiatea Core runs
+`epub_e05_adapter.py`. Only at that point does the system create:
+
+- `ProviderEvidenceRecord` for the parser-native observation;
+- the `normalization` stage with `executor.kind = raiatea-core`;
+- `NormalizedRepresentationRecord`;
+- the final `ProcessingRunRecord` tying both stages together.
+
+This makes the provenance truthful and prepares Raiatea to compare future
+extractors while keeping one stable normalized model.
+
+The Core E-05 adapter emits the `official-local-extractor` channel and uses real
+execution timestamps. No `benchmark-normalized-view`, benchmark payload locator
+or fixed benchmark timestamp is allowed in persisted product provenance.
 
 ## Publishable E-05 boundary
 
@@ -144,6 +178,8 @@ VS1d distinguishes:
 ```text
 Runtime process completed
         !=
+provider observation accepted
+        !=
 E-05 ProcessingRun execution completed
         !=
 publishable current representation
@@ -152,18 +188,17 @@ publishable current representation
 For the promoted direct EPUB product route, the persistent current extraction
 requires:
 
+- a valid provider-observation bundle bound to the exact SourceReference and fingerprint;
 - valid `ProcessingRunRecord`;
 - valid `ProviderEvidenceRecord`;
 - `ProcessingRun.outcome.execution = completed`;
-- one valid `NormalizedRepresentationRecord`;
-- exact source-ref/fingerprint binding;
+- one valid `NormalizedRepresentationRecord` created by Core;
 - exact promoted provider/route/profile;
-- product provenance and no path authority;
+- product provenance and no host-path authority;
 - semantic E-05 validation and JSON Schema reference validation.
 
-A rejected/failed EPUB is therefore observable as a failed extraction attempt at
-the process boundary but is never silently published as current catalog
-content.
+A rejected/failed EPUB can produce a valid provider observation, but Core refuses
+to promote it to current extracted catalog content.
 
 ## Source coordinates
 
@@ -194,8 +229,9 @@ Publication is blocked when:
 - Stored Instance identity/fingerprint/length/media no longer match;
 - the physical source changes before or during plugin execution;
 - the catalog revision changes while the plugin is running;
-- the plugin output is tampered, noncanonical, semantically invalid or
-  schema-incompatible;
+- provider observation is tampered, noncanonical or source-mismatched;
+- the plugin tries to claim Core-owned E-05 record refs;
+- Core-normalized E-05 is semantically invalid or schema-incompatible;
 - E-05 reports a non-publishable execution outcome.
 
 ## Validation evidence
@@ -205,10 +241,11 @@ The final-candidate CI covers:
 - Ubuntu and Windows;
 - Python 3.10 and 3.12;
 - real out-of-process product extraction;
+- provider-observation -> Core-normalization ownership boundary;
 - source-version publication fence;
 - product provenance fence;
 - product manifest schema validation;
-- actual product-generated E-05 JSON Schema validation;
+- actual Core-generated E-05 JSON Schema validation;
 - VS1a/VS1b/VS1c regressions;
 - accepted Plugin Runtime/transport/manifest and v1d proof regressions.
 
@@ -223,8 +260,9 @@ THIS source exists and is currently valid
 and:
 
 ```text
-THIS is the current content/structure extracted from that exact source,
-by this extractor route, with this provenance and these source coordinates.
+THIS provider observed these document facts,
+and THIS is the current normalized content/structure Raiatea derived from them,
+with this provenance and these source coordinates.
 ```
 
 It still cannot expose product search, Views or Smart Collections. Those are the

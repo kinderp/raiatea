@@ -17,6 +17,10 @@ SOURCE_BUNDLE_VERSION = "raiatea.vs1c.source-reference-bundle.0.1.0"
 SOURCE_REFERENCE_CONTRACT_ID = "raiatea.vs1.source-reference"
 SOURCE_REFERENCE_CONTRACT_VERSION = "0.1.0"
 EPUB_MEDIA_TYPE = "application/epub+zip"
+# The Runtime result carries one record-ref per discovered source in a single
+# JSON-RPC frame. Keep VS1c intentionally bounded below the accepted 256 KiB
+# transport frame; scalable pagination/batching is a later product increment.
+MAX_DISCOVERY_ITEMS = 512
 
 
 class SourceContractError(ValueError):
@@ -122,6 +126,7 @@ def validate_discovery_snapshot(value: Any) -> dict[str, Any]:
     _require(snapshot["freshness"] == "fresh", "discovery-snapshot-must-be-fresh")
     items = snapshot["items"]
     _require(isinstance(items, list), "discovery-items-must-be-array")
+    _require(len(items) <= MAX_DISCOVERY_ITEMS, "discovery-item-limit-exceeded")
     seen_entries: set[str] = set()
     normalized: list[dict[str, Any]] = []
     for row in items:
@@ -258,6 +263,7 @@ def validate_source_reference_bundle(value: Any) -> dict[str, Any]:
     refs = bundle["record_refs"]
     records = bundle["records"]
     _require(isinstance(refs, list), "source-bundle-record-refs-must-be-array")
+    _require(len(refs) <= MAX_DISCOVERY_ITEMS, "source-record-ref-limit-exceeded")
     _require(isinstance(records, dict), "source-bundle-records-must-be-object")
     seen: set[str] = set()
     ref_ids: list[str] = []

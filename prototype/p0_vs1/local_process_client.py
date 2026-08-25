@@ -17,14 +17,33 @@ from typing import Any, BinaryIO, Sequence
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[1]
-TRANSPORT_ROOT = REPO_ROOT / "elaboration" / "p0" / "contracts" / "plugins" / "transport" / "0.1.0"
-RUNTIME_VALIDATOR_PATH = REPO_ROOT / "elaboration" / "p0" / "contracts" / "plugins" / "runtime" / "1.0.0" / "validate_runtime.py"
+TRANSPORT_ROOT = (
+    REPO_ROOT / "elaboration" / "p0" / "contracts" / "plugins" / "transport" / "0.1.0"
+)
+RUNTIME_VALIDATOR_PATH = (
+    REPO_ROOT
+    / "elaboration"
+    / "p0"
+    / "contracts"
+    / "plugins"
+    / "runtime"
+    / "1.0.0"
+    / "validate_runtime.py"
+)
 if str(TRANSPORT_ROOT) not in sys.path:
     sys.path.insert(0, str(TRANSPORT_ROOT))
 
-from transport import MAX_FRAME_BYTES, TransportError, decode_frame, encode_frame, request_message  # noqa: E402
+from transport import (  # noqa: E402
+    MAX_FRAME_BYTES,
+    TransportError,
+    decode_frame,
+    encode_frame,
+    request_message,
+)
 
-_RUNTIME_SPEC = importlib.util.spec_from_file_location("vs1c_runtime_validator", RUNTIME_VALIDATOR_PATH)
+_RUNTIME_SPEC = importlib.util.spec_from_file_location(
+    "vs1c_runtime_validator", RUNTIME_VALIDATOR_PATH
+)
 RUNTIME = importlib.util.module_from_spec(_RUNTIME_SPEC)
 assert _RUNTIME_SPEC.loader is not None
 _RUNTIME_SPEC.loader.exec_module(RUNTIME)
@@ -70,7 +89,7 @@ class LocalPluginProcessClient:
         while True:
             try:
                 chunk = pipe.read(8192)
-            except OSError:
+            except (OSError, ValueError):
                 return
             if not chunk:
                 return
@@ -87,7 +106,9 @@ class LocalPluginProcessClient:
         env.update(self.extra_env)
         python_path = env.get("PYTHONPATH", "")
         repo_text = os.fspath(REPO_ROOT)
-        env["PYTHONPATH"] = repo_text if not python_path else repo_text + os.pathsep + python_path
+        env["PYTHONPATH"] = (
+            repo_text if not python_path else repo_text + os.pathsep + python_path
+        )
         self.process = subprocess.Popen(
             self.command,
             cwd=REPO_ROOT,
@@ -120,12 +141,16 @@ class LocalPluginProcessClient:
         if process.stdin is None:
             raise LocalPluginProcessError("vs1c-plugin-stdin-unavailable")
         if process.poll() is not None:
-            raise LocalPluginProcessExited(f"vs1c-plugin-exited-before-write:{process.returncode}")
+            raise LocalPluginProcessExited(
+                f"vs1c-plugin-exited-before-write:{process.returncode}"
+            )
         try:
             process.stdin.write(encode_frame(message))
             process.stdin.flush()
         except BrokenPipeError as exc:
-            raise LocalPluginProcessExited(f"vs1c-plugin-broken-pipe:{process.poll()}") from exc
+            raise LocalPluginProcessExited(
+                f"vs1c-plugin-broken-pipe:{process.poll()}"
+            ) from exc
 
     def _read(self) -> dict[str, Any]:
         process = self._require_process()
@@ -139,11 +164,15 @@ class LocalPluginProcessClient:
                     returncode = process.wait(timeout=0.2)
                 except subprocess.TimeoutExpired:
                     pass
-            raise LocalPluginProcessExited(f"vs1c-plugin-exited-before-response:{returncode}")
+            raise LocalPluginProcessExited(
+                f"vs1c-plugin-exited-before-response:{returncode}"
+            )
         try:
             return decode_frame(raw)
         except TransportError as exc:
-            raise LocalPluginProcessError(f"vs1c-plugin-frame-invalid:{exc}") from exc
+            raise LocalPluginProcessError(
+                f"vs1c-plugin-frame-invalid:{exc}"
+            ) from exc
 
     def _notification(self, message: dict[str, Any]) -> None:
         if message.get("method") != "raiatea.diagnostic":
@@ -154,7 +183,9 @@ class LocalPluginProcessClient:
         if self.handshake_record is not None:
             runtime_id = self.handshake_record["identity"]["runtime_instance_id"]
             if value.get("runtime_instance_id") != runtime_id:
-                raise LocalPluginProcessError("vs1c-plugin-diagnostic-runtime-mismatch")
+                raise LocalPluginProcessError(
+                    "vs1c-plugin-diagnostic-runtime-mismatch"
+                )
         self.diagnostics.append(value)
 
     def _request(self, method: str, params: dict[str, Any]) -> Any:
@@ -165,23 +196,33 @@ class LocalPluginProcessClient:
             message = self._read()
             if "method" in message:
                 if "id" in message:
-                    raise LocalPluginProcessError("vs1c-plugin-initiated-request-forbidden")
+                    raise LocalPluginProcessError(
+                        "vs1c-plugin-initiated-request-forbidden"
+                    )
                 notifications += 1
                 if notifications > MAX_NOTIFICATIONS_BEFORE_RESPONSE:
-                    raise LocalPluginProcessError("vs1c-plugin-too-many-notifications")
+                    raise LocalPluginProcessError(
+                        "vs1c-plugin-too-many-notifications"
+                    )
                 self._notification(message)
                 continue
             response_id = message.get("id")
             if response_id in self._seen_response_ids:
-                raise LocalPluginProcessError("vs1c-plugin-duplicate-response-id")
+                raise LocalPluginProcessError(
+                    "vs1c-plugin-duplicate-response-id"
+                )
             if response_id != request_id:
-                raise LocalPluginProcessError("vs1c-plugin-unexpected-response-id")
+                raise LocalPluginProcessError(
+                    "vs1c-plugin-unexpected-response-id"
+                )
             self._seen_response_ids.add(response_id)
             if "error" in message:
                 error = message["error"]
                 code = error.get("code") if isinstance(error, dict) else None
                 text = error.get("message") if isinstance(error, dict) else None
-                raise LocalPluginProcessError(f"vs1c-plugin-remote-protocol-error:{code}:{text}")
+                raise LocalPluginProcessError(
+                    f"vs1c-plugin-remote-protocol-error:{code}:{text}"
+                )
             return message.get("result")
 
     def handshake(self) -> dict[str, Any]:
@@ -189,28 +230,40 @@ class LocalPluginProcessClient:
             self.start()
         result = self._request("raiatea.handshake", {})
         if not isinstance(result, dict):
-            raise LocalPluginProcessError("vs1c-plugin-handshake-result-invalid")
+            raise LocalPluginProcessError(
+                "vs1c-plugin-handshake-result-invalid"
+            )
         try:
             RUNTIME.validate_handshake(result, self.manifest)
         except Exception as exc:
-            raise LocalPluginProcessError(f"vs1c-plugin-handshake-contract-invalid:{exc}") from exc
+            raise LocalPluginProcessError(
+                f"vs1c-plugin-handshake-contract-invalid:{exc}"
+            ) from exc
         self.handshake_record = result
         return result
 
     def invoke(self, request: dict[str, Any]) -> dict[str, Any]:
         if self.handshake_record is None:
-            raise LocalPluginProcessError("vs1c-plugin-invoke-before-handshake")
+            raise LocalPluginProcessError(
+                "vs1c-plugin-invoke-before-handshake"
+            )
         try:
-            RUNTIME.validate_invocation(request, self.manifest, self.handshake_record)
+            RUNTIME.validate_invocation(
+                request, self.manifest, self.handshake_record
+            )
         except Exception as exc:
-            raise LocalPluginProcessError(f"vs1c-plugin-invocation-contract-invalid:{exc}") from exc
+            raise LocalPluginProcessError(
+                f"vs1c-plugin-invocation-contract-invalid:{exc}"
+            ) from exc
         result = self._request("raiatea.invoke", request)
         if not isinstance(result, dict):
             raise LocalPluginProcessError("vs1c-plugin-result-invalid")
         try:
             RUNTIME.validate_result(result, request, self.manifest, set())
         except Exception as exc:
-            raise LocalPluginProcessError(f"vs1c-plugin-result-contract-invalid:{exc}") from exc
+            raise LocalPluginProcessError(
+                f"vs1c-plugin-result-contract-invalid:{exc}"
+            ) from exc
         return result
 
     def close(self) -> None:
@@ -231,6 +284,13 @@ class LocalPluginProcessClient:
             process.wait(timeout=2)
         if self._stderr_thread is not None:
             self._stderr_thread.join(timeout=2)
+        for pipe in (process.stdout, process.stderr):
+            if pipe is not None and not pipe.closed:
+                try:
+                    pipe.close()
+                except OSError:
+                    pass
+        self._stderr_thread = None
         self.process = None
 
     def __enter__(self) -> "LocalPluginProcessClient":

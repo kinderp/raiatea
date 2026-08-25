@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """VS1e deterministic structured-search contracts and pure evaluation.
 
-This module is intentionally internal/revisable for the first product slice. It
-contains no natural-language, LLM, vector, regex, scripting or filesystem action
-surface.
+This internal first-slice contract intentionally exposes no natural-language,
+LLM, vector, regex, scripting or filesystem-action surface.
 """
 from __future__ import annotations
 
@@ -117,10 +116,10 @@ def _exact(value: Any, keys: set[str], label: str) -> dict[str, Any]:
     return value
 
 
-def _require_scalar_text(value: Any, label: str) -> str:
+def _text(value: Any, label: str) -> str:
     _require(not isinstance(value, bool), f"{label}-bool-forbidden")
     _require(isinstance(value, str) and value, f"{label}-must-be-nonempty-text")
-    return value.casefold()
+    return value
 
 
 def normalize_query_plan(value: Any) -> dict[str, Any]:
@@ -128,27 +127,37 @@ def normalize_query_plan(value: Any) -> dict[str, Any]:
     criteria = plan["criteria"]
     _require(isinstance(criteria, list), "query-criteria-must-be-array")
     _require(len(criteria) <= MAX_QUERY_CRITERIA, "query-criteria-limit-exceeded")
+
     normalized: list[dict[str, str]] = []
     for index, raw in enumerate(criteria):
         row = _exact(raw, {"field", "operator", "value"}, f"criterion-{index}")
-        field = row["field"]
-        operator = row["operator"]
-        _require(isinstance(field, str) and field, f"criterion-{index}-field-required")
-        _require(field not in FORBIDDEN_AUTHORITY_FIELDS, f"query-authority-field-forbidden:{field}")
+        field = _text(row["field"], f"criterion-{index}-field")
+        operator = _text(row["operator"], f"criterion-{index}-operator")
+        _require(
+            field not in FORBIDDEN_AUTHORITY_FIELDS,
+            f"query-authority-field-forbidden:{field}",
+        )
         operators = FILTER_OPERATORS.get(field)
         _require(operators is not None, f"unsupported-filter-field:{field}")
-        _require(operator in operators, f"unsupported-filter-operator:{field}:{operator}")
+        _require(
+            operator in operators,
+            f"unsupported-filter-operator:{field}:{operator}",
+        )
         normalized.append(
             {
                 "field": field,
                 "operator": operator,
-                "value": _require_scalar_text(row["value"], f"criterion-{index}-value"),
+                "value": _text(row["value"], f"criterion-{index}-value").casefold(),
             }
         )
     normalized.sort(key=lambda row: (row["field"], row["operator"], row["value"]))
-    sort_field = plan["sort_field"]
+
+    sort_field = _text(plan["sort_field"], "query-sort-field")
     _require(sort_field in SORT_FIELDS, f"unsupported-sort-field:{sort_field}")
-    _require(isinstance(plan["descending"], bool), "query-descending-must-be-boolean")
+    _require(
+        isinstance(plan["descending"], bool),
+        "query-descending-must-be-boolean",
+    )
     return {
         "criteria": normalized,
         "sort_field": sort_field,
@@ -171,7 +180,11 @@ def validate_search_unit(value: Any) -> dict[str, Any]:
     spine = unit["spine_index"]
     _require(
         spine is None
-        or (isinstance(spine, int) and not isinstance(spine, bool) and spine >= 0),
+        or (
+            isinstance(spine, int)
+            and not isinstance(spine, bool)
+            and spine >= 0
+        ),
         "search-unit-spine-index-invalid",
     )
     return unit
@@ -207,7 +220,10 @@ def validate_index_source(value: Any) -> dict[str, Any]:
         isinstance(source["media_type"], str) and source["media_type"],
         "search-source-media-type-required",
     )
-    _require(_valid_sha256(source["fingerprint"]), "search-source-fingerprint-invalid")
+    _require(
+        _valid_sha256(source["fingerprint"]),
+        "search-source-fingerprint-invalid",
+    )
     _require(
         isinstance(source["unit_count"], int)
         and not isinstance(source["unit_count"], bool)
@@ -216,20 +232,20 @@ def validate_index_source(value: Any) -> dict[str, Any]:
     )
     units = source["units"]
     _require(isinstance(units, list), "search-source-units-must-be-array")
-    _require(len(units) <= MAX_UNITS_PER_SOURCE, "search-source-unit-limit-exceeded")
-    _require(source["unit_count"] == len(units), "search-source-unit-count-mismatch")
-    seen: set[str] = set()
-    normalized: list[dict[str, Any]] = []
+    _require(
+        len(units) <= MAX_UNITS_PER_SOURCE,
+        "search-source-unit-limit-exceeded",
+    )
+    _require(
+        source["unit_count"] == len(units),
+        "search-source-unit-count-mismatch",
+    )
+    unit_ids: list[str] = []
     for raw in units:
         unit = validate_search_unit(raw)
-        _require(unit["unit_id"] not in seen, "search-unit-id-duplicate")
-        seen.add(unit["unit_id"])
-        normalized.append(unit)
-    _require(
-        [row["unit_id"] for row in normalized]
-        == sorted(row["unit_id"] for row in normalized),
-        "search-units-not-canonical-order",
-    )
+        _require(unit["unit_id"] not in unit_ids, "search-unit-id-duplicate")
+        unit_ids.append(unit["unit_id"])
+    _require(unit_ids == sorted(unit_ids), "search-units-not-canonical-order")
     return source
 
 
@@ -245,7 +261,10 @@ def validate_search_index(value: Any) -> dict[str, Any]:
         },
         "search-index",
     )
-    _require(index["index_version"] == SEARCH_INDEX_VERSION, "search-index-version-unsupported")
+    _require(
+        index["index_version"] == SEARCH_INDEX_VERSION,
+        "search-index-version-unsupported",
+    )
     _opaque(index["scope_ref"], "search-index-scope-ref")
     _require(
         isinstance(index["built_from_catalog_revision"], int)
@@ -259,13 +278,22 @@ def validate_search_index(value: Any) -> dict[str, Any]:
     )
     sources = index["sources"]
     _require(isinstance(sources, list), "search-index-sources-must-be-array")
-    _require(len(sources) <= MAX_INDEX_SOURCES, "search-index-source-limit-exceeded")
-    ids: list[str] = []
+    _require(
+        len(sources) <= MAX_INDEX_SOURCES,
+        "search-index-source-limit-exceeded",
+    )
+    source_ids: list[str] = []
     for raw in sources:
         source = validate_index_source(raw)
-        _require(source["source_ref_id"] not in ids, "search-index-source-id-duplicate")
-        ids.append(source["source_ref_id"])
-    _require(ids == sorted(ids), "search-index-sources-not-canonical-order")
+        _require(
+            source["source_ref_id"] not in source_ids,
+            "search-index-source-id-duplicate",
+        )
+        source_ids.append(source["source_ref_id"])
+    _require(
+        source_ids == sorted(source_ids),
+        "search-index-sources-not-canonical-order",
+    )
     return index
 
 
@@ -291,7 +319,6 @@ def _source_criterion_match(
 
     matched: set[str] = set()
     for unit in source["units"]:
-        observed: str | None = None
         if field == "extracted_text":
             observed = unit["surface"]
             ok = isinstance(observed, str) and value in observed.casefold()
@@ -356,16 +383,16 @@ def run_search(
     matches: list[tuple[dict[str, Any], list[str]]] = []
     for source in index["sources"]:
         evidence: set[str] = set()
-        accepted = True
         for criterion in normalized["criteria"]:
             ok, refs = _source_criterion_match(source, criterion)
             if not ok:
-                accepted = False
                 break
             evidence.update(refs)
-        if accepted:
+        else:
             matches.append((source, sorted(evidence)))
 
+    # Stable two-pass ordering gives an explicit ascending source-ref tie-breaker
+    # even when the primary sort is descending.
     matches.sort(key=lambda item: item[0]["source_ref_id"].casefold())
     matches.sort(
         key=lambda item: _sort_value(item[0], normalized["sort_field"]),
@@ -390,21 +417,44 @@ def run_search(
 
 
 def validate_view(value: Any) -> dict[str, Any]:
-    view = _exact(value, {"view_version", "view_id", "plan", "projection"}, "view")
+    view = _exact(
+        value,
+        {"view_version", "view_id", "plan", "projection"},
+        "view",
+    )
     _require(view["view_version"] == VIEW_VERSION, "view-version-unsupported")
     _opaque(view["view_id"], "view-id")
     view["plan"] = normalize_query_plan(view["plan"])
     projection = view["projection"]
-    _require(isinstance(projection, list) and projection, "view-projection-required")
-    _require(len(projection) == len(set(projection)), "view-projection-duplicate")
+    _require(
+        isinstance(projection, list) and projection,
+        "view-projection-required",
+    )
+    _require(
+        len(projection) == len(set(projection)),
+        "view-projection-duplicate",
+    )
     for field in projection:
-        _require(isinstance(field, str) and field, "view-projection-field-required")
-        _require(field not in FORBIDDEN_AUTHORITY_FIELDS, f"view-authority-field-forbidden:{field}")
-        _require(field in PROJECTION_FIELDS, f"unsupported-view-projection:{field}")
+        _require(
+            isinstance(field, str) and field,
+            "view-projection-field-required",
+        )
+        _require(
+            field not in FORBIDDEN_AUTHORITY_FIELDS,
+            f"view-authority-field-forbidden:{field}",
+        )
+        _require(
+            field in PROJECTION_FIELDS,
+            f"unsupported-view-projection:{field}",
+        )
     return view
 
 
-def build_view(view_id: str, plan: dict[str, Any], projection: list[str]) -> dict[str, Any]:
+def build_view(
+    view_id: str,
+    plan: dict[str, Any],
+    projection: list[str],
+) -> dict[str, Any]:
     value = {
         "view_version": VIEW_VERSION,
         "view_id": view_id,
@@ -435,11 +485,20 @@ def validate_smart_collection(value: Any) -> dict[str, Any]:
     _opaque(collection["collection_id"], "smart-collection-id")
     collection["rule"] = normalize_query_plan(collection["rule"])
     members = collection["current_members"]
-    _require(isinstance(members, list), "smart-collection-members-must-be-array")
-    _require(len(members) == len(set(members)), "smart-collection-members-duplicate")
+    _require(
+        isinstance(members, list),
+        "smart-collection-members-must-be-array",
+    )
+    _require(
+        len(members) == len(set(members)),
+        "smart-collection-members-duplicate",
+    )
     for member in members:
         _opaque(member, "smart-collection-member")
-    _require(members == sorted(members), "smart-collection-members-not-canonical-order")
+    _require(
+        members == sorted(members),
+        "smart-collection-members-not-canonical-order",
+    )
     _require(
         _valid_sha256(collection["evaluated_upstream_basis_fingerprint"]),
         "smart-collection-evaluated-basis-invalid",

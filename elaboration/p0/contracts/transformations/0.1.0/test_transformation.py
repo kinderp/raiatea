@@ -97,6 +97,18 @@ class TransformationContractTests(unittest.TestCase):
         with self.assertRaisesRegex(V.TransformationContractError, "derived-from-relationship-required"):
             V.validate_derived_artifact(derived)
 
+    def test_missing_lineage_source_fails(self):
+        _, derived = records()
+        del derived["derivation"]["source_artifact"]
+        with self.assertRaisesRegex(V.TransformationContractError, "source-artifact-must-be-object"):
+            V.validate_derived_artifact(derived)
+
+    def test_missing_transformation_output_ref_fails(self):
+        transformation, _ = records()
+        del transformation["output_artifact"]
+        with self.assertRaisesRegex(V.TransformationContractError, "output-artifact-must-be-object"):
+            V.validate_transformation(transformation)
+
     def test_lineage_source_mismatch_fails(self):
         transformation, derived = records()
         derived["derivation"]["source_artifact"]["artifact_id"] = "artifact:other"

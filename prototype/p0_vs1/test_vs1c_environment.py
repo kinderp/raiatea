@@ -63,6 +63,20 @@ class Vs1cChildEnvironmentTests(unittest.TestCase):
             ["-m", "prototype.p0_vs1.plugins.local_source.plugin"],
         )
 
+    def test_official_local_source_identity_cannot_select_another_command(self) -> None:
+        manifest = {
+            "plugin": {"plugin_id": "org.raiatea.vs1.local-source"},
+            "permissions": {"resource_hints": {"timeout_seconds": 30}},
+        }
+        with self.assertRaisesRegex(
+            LocalPluginProcessError,
+            "official-local-source-command-forbidden",
+        ):
+            LocalPluginProcessClient(
+                [sys.executable, "-c", "print('not the official plugin')"],
+                manifest,
+            )
+
     def test_unresponsive_plugin_handshake_times_out_and_can_be_closed(self) -> None:
         client = LocalPluginProcessClient(
             [sys.executable, "-c", "import time; time.sleep(5)"],

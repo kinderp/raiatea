@@ -19,24 +19,9 @@
           "family": "extractor",
           "input_classes": ["application/epub+zip"],
           "output_classes": [
-            "e05-processing-run",
-            "e05-provider-evidence",
-            "e05-normalized-representation"
+            "vs1d-direct-epub-provider-observation"
           ],
-          "contracts": [
-            {
-              "contract_id": "raiatea.extraction.processing-run",
-              "version_range": {
-                "min_inclusive": "0.1.0",
-                "max_exclusive": "0.2.0"
-              },
-              "record_kinds": [
-                "ProcessingRunRecord",
-                "ProviderEvidenceRecord",
-                "NormalizedRepresentationRecord"
-              ]
-            }
-          ],
+          "contracts": [],
           "backend": "python-stdlib",
           "mode": "package-semantic"
         }

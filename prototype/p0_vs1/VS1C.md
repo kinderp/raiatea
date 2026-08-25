@@ -137,23 +137,30 @@ Raiatea runtime instead of depending on an unrelated `python` found on `PATH`.
 This is a VS1-specific implementation. It does not extract a generic shared
 Module Runtime.
 
-## Bounded response time
+## Bounded response time and buffering
 
 Review finding VS1C-F4 found that a blocking `stdout.readline()` could otherwise
 let a hung plugin freeze the Core despite the invocation carrying a deadline.
+VS1C-F5 then closed the related memory-risk: an asynchronous reader must not turn
+stdout into an unbounded in-memory queue.
 
-VS1c now uses a dedicated stdout reader and a bounded Core-side wait:
+VS1c now uses a dedicated stdout reader and bounded Core-side channel:
 
 - handshake has a finite timeout;
 - invocation wait is bounded by both the request deadline and the manifest
   resource timeout;
 - diagnostics do not reset the total request deadline;
+- stdout frames enter a finite queue sized above the accepted notification
+  budget, so excess producer speed applies backpressure instead of growing
+  memory without bound;
 - timeout produces an explicit Core failure;
+- reader shutdown is explicit even when backpressure is active;
 - the context manager terminates/kills the child if needed;
-- no SourceReference state is persisted after a timeout.
+- no SourceReference state is persisted after a timeout/failure.
 
-Functionally, a broken or unresponsive SourcePlugin can fail its own discovery
-attempt without hanging the catalog process indefinitely.
+Functionally, a broken, silent or excessively chatty SourcePlugin can fail its
+own discovery attempt without hanging the catalog process indefinitely or
+creating an unbounded stdout-frame backlog.
 
 ## Child environment isolation
 

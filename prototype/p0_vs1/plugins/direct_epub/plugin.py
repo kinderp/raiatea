@@ -2,8 +2,8 @@
 """Official VS1d direct EPUB ExtractorPlugin.
 
 The plugin receives a Core-private EPUB scratch copy through an opaque AssetHandle
-and emits accepted E-05 records in a Core-issued write-once bundle. It never sees
-the user's source root or original source path.
+and emits only provider-native direct-EPUB observation evidence. Raiatea Core
+owns E-05 normalization and the publishable catalog representation.
 """
 from __future__ import annotations
 
@@ -17,13 +17,12 @@ import sys
 import tempfile
 from typing import Any
 
-from prototype.p0_vs1.extraction_contract import (
-    EXTRACTION_BUNDLE_MEDIA_TYPE,
-    build_extraction_bundle,
-    canonical_extraction_bundle_bytes,
+from prototype.p0_vs1.epub_observation_contract import (
+    OBSERVATION_BUNDLE_MEDIA_TYPE,
+    build_provider_observation_bundle,
+    canonical_provider_observation_bytes,
 )
 from prototype.p0_vs1.plugin_io import plugin_read_handle, plugin_write_output
-from prototype.p0_vs1.plugins.direct_epub.e05_adapter import adapt_direct_epub_observation
 from prototype.p0_vs1.plugins.direct_epub.route import parse_direct_epub
 from prototype.p0_vs1.source_contract import EPUB_MEDIA_TYPE
 
@@ -51,11 +50,8 @@ RUNTIME = importlib.util.module_from_spec(_RUNTIME_SPEC)
 assert _RUNTIME_SPEC.loader is not None
 _RUNTIME_SPEC.loader.exec_module(RUNTIME)
 
-
 SOURCE_REFERENCE_CONTRACT_ID = "raiatea.vs1.source-reference"
 SOURCE_REFERENCE_CONTRACT_VERSION = "0.1.0"
-E05_CONTRACT_ID = "raiatea.extraction.processing-run"
-E05_VERSION = "0.1.0"
 
 
 def _now() -> str:
@@ -180,39 +176,34 @@ def _asset_input(request: dict[str, Any]) -> dict[str, Any]:
 def _output_target(request: dict[str, Any]) -> dict[str, Any]:
     targets = request.get("output_targets")
     if not isinstance(targets, list) or len(targets) != 1 or not isinstance(targets[0], dict):
-        raise ValueError("exactly-one-extraction-output-target-required")
+        raise ValueError("exactly-one-extractor-observation-output-target-required")
     target = targets[0]
-    if target.get("media_type") != EXTRACTION_BUNDLE_MEDIA_TYPE:
-        raise ValueError("extraction-bundle-media-type-required")
+    if target.get("media_type") != OBSERVATION_BUNDLE_MEDIA_TYPE:
+        raise ValueError("extractor-observation-media-type-required")
     return target
 
 
-def _extract(source_ref_id: str, source_bytes: bytes, fingerprint: str) -> dict[str, Any]:
-    extraction_started_at = _now()
+def _extract(source_bytes: bytes) -> dict[str, Any]:
     with tempfile.TemporaryDirectory(prefix="raiatea-vs1d-epub-plugin-") as temporary:
         path = Path(temporary) / "source.epub"
         path.write_bytes(source_bytes)
-        observation = parse_direct_epub(path)
-    extraction_ended_at = _now()
-    return adapt_direct_epub_observation(
-        observation,
-        source_id=source_ref_id,
-        fingerprint=fingerprint,
-        python_version=platform.python_version(),
-        started_at=extraction_started_at,
-        ended_at=extraction_ended_at,
-    )
+        return parse_direct_epub(path)
 
 
-def _diagnostic(runtime_instance_id: str, invocation_id: str, units: int) -> dict[str, Any]:
+def _diagnostic(
+    runtime_instance_id: str,
+    invocation_id: str,
+    status: str,
+    blocks: int,
+) -> dict[str, Any]:
     return {
         "record_type": "diagnostic",
-        "diagnostic_id": f"diag:{runtime_instance_id}:{invocation_id}:epub-extracted",
+        "diagnostic_id": f"diag:{runtime_instance_id}:{invocation_id}:epub-observed",
         "runtime_instance_id": runtime_instance_id,
         "invocation_id": invocation_id,
-        "severity": "info",
-        "code": "epub-direct-extraction-completed",
-        "message": f"direct EPUB extraction produced {units} normalized units",
+        "severity": "info" if status in {"success", "degraded", "partial"} else "warning",
+        "code": "epub-direct-provider-observation-created",
+        "message": f"direct EPUB parser status={status} blocks={blocks}",
         "observed_at": _now(),
     }
 
@@ -260,18 +251,16 @@ def _invoke(
         fingerprint = input_handle.get("fingerprint")
         if not isinstance(fingerprint, str):
             raise ValueError("source-fingerprint-required")
-        adapted = _extract(source_ref_id, source_bytes, fingerprint)
-        bundle = build_extraction_bundle(
+        observation = _extract(source_bytes)
+        bundle = build_provider_observation_bundle(
             source_ref_id=source_ref_id,
             source_fingerprint=fingerprint,
-            adapted=adapted,
+            python_version=platform.python_version(),
+            observation=observation,
         )
-        payload = canonical_extraction_bundle_bytes(bundle)
+        payload = canonical_provider_observation_bytes(bundle)
         completed = plugin_write_output(output_target, payload)
     except Exception as exc:
-        # Provider/parser failures are converted into one bounded Runtime failure.
-        # Only the exception type crosses the plugin boundary; local paths/details
-        # are deliberately not reflected into the public error string.
         return (
             _failed(
                 manifest,
@@ -284,32 +273,24 @@ def _invoke(
             [],
         )
 
-    refs = bundle["record_refs"]
-    outputs: list[dict[str, Any]] = [{"kind": "asset-handle", "handle": completed}]
-    outputs.extend({"kind": "record-ref", "record_ref": ref} for ref in refs)
-    output_refs = [completed["handle_id"]] + [ref["ref_id"] for ref in refs]
-    representation = next(
-        (
-            bundle["records"][ref["ref_id"]]
-            for ref in refs
-            if ref["record_kind"] == "NormalizedRepresentationRecord"
-        ),
-        None,
+    diagnostic = _diagnostic(
+        runtime_instance_id,
+        request["invocation_id"],
+        str(observation.get("status", "unknown")),
+        len(observation.get("blocks", [])),
     )
-    unit_count = len(representation.get("units", [])) if isinstance(representation, dict) else 0
-    diagnostic = _diagnostic(runtime_instance_id, request["invocation_id"], unit_count)
     result = {
         "record_type": "invocation-result",
         "invocation_id": request["invocation_id"],
         "runtime_instance_id": runtime_instance_id,
         "status": "completed",
-        "outputs": outputs,
+        "outputs": [{"kind": "asset-handle", "handle": completed}],
         "diagnostic_refs": [diagnostic["diagnostic_id"]],
         "provenance": _provenance(
             manifest,
             runtime_instance_id,
             request,
-            output_refs,
+            [completed["handle_id"]],
             started_at,
         ),
     }

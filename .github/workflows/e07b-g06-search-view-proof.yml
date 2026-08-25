@@ -1,0 +1,34 @@
+name: E-07b G-06 deterministic search proof
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/gates/g06/**"
+      - ".github/workflows/e07b-g06-search-view-proof.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/gates/g06/**"
+      - ".github/workflows/e07b-g06-search-view-proof.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    name: G-06 / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile proof
+        run: python -m compileall -q elaboration/p0/gates/g06
+      - name: Run deterministic search/view proof
+        working-directory: elaboration/p0/gates/g06
+        run: python -m unittest test_search_view_proof.py -v

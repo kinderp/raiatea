@@ -3,7 +3,7 @@
 > Parent vertical slice: #187  
 > Micro-step: #192  
 > Pull request: #193  
-> Status: implementation under final validation
+> Status: implementation frozen for review
 
 ## Functional increment
 
@@ -136,6 +136,24 @@ Raiatea runtime instead of depending on an unrelated `python` found on `PATH`.
 
 This is a VS1-specific implementation. It does not extract a generic shared
 Module Runtime.
+
+## Bounded response time
+
+Review finding VS1C-F4 found that a blocking `stdout.readline()` could otherwise
+let a hung plugin freeze the Core despite the invocation carrying a deadline.
+
+VS1c now uses a dedicated stdout reader and a bounded Core-side wait:
+
+- handshake has a finite timeout;
+- invocation wait is bounded by both the request deadline and the manifest
+  resource timeout;
+- diagnostics do not reset the total request deadline;
+- timeout produces an explicit Core failure;
+- the context manager terminates/kills the child if needed;
+- no SourceReference state is persisted after a timeout.
+
+Functionally, a broken or unresponsive SourcePlugin can fail its own discovery
+attempt without hanging the catalog process indefinitely.
 
 ## Child environment isolation
 

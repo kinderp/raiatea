@@ -51,9 +51,9 @@ Apache-2.0 applies only to these fixture-generator source files unless a later r
 License identifier: `Apache-2.0`  
 Canonical license information: <https://www.apache.org/licenses/LICENSE-2.0>
 
-The scoped licensing declaration and the accompanying Apache-2.0 license copy apply to those exact paths. This licensing-only decision intentionally does **not** rewrite historically benchmark-pinned generator source files merely to add SPDX comment headers, because changing those files would change source fingerprints recorded by existing benchmark evidence without changing generator behavior.
+The scoped licensing declaration applies to those exact paths. This licensing-only decision intentionally does **not** rewrite historically benchmark-pinned generator source files merely to add SPDX comment headers, because changing those files would change source fingerprints recorded by existing benchmark evidence without changing generator behavior.
 
-Redistribution of the generator code must comply with Apache-2.0, including preservation of the license and applicable notices and marking modified files where required.
+Redistribution of the generator code must comply with Apache-2.0, including providing recipients a copy of the Apache License 2.0, preserving applicable notices and marking modified files where required. `NOTICE.md` records this packaging requirement and points to the canonical license text.
 
 ## Explicit exclusions
 
@@ -84,6 +84,12 @@ In particular, externally hosted/remote Provider routes remain **not authorized 
 CC BY 4.0 applies only where Raiatea has the rights needed to license the material. Any future fixture containing third-party content must retain a separate compatible rights record; committing it under this directory does not automatically make it CC BY 4.0.
 
 The access-controlled negative fixture may use `qpdf` as a generation tool, but this decision licenses Raiatea's project-created fixture content/output, not qpdf itself.
+
+## Verification and historical evidence
+
+Current machine-readable redistribution policy is `manifests/redistribution-rights.json`. The licensing regression suite is `tests/test_benchmark_licensing.py`; it verifies the CC BY/Apache split, exact generator-file scope, attribution requirement, remote denial and explicit exclusions.
+
+Historical E-04 manifests that were hash-pinned at measurement time are not rewritten merely to replace their then-correct `not-established` fields. The current rights overlay explicitly supersedes those historical fields for present redistribution policy while preserving their provenance value.
 
 ## Change control
 

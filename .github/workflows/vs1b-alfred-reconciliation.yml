@@ -1,0 +1,64 @@
+name: VS1b Alfred Observation and reconciliation
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1b-alfred-reconciliation.yml"
+      - "elaboration/p0/alfred-*.md"
+      - "elaboration/p0/contracts/plugins/**"
+      - "elaboration/p0/plugins/proofs/v1d/**"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1b-alfred-reconciliation.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  vs1b:
+    name: VS1b / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile VS1 prototype and accepted contract tooling
+        run: >-
+          python -m compileall -q
+          prototype/p0_vs1
+          elaboration/p0/contracts/plugins/runtime/1.0.0
+          elaboration/p0/contracts/plugins/transport/0.1.0
+          elaboration/p0/contracts/plugins/1.0.0
+          elaboration/p0/plugins/proofs/v1d
+      - name: Run VS1a regressions
+        run: python -m unittest prototype.p0_vs1.test_vs1a -v
+      - name: Run Alfred JSONL v0 adapter tests
+        run: python -m unittest prototype.p0_vs1.test_alfred_observation -v
+      - name: Run VS1b stream and reconciliation tests
+        run: |
+          python -m unittest prototype.p0_vs1.test_vs1b_reconciliation -v
+          python -m unittest prototype.p0_vs1.test_vs1b_inventory_fence -v
+      - name: Re-run accepted Runtime v1b tests
+        run: |
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime.py -v
+          python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime_handle_bounds.py -v
+      - name: Re-run accepted transport tests
+        run: |
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_process_lifecycle_binding.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_stderr_drain.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_notification_bounds.py -v
+          python elaboration/p0/contracts/plugins/transport/0.1.0/test_transport_directionality.py -v
+      - name: Re-run accepted manifest tests
+        run: python elaboration/p0/contracts/plugins/1.0.0/test_manifest.py -v
+      - name: Re-run real v1d Source and EPUB Extractor proofs
+        run: python -m unittest elaboration.p0.plugins.proofs.v1d.test_proof_plugins -v

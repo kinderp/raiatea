@@ -50,7 +50,10 @@ FORBIDDEN_PATH_KEYS = {
 def _assert_no_path_keys(testcase: unittest.TestCase, value: object) -> None:
     if isinstance(value, dict):
         for key, child in value.items():
-            testcase.assertNotIn(str(key).strip().lower().replace("-", "_"), FORBIDDEN_PATH_KEYS)
+            testcase.assertNotIn(
+                str(key).strip().lower().replace("-", "_"),
+                FORBIDDEN_PATH_KEYS,
+            )
             _assert_no_path_keys(testcase, child)
     elif isinstance(value, list):
         for child in value:
@@ -161,6 +164,26 @@ class EpubExtractionProductTests(Vs1dFixture):
         }
         validate_extraction_bundle(bundle)
 
+        processing_runs = [
+            row["records"][ref["ref_id"]]
+            for ref in row["record_refs"]
+            if ref["record_kind"] == "ProcessingRunRecord"
+        ]
+        self.assertEqual(len(processing_runs), 1)
+        run = processing_runs[0]
+        normalization_stages = [
+            stage for stage in run["stages"]
+            if stage["stage_kind"] == "normalization"
+        ]
+        self.assertEqual(len(normalization_stages), 1)
+        self.assertEqual(
+            normalization_stages[0]["executor"],
+            {
+                "kind": "raiatea-core",
+                "operation_id": "normalize-provider-evidence",
+            },
+        )
+
         representations = [
             row["records"][ref["ref_id"]]
             for ref in row["record_refs"]
@@ -185,11 +208,19 @@ class EpubExtractionProductTests(Vs1dFixture):
             if unit["coordinate"].get("value_state") == "populated"
         ]
         self.assertTrue(populated_coordinates)
-        self.assertTrue(all(coord["kind"] == "epub-logical" for coord in populated_coordinates))
-        self.assertTrue(any(coord["resource"].endswith("ch1.xhtml") for coord in populated_coordinates))
-        self.assertTrue(any(coord["resource"].endswith("ch2.xhtml") for coord in populated_coordinates))
+        self.assertTrue(
+            all(coord["kind"] == "epub-logical" for coord in populated_coordinates)
+        )
+        self.assertTrue(
+            any(coord["resource"].endswith("ch1.xhtml") for coord in populated_coordinates)
+        )
+        self.assertTrue(
+            any(coord["resource"].endswith("ch2.xhtml") for coord in populated_coordinates)
+        )
         self.assertTrue(all("page_index" not in coord for coord in populated_coordinates))
-        self.assertTrue(all("bbox_points_bottom_left" not in coord for coord in populated_coordinates))
+        self.assertTrue(
+            all("bbox_points_bottom_left" not in coord for coord in populated_coordinates)
+        )
 
         self.assertEqual(row["plugin"]["plugin_id"], OFFICIAL_EXTRACTOR_PLUGIN_ID)
         self.assertEqual(row["plugin"]["route_profile"], "epub-direct-stdlib")
@@ -251,7 +282,10 @@ class EpubExtractionProductTests(Vs1dFixture):
             return result
 
         with patch.object(LocalPluginProcessClient, "invoke", new=invoke_then_change):
-            with self.assertRaisesRegex(EpubExtractionError, "catalog-changed-during-plugin-run"):
+            with self.assertRaisesRegex(
+                EpubExtractionError,
+                "catalog-changed-during-plugin-run",
+            ):
                 self.extraction.extract(
                     self.source_ref_id,
                     rights_evidence_state="known-permitted",
@@ -260,7 +294,7 @@ class EpubExtractionProductTests(Vs1dFixture):
         self.assertIn("concurrent_marker", persisted)
         self.assertNotIn("vs1d", persisted)
 
-    def test_official_manifest_is_local_pathless_and_exact_command(self) -> None:
+    def test_official_manifest_is_local_pathless_and_provider_observation_only(self) -> None:
         manifest = json.loads(DEFAULT_MANIFEST_PATH.read_text(encoding="utf-8"))
         self.assertEqual(manifest["plugin"]["plugin_id"], OFFICIAL_EXTRACTOR_PLUGIN_ID)
         self.assertEqual(manifest["permissions"]["network"], [])
@@ -268,10 +302,13 @@ class EpubExtractionProductTests(Vs1dFixture):
         self.assertEqual(manifest["permissions"]["secrets"], [])
         self.assertTrue(manifest["permissions"]["temporary_workspace"])
         self.assertEqual(manifest["capabilities"][0]["capability_id"], "extract.run")
+        profile = manifest["capabilities"][0]["profiles"][0]
+        self.assertEqual(profile["profile_id"], "epub-direct-stdlib")
         self.assertEqual(
-            manifest["capabilities"][0]["profiles"][0]["profile_id"],
-            "epub-direct-stdlib",
+            profile["output_classes"],
+            ["vs1d-direct-epub-provider-observation"],
         )
+        self.assertEqual(profile["contracts"], [])
 
 
 class UnsafeEpubExtractionTests(Vs1dFixture):
@@ -279,7 +316,7 @@ class UnsafeEpubExtractionTests(Vs1dFixture):
 
     def test_unsafe_member_fails_without_fabricated_extraction_state(self) -> None:
         before = self.store.load().revision
-        with self.assertRaisesRegex(EpubExtractionError, "result-not-completed"):
+        with self.assertRaisesRegex(EpubExtractionError, "run-not-publishable"):
             self.extraction.extract(
                 self.source_ref_id,
                 rights_evidence_state="known-permitted",

@@ -21,7 +21,15 @@
           "output_classes": [
             "vs1d-direct-epub-provider-observation"
           ],
-          "contracts": [],
+          "contracts": [
+            {
+              "contract_id": "raiatea.extraction.processing-run",
+              "version_range": {
+                "min_inclusive": "0.1.0",
+                "max_exclusive": "0.2.0"
+              }
+            }
+          ],
           "backend": "python-stdlib",
           "mode": "package-semantic"
         }

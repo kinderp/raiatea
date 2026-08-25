@@ -101,7 +101,7 @@ jobs:
               raise SystemExit('\n'.join(f'{list(e.path)}: {e.message}' for e in errors))
           print('PASS prototype/p0_vs1/plugins/direct_epub/manifest.json')
           PY
-      - name: Validate actual product VS1d E-05 records against accepted schema
+      - name: Validate actual Core-normalized VS1d E-05 records against accepted schema
         run: |
           python - <<'PY'
           import hashlib
@@ -112,9 +112,10 @@ jobs:
           import tempfile
           from jsonschema import Draft202012Validator
 
+          from prototype.p0_vs1.epub_e05_adapter import adapt_direct_epub_observation
+          from prototype.p0_vs1.epub_observation_contract import build_provider_observation_bundle
           from prototype.p0_vs1.extraction_contract import build_extraction_bundle
           from prototype.p0_vs1.plugins.direct_epub.route import parse_direct_epub
-          from prototype.p0_vs1.plugins.direct_epub.e05_adapter import adapt_direct_epub_observation
 
           repo = Path('.')
           generator_path = repo / 'elaboration/p0/benchmark/generate_fixtures.py'
@@ -128,16 +129,21 @@ jobs:
               generator.generate_epub_spine(epub)
               fingerprint = 'sha256:' + hashlib.sha256(epub.read_bytes()).hexdigest()
               source_ref_id = 'source-ref:' + '1' * 64
-              started_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
               observation = parse_direct_epub(epub)
-              ended_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+              provider_bundle = build_provider_observation_bundle(
+                  source_ref_id=source_ref_id,
+                  source_fingerprint=fingerprint,
+                  python_version='3.12.14',
+                  observation=observation,
+              )
+              started_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
               adapted = adapt_direct_epub_observation(
-                  observation,
+                  provider_bundle['observation'],
                   source_id=source_ref_id,
                   fingerprint=fingerprint,
-                  python_version='3.12.14',
+                  python_version=provider_bundle['provider']['version'],
                   started_at=started_at,
-                  ended_at=ended_at,
+                  ended_at=datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
               )
               bundle = build_extraction_bundle(
                   source_ref_id=source_ref_id,

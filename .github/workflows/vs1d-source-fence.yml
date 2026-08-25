@@ -1,0 +1,32 @@
+name: VS1d source-version publication fence
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1d-source-fence.yml"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1d-source-fence.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  source-fence:
+    name: VS1d source fence / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run source-change-during-extraction regression
+        run: python -m unittest prototype.p0_vs1.test_vs1d_source_fence -v

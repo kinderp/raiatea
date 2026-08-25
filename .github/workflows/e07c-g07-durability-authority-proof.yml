@@ -1,0 +1,34 @@
+name: E-07c G-07 durability authority proof
+
+on:
+  pull_request:
+    paths:
+      - "elaboration/p0/gates/g07/**"
+      - ".github/workflows/e07c-g07-durability-authority-proof.yml"
+  push:
+    branches: [main]
+    paths:
+      - "elaboration/p0/gates/g07/**"
+      - ".github/workflows/e07c-g07-durability-authority-proof.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  proof:
+    name: G-07 / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile proof
+        run: python -m compileall -q elaboration/p0/gates/g07
+      - name: Run catalog durability and local authority proof
+        working-directory: elaboration/p0/gates/g07
+        run: python -m unittest test_durability_authority_proof.py -v

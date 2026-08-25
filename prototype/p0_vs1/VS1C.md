@@ -58,7 +58,7 @@ It does **not** receive:
 - relative or absolute source paths;
 - Location history;
 - EPUB bytes;
-- secrets;
+- ambient Core credentials/API keys;
 - a rights grant it can widen;
 - network authority.
 
@@ -130,8 +130,34 @@ accepted Plugin API transport/runtime primitives:
 - Runtime v1 result/provenance validation;
 - deterministic process cleanup.
 
+The Core normalizes the manifest `python` entrypoint to the current
+`sys.executable`, so the child process uses the same interpreter selected for the
+Raiatea runtime instead of depending on an unrelated `python` found on `PATH`.
+
 This is a VS1-specific implementation. It does not extract a generic shared
 Module Runtime.
+
+## Child environment isolation
+
+The first implementation initially inherited `os.environ`; review finding
+VS1C-F3 rejected that because `secrets: []` must not coexist with accidental
+credential inheritance.
+
+The product client now constructs a bounded child environment:
+
+- only a small OS/runtime allowlist needed to start the local Python process is
+  inherited;
+- the Core-issued `RAIATEA_VS1_PLUGIN_IO_BROKER` value is added explicitly;
+- ambient `PYTHONPATH`/`PYTHONHOME` are not inherited;
+- Raiatea's repository root becomes the controlled `PYTHONPATH`;
+- user site-packages are disabled;
+- arbitrary environment keys are rejected;
+- common ambient credentials/tokens/proxy variables are therefore absent unless
+  a later reviewed capability explicitly adds them.
+
+This is not a universal secret-proofing sandbox—an official same-user process
+still shares the host account—but it closes accidental Core-environment secret
+inheritance at this VS1c process boundary.
 
 ## Private plugin I/O workspace
 
@@ -146,15 +172,17 @@ The workspace is removed after the invocation.
 
 The plugin manifest declares no source filesystem, network or secret
 permissions. In VS1c this is a declarative capability boundary and the Core also
-withholds source paths/bytes. **VS1c is not yet an OS-level hostile-plugin
-sandbox.** An official local process can theoretically use ambient OS access
-outside the declared contract; sandboxing/untrusted third-party plugin execution
-requires a later separately reviewed security boundary.
+withholds source paths/bytes and ambient credentials. **VS1c is not yet an
+OS-level hostile-plugin sandbox.** An official local process can theoretically
+use ambient OS access available to the same host account outside the declared
+contract; sandboxing/untrusted third-party plugin execution requires a later
+separately reviewed security boundary.
 
 Therefore the supported VS1c claim is:
 
-> Core does not grant or transmit source filesystem authority through the Plugin
-> API, and it validates the plugin output exactly against the Core snapshot.
+> Core does not grant or transmit source filesystem authority, source bytes or
+> ambient Core credentials through the Plugin API, and it validates plugin output
+> exactly against the Core snapshot.
 
 It is not:
 

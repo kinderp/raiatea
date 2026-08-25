@@ -1,16 +1,36 @@
 # P0 vertical slice 1 prototype
 
 > Parent promotion: [#187](https://github.com/kinderp/raiatea/issues/187)  
-> Current micro-step: [#188](https://github.com/kinderp/raiatea/issues/188) — VS1a  
-> Status: **Draft implementation under PR #189**
+> Accepted VS1a: [#188](https://github.com/kinderp/raiatea/issues/188) / PR [#189](https://github.com/kinderp/raiatea/pull/189) / `0bd70df`  
+> Current micro-step: [#190](https://github.com/kinderp/raiatea/issues/190) — VS1b / PR [#191](https://github.com/kinderp/raiatea/pull/191)  
+> Status: **VS1b implementation under final review**
 
 This directory contains the executable product-prototype path for the first
 promoted Raiatea vertical slice.
 
 The first source route selected by #187 is local B-02 EPUB through the accepted
-`direct-epub-stdlib` route. VS1a does **not** implement extraction yet; it builds
-the Core-owned authority and persistence boundary required before real content
-can safely cross the Plugin API.
+`direct-epub-stdlib` route. VS1a established Core-owned authority and durable
+state. VS1b adds filesystem Observation and conservative inventory/reconciliation.
+Extraction itself remains VS1d.
+
+## Functional progression
+
+The vertical slice is intentionally built as a sequence of user-observable
+capabilities rather than as one large hidden implementation:
+
+```text
+VS1a  authorize + read/store safely
+  ↓
+VS1b  know what EPUB files exist and whether the catalog is trustworthy
+  ↓
+VS1c  expose the selected local source through the accepted SourcePlugin path
+  ↓
+VS1d  extract EPUB structure/content and persist E-05 processing/provenance
+  ↓
+VS1e  search and build deterministic Views / Smart Collections
+  ↓
+VS1f  export, restore and verify the whole end-to-end slice
+```
 
 ## Implemented VS1a boundary
 
@@ -50,47 +70,29 @@ path/root field is allowed.
 On **POSIX/Linux**, the scope root is opened once as a directory descriptor.
 Every intermediate component is opened relative to the previous descriptor with
 `O_DIRECTORY | O_NOFOLLOW`; the final file is opened with `O_NOFOLLOW` and must
-be regular. This anchors access to the Core-authorized directory even if its
-pathname is later renamed.
+be regular.
 
 On **Windows**, VS1a opens the requested file through Win32 `CreateFileW`, rejects
 a final reparse point/directory, obtains the normalized final path from the
 **opened handle** through `GetFinalPathNameByHandleW`, and compares that path
-component-wise against the canonical Core root captured at registration. An
-intermediate junction/symlink that resolves outside the root therefore fails
-before `ReadFile` returns content.
+component-wise against the canonical Core root captured at registration.
 
 Issuing a handle fingerprints the bytes. Reading through the handle later opens
 the file again through the same safe boundary and requires the current byte
 length + SHA-256 to match the issued identity; replacement after issuance fails
-as `asset-content-changed`.
+closed as `asset-content-changed`.
 
 ### Core-owned write-once outputs
 
 Output paths are never caller supplied. Core generates an opaque handle and an
-internal filename under a Core-owned output root.
-
-The public target carries only:
-
-```text
-handle_id
-lease_id
-access = write-once-output
-media_type
-max_byte_length
-expires_at
-```
-
-The broker enforces lease/access/media/budget, creates without overwrite, then
-records actual byte length + SHA-256. A later Core read reopens the result through
-the same OS-aware safe-read boundary and verifies the completed fingerprint and
-length, so post-completion disk tampering is visible.
+internal filename under a Core-owned output root. Lease, media type, byte budget
+and no-overwrite semantics are enforced. Completed output is later reopened
+through the safe boundary and revalidated by length + SHA-256.
 
 ### Minimal internal catalog state store
 
-`CatalogStateStore` intentionally knows nothing about LogicalItem, Location,
-View or Smart Collection domain schemas yet. It persists one opaque JSON-object
-payload inside an internal envelope with:
+`CatalogStateStore` persists one opaque JSON-object payload inside an internal
+envelope with:
 
 - internal store version;
 - monotonically increasing revision;
@@ -101,53 +103,162 @@ payload inside an internal envelope with:
 - symlink/reparse rejection for the Core-owned state path;
 - expected-revision stale-write guard.
 
-VS1a has **one Core process / one store owner**. Calls through one store instance
-are serialized with an in-process lock. This is not advertised as an atomic
-cross-process or distributed compare-and-swap protocol; multi-process writers,
-Durex and distributed state remain outside this increment.
+VS1a has **one Core process / one store owner**. It does not claim an atomic
+cross-process or distributed state protocol.
 
-## Security claims and residuals
+## VS1b — Observation, inventory and reconciliation
 
-VS1a proves the boundary required for the promoted local EPUB slice, but it is
-not an OS sandbox or a complete security product.
+### What VS1b adds functionally
 
-What VS1a **does claim**:
+Before VS1b Raiatea could read an explicitly selected file safely, but it did not
+yet maintain a trustworthy picture of a collection while files were created,
+changed, renamed, moved or removed.
 
-- public handles cannot carry host paths or undeclared extra authority fields;
-- source read scope cannot be widened using an external absolute/traversal path;
+VS1b adds that catalog-awareness layer:
+
+```text
+Alfred Event Model v0 JSONL
+        ↓
+AlfredObservationAdapter
+        ↓
+Raiatea Observation evidence
+        ↓
+stream continuity / freshness state
+        ↓
+bounded EPUB inventory
+        ↓
+conservative Stored Instance + Logical Identity candidates
+        ↓
+Location history + availability state
+```
+
+### Alfred is the observer, Raiatea owns catalog meaning
+
+VS1b is pinned to Alfred evidence snapshot
+`9e0e59e4232b8b173f1ae44a409c7d06f72f6c02` and consumes the actual structured
+JSONL v0 shape emitted by that snapshot.
+
+Raiatea does **not** add another watcher. Alfred owns filesystem Observation;
+Raiatea decides what those observations mean for catalog state.
+
+Current semantic mappings include:
+
+| Alfred record | Raiatea meaning |
+| --- | --- |
+| `FILE_CREATED` / `DIR_CREATED` | a Location appeared; inventory must verify it |
+| `FILE_READY` | content is ready evidence; downstream processing remains policy-gated |
+| `FILE_MODIFIED` | content may have changed; inventory/reprocessing required |
+| `FILE_DELETED` / `DIR_DELETED` | Location disappeared; do not delete logical history |
+| rename / move / relocate | preserve candidate identity + Location history, then verify |
+| `OVERFLOW` | observation stream is incomplete; catalog cannot be claimed fresh |
+| stale/lost-scope diagnostics | observer coverage is uncertain; retain entities and require reconciliation |
+| recovery-end diagnostics | observer recovered, but catalog equality is **not** implied |
+
+Normalized-raw records and session metadata can contribute stream/checkpoint
+evidence but never become a second catalog-truth path.
+
+### Deterministic bounded EPUB inventory
+
+VS1b recursively inventories `.epub` files inside the authorized Core scope:
+
+- deterministic relative-Location ordering;
+- no symlink/reparse following;
+- content identity read only through the VS1a AssetBroker;
+- SHA-256 + byte length + media type retained as inventory evidence;
+- any scan/read ambiguity fails the reconciliation run rather than publishing a
+  partial catalog as fresh.
+
+Two byte-identical EPUBs at two Locations remain two distinct Stored Instance
+and Logical Identity candidates. Fingerprint equality alone never causes a
+destructive merge.
+
+### Conservative identity and Location history
+
+VS1b stores internal, revisable candidates rather than claiming a final public
+identity ontology.
+
+Important current rules:
+
+- same Location + same fingerprint preserves candidate ids;
+- rename/move/relocate can preserve the candidate and append the previous
+  Location to history, but the transition remains unverified until inventory;
+- same Location + changed fingerprint creates a new unresolved candidate and
+  supersedes the previous Stored Instance candidate;
+- delete is Location-level missing evidence and retains prior identity/history;
+- offline/lost observer scope becomes `unavailable-or-unknown`, never a mass
+  logical delete;
+- a successful bounded inventory can mark absent Locations
+  `confirmed-missing-at-location` while retaining historical records.
+
+### Freshness and stream continuity
+
+VS1b makes catalog trust explicit:
+
+```text
+unknown
+reconcile-required
+fresh
+```
+
+A first Alfred sequence number establishes only a checkpoint baseline. A bounded
+inventory is required before the catalog becomes fresh.
+
+After that:
+
+- exact replay is idempotent;
+- contiguous records may be applied according to their semantic class;
+- sequence gaps do not apply later destructive/identity-changing semantic
+  evidence and force `reconcile-required`;
+- old/unseen out-of-order records force reconciliation instead of being replayed
+  destructively;
+- records without `seq` are accepted only as continuity-unknown evidence;
+- malformed or out-of-scope records do not advance the checkpoint.
+
+### Inventory publication fence
+
+A bounded scan is not allowed to overwrite newer Observation state.
+
+`reconcile_inventory()` captures the catalog revision **before** scanning. The
+scan may publish `fresh` only if the same persisted revision still exists at
+commit time. If an Alfred record or another reconciliation changes catalog state
+while the scan is in progress, the guarded save fails and the stale inventory is
+not published as current truth.
+
+This is a single-Core-process optimistic publication fence built on the VS1a
+revision guard. It is not a distributed snapshot protocol.
+
+## Security and platform claims
+
+What VS1a/VS1b currently claim:
+
+- public handles cannot carry host paths or undeclared authority fields;
+- source read authority cannot escape the configured Core scope;
 - tested symlink/reparse escapes do not return source bytes;
-- source bytes are bound to an issued fingerprint/length;
-- output authority is Core-created, bounded and write-once;
-- completed output tampering is detected;
+- inventory content identity comes through the safe AssetBroker;
+- observation paths are evidence only and never grant read/write/delete
+  authority;
+- stream gaps and observer-health gaps cannot silently restore freshness;
+- a stale concurrent inventory cannot overwrite newer persisted Observation
+  state;
 - catalog persistence fails closed on version/integrity/canonical-state errors.
 
-What remains for later increments/product hardening:
+Current live-observer scope remains **Linux/inotify through Alfred**. Windows CI
+validates Raiatea adapter/state/inventory contracts and the VS1a Windows file
+boundary; it does not imply that Alfred has a Windows backend.
 
-- authentication/user identity and OS ACL policy;
-- per-source/input memory and resource budgets for large real collections;
-- persistence/recovery of live handle leases across Core restart;
-- crash recovery for a file written immediately before in-memory output
-  completion state is recorded;
-- multi-process catalog writers/locking;
-- platform claims beyond Linux and Windows CI evidence;
-- SourcePlugin supervision and real plugin broker wiring (VS1c).
-
-The Windows implementation validates final opened-handle containment and
-reparse-point behavior; it does not claim to be a general hostile multi-user
-Windows sandbox. The selected VS1 remains a local, explicitly authorized
-single-user proof.
+Residual/product-hardening work includes authentication/ACL policy, resource
+budgets for large real collections, live-handle restart recovery, multi-process
+catalog writers, stronger hostile-race directory enumeration guarantees on
+Windows, plugin supervision and later UI/API boundaries.
 
 ## Contract boundary
 
 This prototype does not create a second Plugin API contract and does not freeze a
-public catalog schema. Accepted contracts under `elaboration/p0/contracts/`
-remain authoritative. VS1a tests its generated read/output records inside the
-accepted Runtime v1b validator and reruns the accepted manifest, transport,
-runtime and real v1d Source/EPUB proof suites.
+public Catalog schema. Accepted contracts under `elaboration/p0/contracts/`
+remain authoritative.
 
 ## Sequential next increments
 
-- VS1b — Alfred Observation adapter + inventory/reconciliation;
 - VS1c — local SourcePlugin product path;
 - VS1d — direct EPUB extraction + E-05 persistence;
 - VS1e — deterministic search/View/Smart Collection;

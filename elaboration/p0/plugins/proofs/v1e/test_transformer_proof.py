@@ -114,6 +114,22 @@ class TransformerProofTests(unittest.TestCase):
             with self.assertRaisesRegex(HarnessError, "invocation-profile-not-in-manifest"):
                 harness.invoke(request)
 
+    def test_input_handle_with_write_access_is_rejected_before_plugin(self):
+        with LocalProcessHarness(S.transformer_command(), self.manifest) as harness:
+            hs = harness.handshake()
+            request = S.request(hs["identity"]["runtime_instance_id"])
+            request["inputs"][0]["handle"]["access"] = "write-once-output"
+            with self.assertRaisesRegex(HarnessError, "input-asset-handle-must-be-read"):
+                harness.invoke(request)
+
+    def test_output_target_with_read_access_is_rejected_before_plugin(self):
+        with LocalProcessHarness(S.transformer_command(), self.manifest) as harness:
+            hs = harness.handshake()
+            request = S.request(hs["identity"]["runtime_instance_id"])
+            request["output_targets"][0]["access"] = "read"
+            with self.assertRaisesRegex(HarnessError, "output-target-must-be-write-once"):
+                harness.invoke(request)
+
     def test_expired_input_handle_is_rejected_before_plugin(self):
         with LocalProcessHarness(S.transformer_command(), self.manifest) as harness:
             hs = harness.handshake()

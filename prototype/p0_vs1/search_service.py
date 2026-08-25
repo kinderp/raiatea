@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""VS1e Core-owned search index, View and Smart Collection service."""
+"""VS1e Core-owned search index, View and Smart Collection service.
+
+Every read/evaluation operation is snapshot-consistent: one catalog snapshot is
+loaded and used for the definition, index, upstream freshness calculation and
+result projection of that operation.
+"""
 from __future__ import annotations
 
 from copy import deepcopy
@@ -10,9 +15,6 @@ from prototype.p0_vs1.extraction_service import validate_vs1d_state
 from prototype.p0_vs1.reconciliation import validate_state as validate_vs1b_state
 from prototype.p0_vs1.search_contract import (
     SEARCH_INDEX_VERSION,
-    SMART_COLLECTION_VERSION,
-    VIEW_VERSION,
-    SearchContractError,
     build_smart_collection,
     build_view,
     canonical_json_bytes,
@@ -69,7 +71,8 @@ def _canonical_index_unit(raw: dict[str, Any]) -> dict[str, Any]:
     semantic_value = _populated_value(raw.get("semantic_role"))
     semantic_type = (
         semantic_value.get("type")
-        if isinstance(semantic_value, dict) and isinstance(semantic_value.get("type"), str)
+        if isinstance(semantic_value, dict)
+        and isinstance(semantic_value.get("type"), str)
         else None
     )
 
@@ -124,10 +127,13 @@ def _current_upstream_projection(
     revision = getattr(catalog_snapshot, "revision", None)
     payload = getattr(catalog_snapshot, "payload", None)
     _require(
-        isinstance(revision, int) and not isinstance(revision, bool) and revision >= 1,
+        isinstance(revision, int)
+        and not isinstance(revision, bool)
+        and revision >= 1,
         "search-catalog-revision-invalid",
     )
     _require(isinstance(payload, dict), "search-catalog-payload-invalid")
+
     vs1b = payload.get("vs1b")
     vs1c = payload.get("vs1c")
     vs1d = payload.get("vs1d")
@@ -153,14 +159,19 @@ def _current_upstream_projection(
             entry.get("reconciliation_status") == "verified-by-inventory",
             "search-upstream-entry-not-verified",
         )
-        stored = entry["stored_instance_id"]
-        _require(stored not in current_entries, "search-upstream-stored-instance-duplicate")
-        current_entries[stored] = entry
+        stored_ref = entry["stored_instance_id"]
+        _require(
+            stored_ref not in current_entries,
+            "search-upstream-stored-instance-duplicate",
+        )
+        current_entries[stored_ref] = entry
+        # Location is intentionally only freshness input. It never enters the
+        # public/path-free index record.
         entry_basis.append(
             {
                 "entry_id": entry["entry_id"],
                 "logical_candidate_id": entry["logical_candidate_id"],
-                "stored_instance_id": stored,
+                "stored_instance_id": stored_ref,
                 "current_location": entry["current_location"],
                 "fingerprint": entry["fingerprint"],
                 "byte_length": entry["byte_length"],
@@ -176,7 +187,10 @@ def _current_upstream_projection(
     for raw in vs1c["source_references"]:
         source = validate_source_reference(raw)
         source_ref_id = source["source_ref_id"]
-        _require(source_ref_id not in source_refs, "search-upstream-source-ref-duplicate")
+        _require(
+            source_ref_id not in source_refs,
+            "search-upstream-source-ref-duplicate",
+        )
         entry = current_entries.get(source["stored_instance_ref"])
         _require(entry is not None, "search-upstream-source-not-current")
         _require(
@@ -196,7 +210,10 @@ def _current_upstream_projection(
     seen_extractions: set[str] = set()
     for extraction in vs1d["extractions"]:
         source_ref_id = extraction["source_ref_id"]
-        _require(source_ref_id not in seen_extractions, "search-upstream-extraction-duplicate")
+        _require(
+            source_ref_id not in seen_extractions,
+            "search-upstream-extraction-duplicate",
+        )
         seen_extractions.add(source_ref_id)
         source = source_refs.get(source_ref_id)
         _require(source is not None, "search-upstream-extraction-source-not-current")
@@ -205,18 +222,22 @@ def _current_upstream_projection(
             "search-upstream-extraction-fingerprint-mismatch",
         )
 
-        representation = _record_by_kind(extraction, "NormalizedRepresentationRecord")
+        representation = _record_by_kind(
+            extraction, "NormalizedRepresentationRecord"
+        )
         evidence = _record_by_kind(extraction, "ProviderEvidenceRecord")
         run = _record_by_kind(extraction, "ProcessingRunRecord")
         _require(
             representation.get("source_ref", {}).get("source_id") == source_ref_id
-            and representation.get("source_ref", {}).get("fingerprint") == source["fingerprint"],
+            and representation.get("source_ref", {}).get("fingerprint")
+            == source["fingerprint"],
             "search-upstream-representation-source-mismatch",
         )
         _require(
             run.get("outcome", {}).get("execution") == "completed",
             "search-upstream-run-not-completed",
         )
+
         provider = evidence.get("provider")
         route = evidence.get("route_profile")
         _require(
@@ -231,6 +252,7 @@ def _current_upstream_projection(
             and route["route_profile_id"],
             "search-upstream-route-required",
         )
+
         units_raw = representation.get("units")
         _require(isinstance(units_raw, list), "search-upstream-units-required")
         units = [_canonical_index_unit(row) for row in units_raw]
@@ -240,6 +262,7 @@ def _current_upstream_projection(
             isinstance(representation_id, str) and representation_id,
             "search-upstream-representation-id-required",
         )
+
         indexed = {
             "source_ref_id": source_ref_id,
             "logical_candidate_ref": source["logical_candidate_ref"],
@@ -268,9 +291,9 @@ def _current_upstream_projection(
                 "units": units,
             }
         )
+
     index_sources.sort(key=lambda row: row["source_ref_id"])
     extraction_basis.sort(key=lambda row: row["source_ref_id"])
-
     basis = {
         "scope_ref": scope_id,
         "vs1b_freshness": "fresh",
@@ -303,10 +326,14 @@ def build_search_index(catalog_snapshot: Any, scope_id: str) -> dict[str, Any]:
 def validate_vs1e_state(value: Any, scope_id: str) -> dict[str, Any]:
     _require(isinstance(value, dict), "vs1e-state-must-be-object")
     _require(
-        set(value) == {"state_version", "scope_ref", "index", "views", "smart_collections"},
+        set(value)
+        == {"state_version", "scope_ref", "index", "views", "smart_collections"},
         "vs1e-state-shape-invalid",
     )
-    _require(value["state_version"] == VS1E_STATE_VERSION, "vs1e-state-version-unsupported")
+    _require(
+        value["state_version"] == VS1E_STATE_VERSION,
+        "vs1e-state-version-unsupported",
+    )
     _require(value["scope_ref"] == scope_id, "vs1e-state-scope-mismatch")
     index = validate_search_index(value["index"])
     _require(index["scope_ref"] == scope_id, "vs1e-index-scope-mismatch")
@@ -321,7 +348,10 @@ def validate_vs1e_state(value: Any, scope_id: str) -> dict[str, Any]:
     _require(view_ids == sorted(view_ids), "vs1e-views-not-canonical-order")
 
     collections = value["smart_collections"]
-    _require(isinstance(collections, list), "vs1e-smart-collections-must-be-array")
+    _require(
+        isinstance(collections, list),
+        "vs1e-smart-collections-must-be-array",
+    )
     collection_ids: list[str] = []
     for raw in collections:
         collection = validate_smart_collection(raw)
@@ -337,7 +367,10 @@ def validate_vs1e_state(value: Any, scope_id: str) -> dict[str, Any]:
     return value
 
 
-def _empty_or_prior_lists(payload: dict[str, Any], scope_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def _empty_or_prior_lists(
+    payload: dict[str, Any],
+    scope_id: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     prior = payload.get("vs1e")
     if prior is None:
         return [], []
@@ -365,9 +398,14 @@ class SearchViewService:
         }
         validate_vs1e_state(payload["vs1e"], self._scope_id)
         try:
-            saved = self._store.save(payload, expected_revision=snapshot.revision)
+            saved = self._store.save(
+                payload,
+                expected_revision=snapshot.revision,
+            )
         except CatalogStoreError as exc:
-            raise SearchServiceError("search-index-catalog-changed-during-build") from exc
+            raise SearchServiceError(
+                "search-index-catalog-changed-during-build"
+            ) from exc
         return {
             "status": "completed",
             "catalog_revision": saved.revision,
@@ -384,19 +422,27 @@ class SearchViewService:
         validate_vs1e_state(state, self._scope_id)
         return snapshot, state
 
-    def search(self, plan: dict[str, Any]) -> dict[str, Any]:
+    def _search_loaded(
+        self,
+        snapshot: Any,
+        state: dict[str, Any],
+        plan: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Evaluate one plan entirely against one already-loaded snapshot."""
+
         normalized = normalize_query_plan(plan)
-        try:
-            snapshot, state = self._load_vs1e()
-        except SearchServiceError:
-            raise
         index = state["index"]
         try:
-            current_basis = current_upstream_basis_fingerprint(snapshot, self._scope_id)
+            current_basis = current_upstream_basis_fingerprint(
+                snapshot,
+                self._scope_id,
+            )
         except SearchServiceError:
             return stale_search_result(
                 current_upstream_basis_fingerprint=None,
-                index_upstream_basis_fingerprint=index["upstream_basis_fingerprint"],
+                index_upstream_basis_fingerprint=index[
+                    "upstream_basis_fingerprint"
+                ],
                 plan=normalized,
                 reason="upstream-not-current",
             )
@@ -406,6 +452,10 @@ class SearchViewService:
             plan=normalized,
         )
 
+    def search(self, plan: dict[str, Any]) -> dict[str, Any]:
+        snapshot, state = self._load_vs1e()
+        return self._search_loaded(snapshot, state, plan)
+
     def save_view(
         self,
         view_id: str,
@@ -414,34 +464,52 @@ class SearchViewService:
     ) -> dict[str, Any]:
         view = build_view(view_id, plan, projection)
         snapshot, state = self._load_vs1e()
-        views = [deepcopy(row) for row in state["views"] if row["view_id"] != view_id]
+        views = [
+            deepcopy(row)
+            for row in state["views"]
+            if row["view_id"] != view_id
+        ]
         views.append(view)
         views.sort(key=lambda row: row["view_id"])
         payload = deepcopy(snapshot.payload)
         payload["vs1e"]["views"] = views
         validate_vs1e_state(payload["vs1e"], self._scope_id)
         try:
-            saved = self._store.save(payload, expected_revision=snapshot.revision)
+            saved = self._store.save(
+                payload,
+                expected_revision=snapshot.revision,
+            )
         except CatalogStoreError as exc:
             raise SearchServiceError("view-catalog-changed-during-save") from exc
-        return {"status": "completed", "catalog_revision": saved.revision, "view_id": view_id}
+        return {
+            "status": "completed",
+            "catalog_revision": saved.revision,
+            "view_id": view_id,
+        }
 
     def evaluate_view(self, view_id: str) -> dict[str, Any]:
         snapshot, state = self._load_vs1e()
         matches = [row for row in state["views"] if row["view_id"] == view_id]
         _require(len(matches) == 1, "view-not-found")
         view = matches[0]
-        result = self.search(view["plan"])
+        result = self._search_loaded(snapshot, state, view["plan"])
         _require(result["freshness"] == "fresh", "view-requires-fresh-index")
-        by_id = {row["source_ref_id"]: row for row in state["index"]["sources"]}
+        by_id = {
+            row["source_ref_id"]: row
+            for row in state["index"]["sources"]
+        }
         rows: list[dict[str, Any]] = []
         for source_id in result["source_ids"]:
             source = by_id[source_id]
-            rows.append({field: source[field] for field in view["projection"]})
+            rows.append(
+                {field: source[field] for field in view["projection"]}
+            )
         return {
             "view_id": view_id,
             "freshness": "fresh",
-            "upstream_basis_fingerprint": result["current_upstream_basis_fingerprint"],
+            "upstream_basis_fingerprint": result[
+                "current_upstream_basis_fingerprint"
+            ],
             "source_ids": result["source_ids"],
             "projection": deepcopy(view["projection"]),
             "rows": rows,
@@ -454,7 +522,7 @@ class SearchViewService:
     ) -> dict[str, Any]:
         normalized = normalize_query_plan(rule)
         snapshot, state = self._load_vs1e()
-        result = self.search(normalized)
+        result = self._search_loaded(snapshot, state, normalized)
         _require(
             result["freshness"] == "fresh",
             "smart-collection-requires-fresh-index",
@@ -463,7 +531,9 @@ class SearchViewService:
             collection_id,
             normalized,
             current_members=result["source_ids"],
-            evaluated_upstream_basis_fingerprint=result["current_upstream_basis_fingerprint"],
+            evaluated_upstream_basis_fingerprint=result[
+                "current_upstream_basis_fingerprint"
+            ],
             evaluated_catalog_revision=snapshot.revision,
         )
         collections = [
@@ -477,9 +547,14 @@ class SearchViewService:
         payload["vs1e"]["smart_collections"] = collections
         validate_vs1e_state(payload["vs1e"], self._scope_id)
         try:
-            saved = self._store.save(payload, expected_revision=snapshot.revision)
+            saved = self._store.save(
+                payload,
+                expected_revision=snapshot.revision,
+            )
         except CatalogStoreError as exc:
-            raise SearchServiceError("smart-collection-catalog-changed-during-save") from exc
+            raise SearchServiceError(
+                "smart-collection-catalog-changed-during-save"
+            ) from exc
         return {
             "status": "completed",
             "catalog_revision": saved.revision,
@@ -493,13 +568,14 @@ class SearchViewService:
     def reevaluate_smart_collection(self, collection_id: str) -> dict[str, Any]:
         snapshot, state = self._load_vs1e()
         matches = [
-            row for row in state["smart_collections"]
+            row
+            for row in state["smart_collections"]
             if row["collection_id"] == collection_id
         ]
         _require(len(matches) == 1, "smart-collection-not-found")
         prior = matches[0]
         rule_bytes = canonical_json_bytes(prior["rule"])
-        result = self.search(prior["rule"])
+        result = self._search_loaded(snapshot, state, prior["rule"])
         _require(
             result["freshness"] == "fresh",
             "smart-collection-requires-fresh-index",
@@ -508,7 +584,9 @@ class SearchViewService:
             collection_id,
             prior["rule"],
             current_members=result["source_ids"],
-            evaluated_upstream_basis_fingerprint=result["current_upstream_basis_fingerprint"],
+            evaluated_upstream_basis_fingerprint=result[
+                "current_upstream_basis_fingerprint"
+            ],
             evaluated_catalog_revision=snapshot.revision,
         )
         _require(
@@ -526,7 +604,10 @@ class SearchViewService:
         payload["vs1e"]["smart_collections"] = collections
         validate_vs1e_state(payload["vs1e"], self._scope_id)
         try:
-            saved = self._store.save(payload, expected_revision=snapshot.revision)
+            saved = self._store.save(
+                payload,
+                expected_revision=snapshot.revision,
+            )
         except CatalogStoreError as exc:
             raise SearchServiceError(
                 "smart-collection-catalog-changed-during-reevaluation"

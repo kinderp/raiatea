@@ -58,6 +58,12 @@ MAX_STDOUT_BUFFERED_FRAMES = MAX_NOTIFICATIONS_BEFORE_RESPONSE + 8
 HANDSHAKE_TIMEOUT_SECONDS = 10.0
 MAX_INVOCATION_TIMEOUT_SECONDS = 60.0
 ALLOWED_EXTRA_ENV_KEYS = frozenset({"RAIATEA_VS1_PLUGIN_IO_BROKER"})
+OFFICIAL_LOCAL_SOURCE_PLUGIN_ID = "org.raiatea.vs1.local-source"
+OFFICIAL_LOCAL_SOURCE_COMMAND = (
+    "python",
+    "-m",
+    "prototype.p0_vs1.plugins.local_source.plugin",
+)
 # Only OS/runtime settings needed to launch the same local Python process are
 # inherited. Credentials, proxies, cloud tokens and arbitrary user variables do
 # not cross the VS1c plugin process boundary.
@@ -114,10 +120,20 @@ def build_child_environment(extra_env: dict[str, str] | None = None) -> dict[str
     return env
 
 
-def normalize_product_command(command: Sequence[str]) -> list[str]:
+def normalize_product_command(
+    command: Sequence[str], manifest: dict[str, Any] | None = None
+) -> list[str]:
     values = [str(token) for token in command]
     if not values:
         raise LocalPluginProcessError("vs1c-plugin-command-required")
+    plugin_id = None
+    if isinstance(manifest, dict) and isinstance(manifest.get("plugin"), dict):
+        plugin_id = manifest["plugin"].get("plugin_id")
+    if plugin_id == OFFICIAL_LOCAL_SOURCE_PLUGIN_ID:
+        if values != list(OFFICIAL_LOCAL_SOURCE_COMMAND):
+            raise LocalPluginProcessError(
+                "vs1c-official-local-source-command-forbidden"
+            )
     if values[0] in {"python", "python3"}:
         values[0] = sys.executable
     return values
@@ -143,7 +159,7 @@ class LocalPluginProcessClient:
         *,
         extra_env: dict[str, str] | None = None,
     ) -> None:
-        self.command = normalize_product_command(command)
+        self.command = normalize_product_command(command, manifest)
         self.manifest = manifest
         self.extra_env = dict(extra_env or {})
         self.process: subprocess.Popen[bytes] | None = None

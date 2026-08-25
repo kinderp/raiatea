@@ -18,12 +18,12 @@ This decision is intentionally narrower than a repository-wide licensing decisio
 
 ## CC BY 4.0 material
 
-CC BY 4.0 applies to the project-created material identified by the benchmark manifests as eligible for public redistribution, including:
+CC BY 4.0 applies to the project-created material identified by the benchmark rights evidence as eligible for public redistribution, including:
 
 - generated B-01/B-02 fixture document content and generated fixture files produced from the project-owned generators;
 - `manifests/fixtures.json` as benchmark fixture metadata;
 - `manifests/gold.json` as gold/reference data;
-- project-created fixture/gold values emitted by the licensed generators when the generated manifest identifies them as CC BY 4.0.
+- project-created fixture/gold values explicitly covered by the current redistribution-rights overlay.
 
 License identifier: `CC-BY-4.0`  
 License information and legal code: <https://creativecommons.org/licenses/by/4.0/>
@@ -51,7 +51,9 @@ Apache-2.0 applies only to these fixture-generator source files unless a later r
 License identifier: `Apache-2.0`  
 Canonical license information: <https://www.apache.org/licenses/LICENSE-2.0>
 
-These files carry an `SPDX-License-Identifier: Apache-2.0` header. Redistribution of the generator code must comply with Apache-2.0, including preservation of the license and applicable notices and marking modified files where required.
+The scoped licensing declaration and the accompanying Apache-2.0 license copy apply to those exact paths. This licensing-only decision intentionally does **not** rewrite historically benchmark-pinned generator source files merely to add SPDX comment headers, because changing those files would change source fingerprints recorded by existing benchmark evidence without changing generator behavior.
+
+Redistribution of the generator code must comply with Apache-2.0, including preservation of the license and applicable notices and marking modified files where required.
 
 ## Explicit exclusions
 

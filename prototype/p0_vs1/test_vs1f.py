@@ -14,7 +14,6 @@ from prototype.p0_vs1.backup_contract import (
     canonical_json_bytes,
     canonicalize_authority,
     decode_backup,
-    encode_backup,
     sha256_ref,
 )
 from prototype.p0_vs1.backup_service import (
@@ -113,9 +112,21 @@ def _e05_stable_snapshot(payload: dict) -> list[dict]:
     for extraction in payload["vs1d"]["extractions"]:
         records = extraction["records"]
         refs = extraction["record_refs"]
-        run = next(records[ref["ref_id"]] for ref in refs if ref["record_kind"] == "ProcessingRunRecord")
-        evidence = next(records[ref["ref_id"]] for ref in refs if ref["record_kind"] == "ProviderEvidenceRecord")
-        representation = next(records[ref["ref_id"]] for ref in refs if ref["record_kind"] == "NormalizedRepresentationRecord")
+        run = next(
+            records[ref["ref_id"]]
+            for ref in refs
+            if ref["record_kind"] == "ProcessingRunRecord"
+        )
+        evidence = next(
+            records[ref["ref_id"]]
+            for ref in refs
+            if ref["record_kind"] == "ProviderEvidenceRecord"
+        )
+        representation = next(
+            records[ref["ref_id"]]
+            for ref in refs
+            if ref["record_kind"] == "NormalizedRepresentationRecord"
+        )
         rows.append(
             {
                 "source_ref_id": extraction["source_ref_id"],
@@ -184,11 +195,7 @@ class Vs1fFixture(unittest.TestCase):
         )
         self.search.save_smart_collection("smart:headings", self.heading_plan)
 
-        # Establish a trusted Alfred stream checkpoint without changing current
-        # source facts, then demonstrate a real Location transition.
-        baseline = self.reconciliation.consume_jsonl(
-            _raw(1, self.root / "baseline")
-        )
+        baseline = self.reconciliation.consume_jsonl(_raw(1, self.root / "baseline"))
         self.assertEqual(baseline["status"], "baseline-unproven-not-applied")
         self.reconciliation.reconcile_inventory()
 
@@ -373,10 +380,7 @@ class RestoreTests(Vs1fFixture):
 
         restored_payload = target.load().payload
         self.assertEqual(_active_identity_snapshot(restored_payload), self.pre_identities)
-        self.assertEqual(
-            restored_payload["vs1c"]["source_references"],
-            self.pre_source_refs,
-        )
+        self.assertEqual(restored_payload["vs1c"]["source_references"], self.pre_source_refs)
         self.assertEqual(_e05_stable_snapshot(restored_payload), self.pre_e05)
 
         restored_search = SearchViewService(target, "scope:library")
@@ -396,10 +400,7 @@ class RestoreTests(Vs1fFixture):
             search_json_bytes(self.pre_smart["rule"]),
         )
         self.assertEqual(post_smart["current_members"], self.pre_smart["current_members"])
-        self.assertEqual(
-            post_smart["evaluated_catalog_revision"],
-            1,
-        )
+        self.assertEqual(post_smart["evaluated_catalog_revision"], 1)
         self.assertEqual(
             target.load().payload["vs1e"]["index"]["built_from_catalog_revision"],
             1,
@@ -407,13 +408,16 @@ class RestoreTests(Vs1fFixture):
 
     def test_restore_scope_mismatch_and_nonempty_target_fail_without_overwrite(self) -> None:
         raw = self.backup.export_bytes()
-        backup = decode_backup(raw)
-        wrong = deepcopy(backup)
-        wrong["scope_ref"] = "scope:other"
-        wrong["authority_sha256"] = sha256_ref(wrong["authority"])
+        self.scopes.register_scope("scope:other", self.root)
+        wrong_service = CatalogBackupService(
+            self.store,
+            self.scopes,
+            self.broker,
+            "scope:other",
+        )
         with self.assertRaisesRegex(BackupServiceError, "scope-mismatch"):
-            self.backup.restore_into_empty_store(
-                canonical_json_bytes(wrong),
+            wrong_service.restore_into_empty_store(
+                raw,
                 self.new_target("wrong-scope.json"),
             )
 

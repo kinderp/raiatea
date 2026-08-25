@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from datetime import datetime, timedelta, timezone
+import hashlib
 import importlib.util
 import json
 from pathlib import Path
@@ -11,6 +12,7 @@ import secrets
 from typing import Any
 
 from prototype.p0_vs1.catalog_store import CatalogStateStore, CatalogStoreError
+from prototype.p0_vs1.core_access import ScopeRegistry
 from prototype.p0_vs1.local_process_client import LocalPluginProcessClient, LocalPluginProcessError
 from prototype.p0_vs1.plugin_io import PluginIOError, Vs1PluginIO
 from prototype.p0_vs1.reconciliation import validate_state as validate_vs1b_state
@@ -27,14 +29,23 @@ from prototype.p0_vs1.source_contract import (
     validate_source_reference,
     validate_source_reference_bundle,
 )
-from prototype.p0_vs1.core_access import ScopeRegistry
 
 
 HERE = Path(__file__).resolve().parent
 REPO_ROOT = HERE.parents[1]
 DEFAULT_MANIFEST_PATH = HERE / "plugins" / "local_source" / "manifest.json"
-MANIFEST_VALIDATOR_PATH = REPO_ROOT / "elaboration" / "p0" / "contracts" / "plugins" / "1.0.0" / "validate_manifest.py"
-_MANIFEST_SPEC = importlib.util.spec_from_file_location("vs1c_manifest_validator", MANIFEST_VALIDATOR_PATH)
+MANIFEST_VALIDATOR_PATH = (
+    REPO_ROOT
+    / "elaboration"
+    / "p0"
+    / "contracts"
+    / "plugins"
+    / "1.0.0"
+    / "validate_manifest.py"
+)
+_MANIFEST_SPEC = importlib.util.spec_from_file_location(
+    "vs1c_manifest_validator", MANIFEST_VALIDATOR_PATH
+)
 MANIFEST_VALIDATOR = importlib.util.module_from_spec(_MANIFEST_SPEC)
 assert _MANIFEST_SPEC.loader is not None
 _MANIFEST_SPEC.loader.exec_module(MANIFEST_VALIDATOR)
@@ -72,32 +83,67 @@ def _validate_local_manifest_policy(manifest: dict[str, Any]) -> None:
     _require(manifest.get("families") == ["source"], "local-source-manifest-family-invalid")
     plugin = manifest.get("plugin")
     _require(isinstance(plugin, dict), "local-source-manifest-plugin-invalid")
-    _require(plugin.get("plugin_id") == "org.raiatea.vs1.local-source", "local-source-plugin-id-invalid")
+    _require(
+        plugin.get("plugin_id") == "org.raiatea.vs1.local-source",
+        "local-source-plugin-id-invalid",
+    )
     _require(manifest.get("trust_tier") == "official", "local-source-trust-tier-invalid")
     permissions = manifest.get("permissions")
     _require(isinstance(permissions, dict), "local-source-permissions-invalid")
     _require(permissions.get("network") == [], "local-source-network-forbidden")
-    _require(permissions.get("filesystem") == [], "local-source-filesystem-permission-forbidden")
+    _require(
+        permissions.get("filesystem") == [],
+        "local-source-filesystem-permission-forbidden",
+    )
     _require(permissions.get("secrets") == [], "local-source-secrets-forbidden")
-    _require(permissions.get("temporary_workspace") is True, "local-source-temporary-workspace-required")
+    _require(
+        permissions.get("temporary_workspace") is True,
+        "local-source-temporary-workspace-required",
+    )
     capabilities = manifest.get("capabilities")
-    _require(isinstance(capabilities, list) and len(capabilities) == 1, "local-source-capability-shape-invalid")
+    _require(
+        isinstance(capabilities, list) and len(capabilities) == 1,
+        "local-source-capability-shape-invalid",
+    )
     capability = capabilities[0]
-    _require(capability.get("capability_id") == "source.discover", "local-source-capability-invalid")
+    _require(
+        capability.get("capability_id") == "source.discover",
+        "local-source-capability-invalid",
+    )
     profiles = capability.get("profiles")
-    _require(isinstance(profiles, list) and len(profiles) == 1, "local-source-profile-shape-invalid")
-    _require(profiles[0].get("profile_id") == "local-catalog-read-only", "local-source-profile-invalid")
+    _require(
+        isinstance(profiles, list) and len(profiles) == 1,
+        "local-source-profile-shape-invalid",
+    )
+    profile = profiles[0]
+    _require(
+        profile.get("profile_id") == "local-catalog-read-only",
+        "local-source-profile-invalid",
+    )
+    _require(profile.get("family") == "source", "local-source-profile-family-invalid")
+    _require(
+        profile.get("input_classes") == ["vs1c-discovery-snapshot"],
+        "local-source-input-class-invalid",
+    )
+    _require(
+        profile.get("output_classes") == ["vs1c-source-reference-bundle"],
+        "local-source-output-class-invalid",
+    )
 
 
 def _active_discovery_items(vs1b: dict[str, Any]) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
     for entry in vs1b["entries"]:
-        if entry["superseded_by"] is not None:
+        if entry["superseded_by"] is not None or entry["availability"] != "known-present":
             continue
-        if entry["availability"] != "known-present":
-            continue
-        _require(entry["reconciliation_status"] == "verified-by-inventory", "source-discovery-entry-not-inventory-verified")
-        _require(entry["media_type"] == EPUB_MEDIA_TYPE, "source-discovery-entry-media-type-invalid")
+        _require(
+            entry["reconciliation_status"] == "verified-by-inventory",
+            "source-discovery-entry-not-inventory-verified",
+        )
+        _require(
+            entry["media_type"] == EPUB_MEDIA_TYPE,
+            "source-discovery-entry-media-type-invalid",
+        )
         items.append(
             {
                 "catalog_entry_ref": entry["entry_id"],
@@ -112,11 +158,37 @@ def _active_discovery_items(vs1b: dict[str, Any]) -> list[dict[str, Any]]:
     return items
 
 
+def _discovery_basis_fingerprint(
+    scope_id: str,
+    vs1b: dict[str, Any],
+    items: list[dict[str, Any]],
+) -> str:
+    """Fingerprint only canonical facts relevant to source discovery.
+
+    VS1b stores ordered evidence/history where order can be meaningful, but a
+    Source discovery snapshot must not change merely because the internal entry
+    list is serialized in a different order. The catalog revision remains a
+    separate stale-state fence.
+    """
+
+    basis = {
+        "scope_ref": scope_id,
+        "freshness": "fresh",
+        "last_seq": vs1b["stream"]["last_seq"],
+        "last_reconciled_seq": vs1b["stream"]["last_reconciled_seq"],
+        "items": items,
+    }
+    return sha256_ref(basis)
+
+
 def build_discovery_snapshot(catalog_snapshot: Any, scope_id: str) -> dict[str, Any]:
     _require(catalog_snapshot is not None, "source-discovery-catalog-required")
     revision = getattr(catalog_snapshot, "revision", None)
     payload = getattr(catalog_snapshot, "payload", None)
-    _require(isinstance(revision, int) and revision >= 1, "source-discovery-catalog-revision-invalid")
+    _require(
+        isinstance(revision, int) and revision >= 1,
+        "source-discovery-catalog-revision-invalid",
+    )
     _require(isinstance(payload, dict), "source-discovery-catalog-payload-invalid")
     vs1b = payload.get("vs1b")
     _require(isinstance(vs1b, dict), "source-discovery-vs1b-state-required")
@@ -124,14 +196,18 @@ def build_discovery_snapshot(catalog_snapshot: Any, scope_id: str) -> dict[str, 
         validate_vs1b_state(vs1b, scope_id)
     except Exception as exc:
         raise SourceDiscoveryError(f"source-discovery-vs1b-state-invalid:{exc}") from exc
-    _require(vs1b["freshness"]["status"] == "fresh", "source-discovery-catalog-not-fresh")
+    _require(
+        vs1b["freshness"]["status"] == "fresh",
+        "source-discovery-catalog-not-fresh",
+    )
+    items = _active_discovery_items(vs1b)
     snapshot = {
         "snapshot_version": DISCOVERY_SNAPSHOT_VERSION,
         "scope_ref": scope_id,
         "catalog_revision": revision,
-        "vs1b_state_fingerprint": sha256_ref(vs1b),
+        "vs1b_state_fingerprint": _discovery_basis_fingerprint(scope_id, vs1b, items),
         "freshness": "fresh",
-        "items": _active_discovery_items(vs1b),
+        "items": items,
     }
     try:
         validate_discovery_snapshot(snapshot)
@@ -148,15 +224,16 @@ def _invocation_request(
     output_target: dict[str, Any],
     snapshot_fingerprint: str,
 ) -> dict[str, Any]:
-    now = datetime.now(timezone.utc)
-    deadline = now + timedelta(seconds=30)
-    idempotency_basis = f"{scope_id}:{rights_decision_ref}:{snapshot_fingerprint}".encode("utf-8")
-    import hashlib
-
+    deadline = datetime.now(timezone.utc) + timedelta(seconds=30)
+    idempotency_basis = (
+        f"{scope_id}:{rights_decision_ref}:{snapshot_fingerprint}".encode("utf-8")
+    )
     return {
         "record_type": "invocation-request",
         "invocation_id": "invoke:vs1c:source:" + secrets.token_urlsafe(14),
-        "idempotency_key": "idem:vs1c:source:" + hashlib.sha256(idempotency_basis).hexdigest(),
+        "idempotency_key": (
+            "idem:vs1c:source:" + hashlib.sha256(idempotency_basis).hexdigest()
+        ),
         "runtime_instance_id": runtime_instance_id,
         "capability": {
             "capability_id": "source.discover",
@@ -174,7 +251,9 @@ def _invocation_request(
     }
 
 
-def _find_completed_asset(result: dict[str, Any], target_handle_id: str) -> dict[str, Any]:
+def _find_completed_asset(
+    result: dict[str, Any], target_handle_id: str
+) -> dict[str, Any]:
     assets = [
         row["handle"]
         for row in result.get("outputs", [])
@@ -182,20 +261,25 @@ def _find_completed_asset(result: dict[str, Any], target_handle_id: str) -> dict
         and row.get("kind") == "asset-handle"
         and isinstance(row.get("handle"), dict)
     ]
-    _require(len(assets) == 1, "source-plugin-completed-asset-count-invalid")
-    _require(assets[0].get("handle_id") == target_handle_id, "source-plugin-completed-asset-target-mismatch")
+    _require(
+        len(assets) == 1,
+        "source-plugin-completed-asset-count-invalid",
+    )
+    _require(
+        assets[0].get("handle_id") == target_handle_id,
+        "source-plugin-completed-asset-target-mismatch",
+    )
     return assets[0]
 
 
 def _result_record_refs(result: dict[str, Any]) -> list[dict[str, Any]]:
-    refs = [
+    return [
         row["record_ref"]
         for row in result.get("outputs", [])
         if isinstance(row, dict)
         and row.get("kind") == "record-ref"
         and isinstance(row.get("record_ref"), dict)
     ]
-    return refs
 
 
 def _validate_plugin_result_against_snapshot(
@@ -209,12 +293,21 @@ def _validate_plugin_result_against_snapshot(
     except SourceContractError as exc:
         raise SourceDiscoveryError(f"source-plugin-bundle-invalid:{exc}") from exc
     expected = build_source_reference_bundle(snapshot)
-    _require(canonical_json_bytes(bundle) == canonical_json_bytes(expected), "source-plugin-bundle-does-not-match-snapshot")
+    _require(
+        canonical_json_bytes(bundle) == canonical_json_bytes(expected),
+        "source-plugin-bundle-does-not-match-snapshot",
+    )
     expected_refs = expected["record_refs"]
-    _require(_result_record_refs(result) == expected_refs, "source-plugin-result-record-refs-mismatch")
+    _require(
+        _result_record_refs(result) == expected_refs,
+        "source-plugin-result-record-refs-mismatch",
+    )
     provenance = result.get("provenance")
     _require(isinstance(provenance, dict), "source-plugin-provenance-required")
-    _require(provenance.get("rights_decision_ref") == rights_decision_ref, "source-plugin-rights-decision-ref-mismatch")
+    _require(
+        provenance.get("rights_decision_ref") == rights_decision_ref,
+        "source-plugin-rights-decision-ref-mismatch",
+    )
     records = [bundle["records"][ref["ref_id"]] for ref in expected_refs]
     for record in records:
         validate_source_reference(record)
@@ -264,7 +357,10 @@ def validate_vs1c_state(value: Any, scope_id: str) -> dict[str, Any]:
         "provenance",
     }
     _require(set(value) == expected, "vs1c-state-shape-invalid")
-    _require(value["state_version"] == VS1C_STATE_VERSION, "vs1c-state-version-unsupported")
+    _require(
+        value["state_version"] == VS1C_STATE_VERSION,
+        "vs1c-state-version-unsupported",
+    )
     _require(value["scope_ref"] == scope_id, "vs1c-state-scope-mismatch")
     _require(
         isinstance(value["catalog_basis_revision"], int)
@@ -284,11 +380,18 @@ def validate_vs1c_state(value: Any, scope_id: str) -> dict[str, Any]:
     plugin = value["plugin"]
     _require(
         isinstance(plugin, dict)
-        and set(plugin) == {"plugin_id", "plugin_version", "manifest_fingerprint"},
+        and set(plugin)
+        == {"plugin_id", "plugin_version", "manifest_fingerprint"},
         "vs1c-state-plugin-invalid",
     )
-    _require(plugin["plugin_id"] == "org.raiatea.vs1.local-source", "vs1c-state-plugin-id-invalid")
-    _require(isinstance(plugin["plugin_version"], str) and plugin["plugin_version"], "vs1c-state-plugin-version-invalid")
+    _require(
+        plugin["plugin_id"] == "org.raiatea.vs1.local-source",
+        "vs1c-state-plugin-id-invalid",
+    )
+    _require(
+        isinstance(plugin["plugin_version"], str) and plugin["plugin_version"],
+        "vs1c-state-plugin-version-invalid",
+    )
     _require(
         isinstance(plugin["manifest_fingerprint"], str)
         and plugin["manifest_fingerprint"].startswith("sha256:"),
@@ -299,7 +402,10 @@ def validate_vs1c_state(value: Any, scope_id: str) -> dict[str, Any]:
     seen: set[str] = set()
     for record in records:
         validated = validate_source_reference(record)
-        _require(validated["source_ref_id"] not in seen, "vs1c-state-source-ref-duplicate")
+        _require(
+            validated["source_ref_id"] not in seen,
+            "vs1c-state-source-ref-duplicate",
+        )
         seen.add(validated["source_ref_id"])
     _require(
         [record["source_ref_id"] for record in records]
@@ -308,9 +414,13 @@ def validate_vs1c_state(value: Any, scope_id: str) -> dict[str, Any]:
     )
     provenance = value["provenance"]
     _require(isinstance(provenance, dict), "vs1c-state-provenance-invalid")
-    _require(provenance.get("plugin_id") == plugin["plugin_id"], "vs1c-state-provenance-plugin-mismatch")
     _require(
-        provenance.get("rights_decision_ref") == value["rights_decision"]["decision_id"],
+        provenance.get("plugin_id") == plugin["plugin_id"],
+        "vs1c-state-provenance-plugin-mismatch",
+    )
+    _require(
+        provenance.get("rights_decision_ref")
+        == value["rights_decision"]["decision_id"],
         "vs1c-state-provenance-rights-mismatch",
     )
     return value
@@ -360,7 +470,9 @@ class LocalSourceDiscoveryService:
             environment = plugin_io.freeze()
             command = manifest["entrypoint"]["command"]
             try:
-                with LocalPluginProcessClient(command, manifest, extra_env=environment) as client:
+                with LocalPluginProcessClient(
+                    command, manifest, extra_env=environment
+                ) as client:
                     handshake = client.handshake()
                     request = _invocation_request(
                         handshake["identity"]["runtime_instance_id"],
@@ -373,20 +485,32 @@ class LocalSourceDiscoveryService:
                     result = client.invoke(request)
                 plugin_io.verify_broker_unchanged()
             except (LocalPluginProcessError, PluginIOError) as exc:
-                raise SourceDiscoveryError(f"source-plugin-execution-failed:{exc}") from exc
+                raise SourceDiscoveryError(
+                    f"source-plugin-execution-failed:{exc}"
+                ) from exc
 
-            _require(result.get("status") == "completed", "source-plugin-result-not-completed")
+            _require(
+                result.get("status") == "completed",
+                "source-plugin-result-not-completed",
+            )
             completed = _find_completed_asset(result, output_target["handle_id"])
             try:
-                bundle_bytes = plugin_io.read_completed_output(output_target, completed)
+                bundle_bytes = plugin_io.read_completed_output(
+                    output_target, completed
+                )
             except PluginIOError as exc:
-                raise SourceDiscoveryError(f"source-plugin-output-invalid:{exc}") from exc
+                raise SourceDiscoveryError(
+                    f"source-plugin-output-invalid:{exc}"
+                ) from exc
 
         try:
             bundle = json.loads(bundle_bytes.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise SourceDiscoveryError("source-plugin-bundle-json-invalid") from exc
-        _require(canonical_json_bytes(bundle) == bundle_bytes, "source-plugin-bundle-not-canonical")
+        _require(
+            canonical_json_bytes(bundle) == bundle_bytes,
+            "source-plugin-bundle-not-canonical",
+        )
         records = _validate_plugin_result_against_snapshot(
             snapshot,
             bundle,
@@ -405,9 +529,14 @@ class LocalSourceDiscoveryService:
             records=records,
         )
         try:
-            saved = self._store.save(original_payload, expected_revision=catalog_snapshot.revision)
+            saved = self._store.save(
+                original_payload,
+                expected_revision=catalog_snapshot.revision,
+            )
         except CatalogStoreError as exc:
-            raise SourceDiscoveryError("source-discovery-catalog-changed-during-plugin-run") from exc
+            raise SourceDiscoveryError(
+                "source-discovery-catalog-changed-during-plugin-run"
+            ) from exc
         return {
             "status": "completed",
             "catalog_revision": saved.revision,

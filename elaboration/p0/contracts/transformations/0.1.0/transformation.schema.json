@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raiatea.invalid/contracts/transformations/0.1.0/transformation.schema.json",
+  "title": "Raiatea Transformation Contract 0.1.0 candidate",
+  "oneOf": [
+    {"$ref": "#/$defs/DerivedArtifactRecord"},
+    {"$ref": "#/$defs/TransformationRecord"}
+  ],
+  "$defs": {
+    "Sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "ArtifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_id", "handle_id", "fingerprint", "media_type", "byte_length"],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1},
+        "handle_id": {"type": "string", "minLength": 1},
+        "fingerprint": {"$ref": "#/$defs/Sha256"},
+        "media_type": {"type": "string", "minLength": 1},
+        "byte_length": {"type": "integer", "minimum": 0}
+      }
+    },
+    "PluginOperationRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["plugin_id", "plugin_version", "capability_id", "profile_id", "operation_id", "operation_version"],
+      "properties": {
+        "plugin_id": {"type": "string", "minLength": 1},
+        "plugin_version": {"type": "string", "minLength": 1},
+        "capability_id": {"const": "transform.run"},
+        "profile_id": {"type": "string", "minLength": 1},
+        "operation_id": {"type": "string", "minLength": 1},
+        "operation_version": {"type": "string", "minLength": 1}
+      }
+    },
+    "Derivation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["relationship", "source_artifact", "transformation_id"],
+      "properties": {
+        "relationship": {"const": "derived-from"},
+        "source_artifact": {"$ref": "#/$defs/ArtifactRef"},
+        "transformation_id": {"type": "string", "minLength": 1}
+      }
+    },
+    "DerivedArtifactRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "record_kind", "artifact", "derivation"],
+      "properties": {
+        "schema_version": {"const": "0.1.0"},
+        "record_kind": {"const": "DerivedArtifactRecord"},
+        "artifact": {"$ref": "#/$defs/ArtifactRef"},
+        "derivation": {"$ref": "#/$defs/Derivation"}
+      }
+    },
+    "TransformationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "record_kind",
+        "transformation_id",
+        "invocation_id",
+        "operation",
+        "input_artifact",
+        "output_artifact",
+        "parameters",
+        "deterministic",
+        "started_at",
+        "ended_at"
+      ],
+      "properties": {
+        "schema_version": {"const": "0.1.0"},
+        "record_kind": {"const": "TransformationRecord"},
+        "transformation_id": {"type": "string", "minLength": 1},
+        "invocation_id": {"type": "string", "minLength": 1},
+        "operation": {"$ref": "#/$defs/PluginOperationRef"},
+        "input_artifact": {"$ref": "#/$defs/ArtifactRef"},
+        "output_artifact": {"$ref": "#/$defs/ArtifactRef"},
+        "parameters": {"type": "object"},
+        "deterministic": {"type": "boolean"},
+        "started_at": {"type": "string", "format": "date-time"},
+        "ended_at": {"type": "string", "format": "date-time"},
+        "rights_decision_ref": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

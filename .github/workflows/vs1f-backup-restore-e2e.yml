@@ -35,7 +35,9 @@ jobs:
           prototype/p0_vs1
           elaboration/p0/gates/g07
       - name: Run VS1f durability and complete vertical-slice E2E tests
-        run: python -m unittest prototype.p0_vs1.test_vs1f -v
+        run: |
+          python -m unittest prototype.p0_vs1.test_vs1f -v
+          python -m unittest prototype.p0_vs1.test_vs1f_versions -v
       - name: Re-run accepted G-07 durability/authority proof
         working-directory: elaboration/p0/gates/g07
         run: python -m unittest test_durability_authority_proof.py -v

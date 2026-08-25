@@ -46,7 +46,9 @@ jobs:
           python -m unittest prototype.p0_vs1.test_vs1b_reconciliation -v
           python -m unittest prototype.p0_vs1.test_vs1b_inventory_fence -v
       - name: Run VS1c product tests
-        run: python -m unittest prototype.p0_vs1.test_vs1c -v
+        run: |
+          python -m unittest prototype.p0_vs1.test_vs1c -v
+          python -m unittest prototype.p0_vs1.test_vs1c_environment -v
       - name: Validate VS1c plugin manifest with accepted semantic validator
         run: python elaboration/p0/contracts/plugins/1.0.0/validate_manifest.py prototype/p0_vs1/plugins/local_source/manifest.json
       - name: Re-run accepted Runtime v1b tests

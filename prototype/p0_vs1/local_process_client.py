@@ -6,12 +6,15 @@ proof LocalProcessHarness and it is not a generic runtime extraction.
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import importlib.util
 import os
 from pathlib import Path
+import queue
 import subprocess
 import sys
 import threading
+import time
 from typing import Any, BinaryIO, Sequence
 
 
@@ -51,6 +54,8 @@ _RUNTIME_SPEC.loader.exec_module(RUNTIME)
 
 MAX_STDERR_CAPTURE_BYTES = 64 * 1024
 MAX_NOTIFICATIONS_BEFORE_RESPONSE = 64
+HANDSHAKE_TIMEOUT_SECONDS = 10.0
+MAX_INVOCATION_TIMEOUT_SECONDS = 60.0
 ALLOWED_EXTRA_ENV_KEYS = frozenset({"RAIATEA_VS1_PLUGIN_IO_BROKER"})
 # Only OS/runtime settings needed to launch the same local Python process are
 # inherited. Credentials, proxies, cloud tokens and arbitrary user variables do
@@ -117,6 +122,18 @@ def normalize_product_command(command: Sequence[str]) -> list[str]:
     return values
 
 
+def _parse_deadline(value: Any) -> datetime:
+    if not isinstance(value, str) or not value:
+        raise LocalPluginProcessError("vs1c-plugin-deadline-required")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise LocalPluginProcessError("vs1c-plugin-deadline-invalid") from exc
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise LocalPluginProcessError("vs1c-plugin-deadline-timezone-required")
+    return parsed.astimezone(timezone.utc)
+
+
 class LocalPluginProcessClient:
     def __init__(
         self,
@@ -134,12 +151,25 @@ class LocalPluginProcessClient:
         self._rpc_counter = 0
         self._seen_response_ids: set[str | int | None] = set()
         self._stderr_capture = bytearray()
+        self._stdout_queue: queue.Queue[bytes | BaseException] = queue.Queue()
+        self._stdout_thread: threading.Thread | None = None
         self._stderr_thread: threading.Thread | None = None
         self.stderr_truncated = False
 
     @property
     def stderr_text(self) -> str:
         return bytes(self._stderr_capture).decode("utf-8", errors="replace")
+
+    def _drain_stdout(self, pipe: BinaryIO) -> None:
+        while True:
+            try:
+                raw = pipe.readline(MAX_FRAME_BYTES + 1)
+            except (OSError, ValueError) as exc:
+                self._stdout_queue.put(exc)
+                return
+            self._stdout_queue.put(raw)
+            if raw == b"":
+                return
 
     def _drain_stderr(self, pipe: BinaryIO) -> None:
         while True:
@@ -167,14 +197,21 @@ class LocalPluginProcessClient:
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         )
-        if self.process.stderr is None:
-            raise LocalPluginProcessError("vs1c-plugin-stderr-unavailable")
+        if self.process.stdout is None or self.process.stderr is None:
+            raise LocalPluginProcessError("vs1c-plugin-pipe-unavailable")
+        self._stdout_thread = threading.Thread(
+            target=self._drain_stdout,
+            args=(self.process.stdout,),
+            name="raiatea-vs1c-plugin-stdout",
+            daemon=True,
+        )
         self._stderr_thread = threading.Thread(
             target=self._drain_stderr,
             args=(self.process.stderr,),
             name="raiatea-vs1c-plugin-stderr",
             daemon=True,
         )
+        self._stdout_thread.start()
         self._stderr_thread.start()
 
     def _require_process(self) -> subprocess.Popen[bytes]:
@@ -202,11 +239,19 @@ class LocalPluginProcessClient:
                 f"vs1c-plugin-broken-pipe:{process.poll()}"
             ) from exc
 
-    def _read(self) -> dict[str, Any]:
+    def _read(self, timeout_seconds: float) -> dict[str, Any]:
+        if timeout_seconds <= 0:
+            raise LocalPluginProcessError("vs1c-plugin-response-timeout")
         process = self._require_process()
-        if process.stdout is None:
-            raise LocalPluginProcessError("vs1c-plugin-stdout-unavailable")
-        raw = process.stdout.readline(MAX_FRAME_BYTES + 1)
+        try:
+            item = self._stdout_queue.get(timeout=timeout_seconds)
+        except queue.Empty as exc:
+            raise LocalPluginProcessError("vs1c-plugin-response-timeout") from exc
+        if isinstance(item, BaseException):
+            raise LocalPluginProcessError(
+                f"vs1c-plugin-stdout-read-failed:{type(item).__name__}"
+            ) from item
+        raw = item
         if raw == b"":
             returncode = process.poll()
             if returncode is None:
@@ -238,12 +283,22 @@ class LocalPluginProcessClient:
                 )
         self.diagnostics.append(value)
 
-    def _request(self, method: str, params: dict[str, Any]) -> Any:
+    def _request(
+        self,
+        method: str,
+        params: dict[str, Any],
+        *,
+        timeout_seconds: float,
+    ) -> Any:
+        if timeout_seconds <= 0:
+            raise LocalPluginProcessError("vs1c-plugin-response-timeout")
         request_id = self._next_id()
         self._write(request_message(request_id, method, params))
+        expires_at = time.monotonic() + timeout_seconds
         notifications = 0
         while True:
-            message = self._read()
+            remaining = expires_at - time.monotonic()
+            message = self._read(remaining)
             if "method" in message:
                 if "id" in message:
                     raise LocalPluginProcessError(
@@ -275,10 +330,25 @@ class LocalPluginProcessClient:
                 )
             return message.get("result")
 
+    def _invocation_timeout(self, request: dict[str, Any]) -> float:
+        deadline = _parse_deadline(request.get("deadline_at"))
+        remaining = (deadline - datetime.now(timezone.utc)).total_seconds()
+        if remaining <= 0:
+            raise LocalPluginProcessError("vs1c-plugin-invocation-deadline-expired")
+        hints = self.manifest.get("permissions", {}).get("resource_hints", {})
+        configured = hints.get("timeout_seconds", remaining)
+        if not isinstance(configured, (int, float)) or isinstance(configured, bool) or configured <= 0:
+            raise LocalPluginProcessError("vs1c-plugin-manifest-timeout-invalid")
+        return min(float(configured), remaining, MAX_INVOCATION_TIMEOUT_SECONDS)
+
     def handshake(self) -> dict[str, Any]:
         if self.process is None:
             self.start()
-        result = self._request("raiatea.handshake", {})
+        result = self._request(
+            "raiatea.handshake",
+            {},
+            timeout_seconds=HANDSHAKE_TIMEOUT_SECONDS,
+        )
         if not isinstance(result, dict):
             raise LocalPluginProcessError(
                 "vs1c-plugin-handshake-result-invalid"
@@ -305,7 +375,11 @@ class LocalPluginProcessClient:
             raise LocalPluginProcessError(
                 f"vs1c-plugin-invocation-contract-invalid:{exc}"
             ) from exc
-        result = self._request("raiatea.invoke", request)
+        result = self._request(
+            "raiatea.invoke",
+            request,
+            timeout_seconds=self._invocation_timeout(request),
+        )
         if not isinstance(result, dict):
             raise LocalPluginProcessError("vs1c-plugin-result-invalid")
         try:
@@ -332,14 +406,19 @@ class LocalPluginProcessClient:
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=2)
-        if self._stderr_thread is not None:
-            self._stderr_thread.join(timeout=2)
+        for thread in (self._stdout_thread, self._stderr_thread):
+            if thread is not None:
+                thread.join(timeout=2)
         for pipe in (process.stdout, process.stderr):
             if pipe is not None and not pipe.closed:
                 try:
                     pipe.close()
                 except OSError:
                     pass
+        for thread in (self._stdout_thread, self._stderr_thread):
+            if thread is not None and thread.is_alive():
+                thread.join(timeout=1)
+        self._stdout_thread = None
         self._stderr_thread = None
         self.process = None
 

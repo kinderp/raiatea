@@ -7,7 +7,6 @@ on:
       - ".github/workflows/vs1d-epub-extraction.yml"
       - "elaboration/p0/contracts/plugins/**"
       - "elaboration/p0/contracts/extraction/0.1.0/**"
-      - "elaboration/p0/benchmark/routes/epub_routes.py"
       - "elaboration/p0/benchmark/generate_fixtures.py"
   push:
     branches: [main]
@@ -41,7 +40,6 @@ jobs:
           elaboration/p0/contracts/plugins/1.0.0
           elaboration/p0/contracts/extraction/0.1.0
           elaboration/p0/plugins/proofs/v1d
-          elaboration/p0/benchmark/routes/epub_routes.py
           elaboration/p0/benchmark/generate_fixtures.py
       - name: Run VS1a regressions
         run: python -m unittest prototype.p0_vs1.test_vs1a -v
@@ -103,45 +101,43 @@ jobs:
               raise SystemExit('\n'.join(f'{list(e.path)}: {e.message}' for e in errors))
           print('PASS prototype/p0_vs1/plugins/direct_epub/manifest.json')
           PY
-      - name: Validate representative VS1d E-05 records against accepted schema
+      - name: Validate actual product VS1d E-05 records against accepted schema
         run: |
           python - <<'PY'
           import hashlib
           import importlib.util
           import json
+          from datetime import datetime, timezone
           from pathlib import Path
           import tempfile
           from jsonschema import Draft202012Validator
 
           from prototype.p0_vs1.extraction_contract import build_extraction_bundle
+          from prototype.p0_vs1.plugins.direct_epub.route import parse_direct_epub
+          from prototype.p0_vs1.plugins.direct_epub.e05_adapter import adapt_direct_epub_observation
 
           repo = Path('.')
           generator_path = repo / 'elaboration/p0/benchmark/generate_fixtures.py'
-          route_path = repo / 'elaboration/p0/benchmark/routes/epub_routes.py'
-          adapter_path = repo / 'elaboration/p0/contracts/extraction/0.1.0/adapt_benchmark.py'
-
-          def load(name, path):
-              spec = importlib.util.spec_from_file_location(name, path)
-              module = importlib.util.module_from_spec(spec)
-              assert spec.loader is not None
-              spec.loader.exec_module(module)
-              return module
-
-          generator = load('vs1d_schema_generator', generator_path)
-          route = load('vs1d_schema_route', route_path)
-          adapter = load('vs1d_schema_adapter', adapter_path)
+          spec = importlib.util.spec_from_file_location('vs1d_schema_generator', generator_path)
+          generator = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(generator)
 
           with tempfile.TemporaryDirectory() as temporary:
               epub = Path(temporary) / 'B02-EPUB-001.epub'
               generator.generate_epub_spine(epub)
               fingerprint = 'sha256:' + hashlib.sha256(epub.read_bytes()).hexdigest()
               source_ref_id = 'source-ref:' + '1' * 64
-              observation = route.parse_direct_epub(epub)
-              adapted = adapter.adapt_direct_epub_observation(
+              started_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+              observation = parse_direct_epub(epub)
+              ended_at = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+              adapted = adapt_direct_epub_observation(
                   observation,
                   source_id=source_ref_id,
                   fingerprint=fingerprint,
                   python_version='3.12.14',
+                  started_at=started_at,
+                  ended_at=ended_at,
               )
               bundle = build_extraction_bundle(
                   source_ref_id=source_ref_id,

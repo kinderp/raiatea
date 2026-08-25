@@ -73,14 +73,26 @@ class TransformationContractTests(unittest.TestCase):
         V.validate_bytes(transformation["input_artifact"], b"a\r\nb\r", "input")
         V.validate_bytes(transformation["output_artifact"], b"a\nb\n", "output")
 
+    def test_missing_handle_id_fails(self):
+        transformation, _ = records()
+        del transformation["input_artifact"]["handle_id"]
+        with self.assertRaisesRegex(V.TransformationContractError, "input-artifact-handle_id-required"):
+            V.validate_transformation(transformation)
+
     def test_same_artifact_identity_fails(self):
-        transformation, derived = records()
+        transformation, _ = records()
         transformation["output_artifact"]["artifact_id"] = transformation["input_artifact"]["artifact_id"]
         with self.assertRaisesRegex(V.TransformationContractError, "derived-artifact-identity-must-differ"):
             V.validate_transformation(transformation)
 
+    def test_same_handle_identity_fails(self):
+        transformation, _ = records()
+        transformation["output_artifact"]["handle_id"] = transformation["input_artifact"]["handle_id"]
+        with self.assertRaisesRegex(V.TransformationContractError, "derived-artifact-handle-must-differ"):
+            V.validate_transformation(transformation)
+
     def test_missing_derived_from_fails(self):
-        transformation, derived = records()
+        _, derived = records()
         derived["derivation"]["relationship"] = "replaces"
         with self.assertRaisesRegex(V.TransformationContractError, "derived-from-relationship-required"):
             V.validate_derived_artifact(derived)
@@ -101,6 +113,12 @@ class TransformationContractTests(unittest.TestCase):
         transformation, _ = records()
         transformation["rights_grant"] = "allow"
         with self.assertRaisesRegex(V.TransformationContractError, "must-not-own-rights-authority"):
+            V.validate_transformation(transformation)
+
+    def test_lease_authority_in_artifact_ref_fails(self):
+        transformation, _ = records()
+        transformation["input_artifact"]["lease_id"] = "lease:not-public"
+        with self.assertRaisesRegex(V.TransformationContractError, "forbidden-field:lease_id"):
             V.validate_transformation(transformation)
 
     def test_host_path_in_artifact_ref_fails(self):

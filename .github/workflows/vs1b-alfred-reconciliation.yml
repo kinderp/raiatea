@@ -44,7 +44,9 @@ jobs:
       - name: Run Alfred JSONL v0 adapter tests
         run: python -m unittest prototype.p0_vs1.test_alfred_observation -v
       - name: Run VS1b stream and reconciliation tests
-        run: python -m unittest prototype.p0_vs1.test_vs1b_reconciliation -v
+        run: |
+          python -m unittest prototype.p0_vs1.test_vs1b_reconciliation -v
+          python -m unittest prototype.p0_vs1.test_vs1b_inventory_fence -v
       - name: Re-run accepted Runtime v1b tests
         run: |
           python elaboration/p0/contracts/plugins/runtime/1.0.0/test_runtime.py -v

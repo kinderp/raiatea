@@ -19,11 +19,12 @@ from typing import Any
 
 from prototype.p0_vs1.extraction_contract import (
     EXTRACTION_BUNDLE_MEDIA_TYPE,
-    ExtractionContractError,
     build_extraction_bundle,
     canonical_extraction_bundle_bytes,
 )
-from prototype.p0_vs1.plugin_io import PluginIOError, plugin_read_handle, plugin_write_output
+from prototype.p0_vs1.plugin_io import plugin_read_handle, plugin_write_output
+from prototype.p0_vs1.plugins.direct_epub.e05_adapter import adapt_direct_epub_observation
+from prototype.p0_vs1.plugins.direct_epub.route import parse_direct_epub
 from prototype.p0_vs1.source_contract import EPUB_MEDIA_TYPE
 
 
@@ -32,8 +33,6 @@ REPO_ROOT = HERE.parents[3]
 MANIFEST_PATH = HERE / "manifest.json"
 TRANSPORT_ROOT = REPO_ROOT / "elaboration" / "p0" / "contracts" / "plugins" / "transport" / "0.1.0"
 RUNTIME_VALIDATOR_PATH = REPO_ROOT / "elaboration" / "p0" / "contracts" / "plugins" / "runtime" / "1.0.0" / "validate_runtime.py"
-EPUB_ROUTE_PATH = REPO_ROOT / "elaboration" / "p0" / "benchmark" / "routes" / "epub_routes.py"
-E05_ADAPTER_PATH = REPO_ROOT / "elaboration" / "p0" / "contracts" / "extraction" / "0.1.0" / "adapt_benchmark.py"
 if str(TRANSPORT_ROOT) not in sys.path:
     sys.path.insert(0, str(TRANSPORT_ROOT))
 
@@ -51,16 +50,6 @@ _RUNTIME_SPEC = importlib.util.spec_from_file_location("vs1d_direct_epub_runtime
 RUNTIME = importlib.util.module_from_spec(_RUNTIME_SPEC)
 assert _RUNTIME_SPEC.loader is not None
 _RUNTIME_SPEC.loader.exec_module(RUNTIME)
-
-_ROUTE_SPEC = importlib.util.spec_from_file_location("vs1d_epub_route", EPUB_ROUTE_PATH)
-EPUB_ROUTE = importlib.util.module_from_spec(_ROUTE_SPEC)
-assert _ROUTE_SPEC.loader is not None
-_ROUTE_SPEC.loader.exec_module(EPUB_ROUTE)
-
-_ADAPTER_SPEC = importlib.util.spec_from_file_location("vs1d_e05_adapter", E05_ADAPTER_PATH)
-E05_ADAPTER = importlib.util.module_from_spec(_ADAPTER_SPEC)
-assert _ADAPTER_SPEC.loader is not None
-_ADAPTER_SPEC.loader.exec_module(E05_ADAPTER)
 
 
 SOURCE_REFERENCE_CONTRACT_ID = "raiatea.vs1.source-reference"
@@ -132,15 +121,6 @@ def _provenance(
     return value
 
 
-def _record_ref(ref_id: str, record_kind: str) -> dict[str, Any]:
-    return {
-        "ref_id": ref_id,
-        "contract_id": E05_CONTRACT_ID,
-        "contract_version": E05_VERSION,
-        "record_kind": record_kind,
-    }
-
-
 def _failed(
     manifest: dict[str, Any],
     runtime_instance_id: str,
@@ -208,15 +188,19 @@ def _output_target(request: dict[str, Any]) -> dict[str, Any]:
 
 
 def _extract(source_ref_id: str, source_bytes: bytes, fingerprint: str) -> dict[str, Any]:
+    extraction_started_at = _now()
     with tempfile.TemporaryDirectory(prefix="raiatea-vs1d-epub-plugin-") as temporary:
         path = Path(temporary) / "source.epub"
         path.write_bytes(source_bytes)
-        observation = EPUB_ROUTE.parse_direct_epub(path)
-    return E05_ADAPTER.adapt_direct_epub_observation(
+        observation = parse_direct_epub(path)
+    extraction_ended_at = _now()
+    return adapt_direct_epub_observation(
         observation,
         source_id=source_ref_id,
         fingerprint=fingerprint,
         python_version=platform.python_version(),
+        started_at=extraction_started_at,
+        ended_at=extraction_ended_at,
     )
 
 
@@ -284,7 +268,10 @@ def _invoke(
         )
         payload = canonical_extraction_bundle_bytes(bundle)
         completed = plugin_write_output(output_target, payload)
-    except (PluginIOError, ExtractionContractError, ValueError, OSError, RuntimeError) as exc:
+    except Exception as exc:
+        # Provider/parser failures are converted into one bounded Runtime failure.
+        # Only the exception type crosses the plugin boundary; local paths/details
+        # are deliberately not reflected into the public error string.
         return (
             _failed(
                 manifest,

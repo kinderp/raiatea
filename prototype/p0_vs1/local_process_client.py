@@ -54,6 +54,7 @@ _RUNTIME_SPEC.loader.exec_module(RUNTIME)
 
 MAX_STDERR_CAPTURE_BYTES = 64 * 1024
 MAX_NOTIFICATIONS_BEFORE_RESPONSE = 64
+MAX_STDOUT_BUFFERED_FRAMES = MAX_NOTIFICATIONS_BEFORE_RESPONSE + 8
 HANDSHAKE_TIMEOUT_SECONDS = 10.0
 MAX_INVOCATION_TIMEOUT_SECONDS = 60.0
 ALLOWED_EXTRA_ENV_KEYS = frozenset({"RAIATEA_VS1_PLUGIN_IO_BROKER"})
@@ -151,7 +152,10 @@ class LocalPluginProcessClient:
         self._rpc_counter = 0
         self._seen_response_ids: set[str | int | None] = set()
         self._stderr_capture = bytearray()
-        self._stdout_queue: queue.Queue[bytes | BaseException] = queue.Queue()
+        self._stdout_queue: queue.Queue[bytes | BaseException] = queue.Queue(
+            maxsize=MAX_STDOUT_BUFFERED_FRAMES
+        )
+        self._reader_stop = threading.Event()
         self._stdout_thread: threading.Thread | None = None
         self._stderr_thread: threading.Thread | None = None
         self.stderr_truncated = False
@@ -160,19 +164,29 @@ class LocalPluginProcessClient:
     def stderr_text(self) -> str:
         return bytes(self._stderr_capture).decode("utf-8", errors="replace")
 
+    def _put_stdout(self, item: bytes | BaseException) -> bool:
+        while not self._reader_stop.is_set():
+            try:
+                self._stdout_queue.put(item, timeout=0.1)
+                return True
+            except queue.Full:
+                continue
+        return False
+
     def _drain_stdout(self, pipe: BinaryIO) -> None:
-        while True:
+        while not self._reader_stop.is_set():
             try:
                 raw = pipe.readline(MAX_FRAME_BYTES + 1)
             except (OSError, ValueError) as exc:
-                self._stdout_queue.put(exc)
+                self._put_stdout(exc)
                 return
-            self._stdout_queue.put(raw)
+            if not self._put_stdout(raw):
+                return
             if raw == b"":
                 return
 
     def _drain_stderr(self, pipe: BinaryIO) -> None:
-        while True:
+        while not self._reader_stop.is_set():
             try:
                 chunk = pipe.read(8192)
             except (OSError, ValueError):
@@ -189,6 +203,7 @@ class LocalPluginProcessClient:
         if self.process is not None:
             raise LocalPluginProcessError("vs1c-plugin-process-already-started")
         env = build_child_environment(self.extra_env)
+        self._reader_stop.clear()
         self.process = subprocess.Popen(
             self.command,
             cwd=REPO_ROOT,
@@ -394,6 +409,7 @@ class LocalPluginProcessClient:
         process = self.process
         if process is None:
             return
+        self._reader_stop.set()
         try:
             if process.stdin is not None and not process.stdin.closed:
                 process.stdin.close()

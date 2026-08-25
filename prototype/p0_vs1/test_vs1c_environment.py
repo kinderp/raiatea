@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import queue
 import sys
 import unittest
 from unittest.mock import patch
 
 from prototype.p0_vs1.local_process_client import (
+    MAX_STDOUT_BUFFERED_FRAMES,
     LocalPluginProcessClient,
     LocalPluginProcessError,
     build_child_environment,
@@ -79,6 +81,17 @@ class Vs1cChildEnvironmentTests(unittest.TestCase):
         finally:
             client.close()
         self.assertIsNone(client.process)
+
+    def test_stdout_frame_queue_is_bounded(self) -> None:
+        client = LocalPluginProcessClient(
+            [sys.executable, "-c", "pass"],
+            {"permissions": {"resource_hints": {"timeout_seconds": 30}}},
+        )
+        self.assertEqual(client._stdout_queue.maxsize, MAX_STDOUT_BUFFERED_FRAMES)
+        for _ in range(MAX_STDOUT_BUFFERED_FRAMES):
+            client._stdout_queue.put_nowait(b"{}\n")
+        with self.assertRaises(queue.Full):
+            client._stdout_queue.put_nowait(b"overflow\n")
 
 
 if __name__ == "__main__":

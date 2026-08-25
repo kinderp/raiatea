@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import fields
+import hashlib
 import json
 import unittest
 
@@ -42,7 +43,7 @@ def state(*, reverse: bool = False) -> BoundedCatalogState:
     views = [
         ViewRecord(
             "view:2",
-            (("tag", "has", "ai"),),
+            (("tag", "has", "ai"), ("year", "eq", "2026")),
             ("item_id", "title"),
         ),
         ViewRecord(
@@ -52,7 +53,10 @@ def state(*, reverse: bool = False) -> BoundedCatalogState:
         ),
     ]
     rules = [
-        SmartCollectionRuleRecord("smart:2", (("year", "eq", "2026"),)),
+        SmartCollectionRuleRecord(
+            "smart:2",
+            (("year", "eq", "2026"), ("tag", "has", "ai")),
+        ),
         SmartCollectionRuleRecord("smart:1", (("tag", "has", "docs"),)),
     ]
     if reverse:
@@ -61,6 +65,14 @@ def state(*, reverse: bool = False) -> BoundedCatalogState:
         provenance.reverse()
         views.reverse()
         rules.reverse()
+        views = [
+            ViewRecord(row.view_id, tuple(reversed(row.normalized_plan)), row.projection)
+            for row in views
+        ]
+        rules = [
+            SmartCollectionRuleRecord(row.collection_id, tuple(reversed(row.normalized_plan)))
+            for row in rules
+        ]
     return BoundedCatalogState(
         catalog_revision=7,
         logical_items=tuple(items),
@@ -81,13 +93,21 @@ def authority() -> CoreAuthorityConfig:
 
 
 class CatalogDurabilityProofTests(unittest.TestCase):
-    def test_export_is_byte_deterministic_under_shuffled_record_input(self):
+    def test_export_is_byte_deterministic_under_shuffled_record_and_plan_input(self):
         first = export_catalog(state(reverse=False))
         second = export_catalog(state(reverse=True))
         self.assertEqual(first, second)
         envelope = json.loads(first.decode("utf-8"))
         self.assertEqual(envelope["schema_version"], PROOF_SCHEMA_VERSION)
         self.assertRegex(envelope["payload_sha256"], r"^sha256:[0-9a-f]{64}$")
+        self.assertEqual(
+            envelope["payload"]["views"][1]["normalized_plan"],
+            [["tag", "has", "ai"], ["year", "eq", "2026"]],
+        )
+        self.assertEqual(
+            envelope["payload"]["smart_collection_rules"][1]["normalized_plan"],
+            [["tag", "has", "ai"], ["year", "eq", "2026"]],
+        )
 
     def test_round_trip_reconstructs_bounded_catalog_state_canonically(self):
         exported = export_catalog(state(reverse=True))
@@ -124,12 +144,9 @@ class CatalogDurabilityProofTests(unittest.TestCase):
     def test_unknown_critical_catalog_field_fails_closed(self):
         envelope = json.loads(export_catalog(state()).decode("utf-8"))
         envelope["payload"]["opaque_future_state"] = []
-        # Integrity is deliberately recomputed to prove closed-shape rejection,
-        # rather than merely exercising the digest mismatch path.
         payload_bytes = json.dumps(
             envelope["payload"], sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
-        import hashlib
         envelope["payload_sha256"] = "sha256:" + hashlib.sha256(payload_bytes).hexdigest()
         altered = json.dumps(
             envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=False
@@ -143,7 +160,19 @@ class CatalogDurabilityProofTests(unittest.TestCase):
         payload_bytes = json.dumps(
             envelope["payload"], sort_keys=True, separators=(",", ":"), ensure_ascii=False
         ).encode("utf-8")
-        import hashlib
+        envelope["payload_sha256"] = "sha256:" + hashlib.sha256(payload_bytes).hexdigest()
+        altered = json.dumps(
+            envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
+        with self.assertRaisesRegex(G07ProofError, "backup-payload-not-canonical"):
+            restore_catalog(altered)
+
+    def test_noncanonical_plan_order_with_valid_digest_is_rejected(self):
+        envelope = json.loads(export_catalog(state()).decode("utf-8"))
+        envelope["payload"]["views"][1]["normalized_plan"].reverse()
+        payload_bytes = json.dumps(
+            envelope["payload"], sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        ).encode("utf-8")
         envelope["payload_sha256"] = "sha256:" + hashlib.sha256(payload_bytes).hexdigest()
         altered = json.dumps(
             envelope, sort_keys=True, separators=(",", ":"), ensure_ascii=False

@@ -51,6 +51,29 @@ _RUNTIME_SPEC.loader.exec_module(RUNTIME)
 
 MAX_STDERR_CAPTURE_BYTES = 64 * 1024
 MAX_NOTIFICATIONS_BEFORE_RESPONSE = 64
+ALLOWED_EXTRA_ENV_KEYS = frozenset({"RAIATEA_VS1_PLUGIN_IO_BROKER"})
+# Only OS/runtime settings needed to launch the same local Python process are
+# inherited. Credentials, proxies, cloud tokens and arbitrary user variables do
+# not cross the VS1c plugin process boundary.
+AMBIENT_ENV_ALLOWLIST = frozenset(
+    {
+        "SystemRoot",
+        "SYSTEMROOT",
+        "WINDIR",
+        "COMSPEC",
+        "PATHEXT",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "HOME",
+        "USERPROFILE",
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "PYTHONUTF8",
+        "PYTHONIOENCODING",
+    }
+)
 
 
 class LocalPluginProcessError(RuntimeError):
@@ -61,6 +84,39 @@ class LocalPluginProcessExited(LocalPluginProcessError):
     pass
 
 
+def build_child_environment(extra_env: dict[str, str] | None = None) -> dict[str, str]:
+    """Build the bounded environment visible to the official VS1c plugin."""
+
+    supplied = dict(extra_env or {})
+    unknown = sorted(set(supplied) - ALLOWED_EXTRA_ENV_KEYS)
+    if unknown:
+        raise LocalPluginProcessError(
+            f"vs1c-plugin-extra-environment-key-forbidden:{unknown[0]}"
+        )
+    env: dict[str, str] = {}
+    for key in AMBIENT_ENV_ALLOWLIST:
+        value = os.environ.get(key)
+        if isinstance(value, str) and value:
+            env[key] = value
+    env.update(supplied)
+    # Do not inherit an ambient PYTHONPATH/PYTHONHOME or user site-packages. The
+    # official product plugin imports only the checked-out Raiatea tree + the
+    # interpreter's normal standard environment.
+    env["PYTHONPATH"] = os.fspath(REPO_ROOT)
+    env["PYTHONNOUSERSITE"] = "1"
+    env["PYTHONDONTWRITEBYTECODE"] = "1"
+    return env
+
+
+def normalize_product_command(command: Sequence[str]) -> list[str]:
+    values = [str(token) for token in command]
+    if not values:
+        raise LocalPluginProcessError("vs1c-plugin-command-required")
+    if values[0] in {"python", "python3"}:
+        values[0] = sys.executable
+    return values
+
+
 class LocalPluginProcessClient:
     def __init__(
         self,
@@ -69,7 +125,7 @@ class LocalPluginProcessClient:
         *,
         extra_env: dict[str, str] | None = None,
     ) -> None:
-        self.command = [str(token) for token in command]
+        self.command = normalize_product_command(command)
         self.manifest = manifest
         self.extra_env = dict(extra_env or {})
         self.process: subprocess.Popen[bytes] | None = None
@@ -102,13 +158,7 @@ class LocalPluginProcessClient:
     def start(self) -> None:
         if self.process is not None:
             raise LocalPluginProcessError("vs1c-plugin-process-already-started")
-        env = os.environ.copy()
-        env.update(self.extra_env)
-        python_path = env.get("PYTHONPATH", "")
-        repo_text = os.fspath(REPO_ROOT)
-        env["PYTHONPATH"] = (
-            repo_text if not python_path else repo_text + os.pathsep + python_path
-        )
+        env = build_child_environment(self.extra_env)
         self.process = subprocess.Popen(
             self.command,
             cwd=REPO_ROOT,

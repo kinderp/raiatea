@@ -110,7 +110,7 @@ def _assert_no_transient_authority(value: Any, *, trail: str = "authority") -> N
 
 def _canonical_vs1b(value: dict[str, Any], scope_ref: str) -> dict[str, Any]:
     result = deepcopy(value)
-    validate_vs1b_state(result, scope_ref)
+    _require(isinstance(result.get("entries"), list), "backup-vs1b-entries-required")
     result["entries"] = sorted(result["entries"], key=lambda row: row["entry_id"])
     validate_vs1b_state(result, scope_ref)
     return result
@@ -118,7 +118,10 @@ def _canonical_vs1b(value: dict[str, Any], scope_ref: str) -> dict[str, Any]:
 
 def _canonical_vs1c(value: dict[str, Any], scope_ref: str) -> dict[str, Any]:
     result = deepcopy(value)
-    validate_vs1c_state(result, scope_ref)
+    _require(
+        isinstance(result.get("source_references"), list),
+        "backup-vs1c-source-references-required",
+    )
     result["source_references"] = sorted(
         result["source_references"], key=lambda row: row["source_ref_id"]
     )
@@ -128,7 +131,10 @@ def _canonical_vs1c(value: dict[str, Any], scope_ref: str) -> dict[str, Any]:
 
 def _canonical_vs1d(value: dict[str, Any], scope_ref: str) -> dict[str, Any]:
     result = deepcopy(value)
-    validate_vs1d_state(result, scope_ref)
+    _require(
+        isinstance(result.get("extractions"), list),
+        "backup-vs1d-extractions-required",
+    )
     result["extractions"] = sorted(
         result["extractions"], key=lambda row: row["source_ref_id"]
     )

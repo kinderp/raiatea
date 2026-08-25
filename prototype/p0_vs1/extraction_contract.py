@@ -4,11 +4,16 @@
 E-05 records retain their accepted semantic contract. This module only defines
 the bounded product bundle that carries those records across the official local
 ExtractorPlugin boundary and enforces VS1d source/route/path invariants.
+
+A VS1d product bundle is deliberately narrower than an arbitrary valid E-05 run:
+it is the **publishable current extraction** for the promoted direct EPUB route.
+A plugin process may complete while E-05 correctly reports a rejected/failed run;
+such evidence is valid E-05 but is not publishable as the current extracted
+representation in VS1d.
 """
 from __future__ import annotations
 
 import importlib.util
-import json
 from pathlib import Path
 from typing import Any
 
@@ -226,9 +231,16 @@ def validate_extraction_bundle(value: Any) -> dict[str, Any]:
             representation = record
 
     _require(run is not None and evidence is not None, "extraction-required-records-missing")
+    # Runtime completion and E-05 execution outcome are intentionally separate.
+    # Only a completed E-05 run with a normalized representation can become the
+    # current publishable VS1d extraction. Rejected/failed E-05 evidence remains
+    # valid evidence, but is not silently promoted into catalog content.
+    outcome = run.get("outcome")
+    _require(isinstance(outcome, dict), "extraction-run-outcome-required")
+    _require(outcome.get("execution") == "completed", "extraction-run-not-publishable")
+    _require(representation is not None, "extraction-normalized-representation-required")
     _validate_route(evidence)
-    if representation is not None:
-        _validate_epub_coordinates(representation)
+    _validate_epub_coordinates(representation)
     _walk_no_path_authority(bundle)
     canonical_json_bytes(bundle)
     return bundle

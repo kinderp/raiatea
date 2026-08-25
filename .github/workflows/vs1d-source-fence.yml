@@ -1,4 +1,4 @@
-name: VS1d source-version publication fence
+name: VS1d source-version and provenance fences
 
 on:
   pull_request:
@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   source-fence:
-    name: VS1d source fence / ${{ matrix.os }} / Python ${{ matrix.python }}
+    name: VS1d source/provenance / ${{ matrix.os }} / Python ${{ matrix.python }}
     strategy:
       fail-fast: false
       matrix:
@@ -28,5 +28,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Run source-change-during-extraction regression
+      - name: Run source-version publication fence regression
         run: python -m unittest prototype.p0_vs1.test_vs1d_source_fence -v
+      - name: Run product provenance regression
+        run: python -m unittest prototype.p0_vs1.test_vs1d_provenance -v

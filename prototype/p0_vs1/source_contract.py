@@ -154,17 +154,19 @@ def discovery_snapshot_fingerprint(snapshot: dict[str, Any]) -> str:
 def deterministic_source_ref_id(scope_ref: str, item: dict[str, Any]) -> str:
     _require_ref(scope_ref, "source-ref-scope")
     validate_discovery_item(item)
-    # Media type is part of SourceReference identity. The same Stored Instance
-    # bytes admitted under a different source class must not silently retain an
-    # extraction-compatible SourceReference id.
+    # Preserve the exact accepted VS1 identity basis for EPUB so an upgrade to
+    # PDF1a does not rename every existing EPUB SourceReference. New source
+    # classes bind media type explicitly so they cannot collide with the legacy
+    # EPUB namespace for the same catalog instance/fingerprint.
     basis = {
         "version": SOURCE_REFERENCE_VERSION,
         "scope_ref": scope_ref,
         "catalog_entry_ref": item["catalog_entry_ref"],
         "stored_instance_ref": item["stored_instance_ref"],
-        "media_type": item["media_type"],
         "fingerprint": item["fingerprint"],
     }
+    if item["media_type"] != EPUB_MEDIA_TYPE:
+        basis["media_type"] = item["media_type"]
     return "source-ref:" + hashlib.sha256(canonical_json_bytes(basis)).hexdigest()
 
 

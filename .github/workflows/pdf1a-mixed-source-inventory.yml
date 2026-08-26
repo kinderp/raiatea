@@ -31,7 +31,9 @@ jobs:
       - name: Compile PDF1a and VS1 product code
         run: python -m compileall -q prototype/p0_vs1
       - name: Run PDF1a mixed-source tests
-        run: python -m unittest prototype.p0_vs1.test_pdf1a -v
+        run: |
+          python -m unittest prototype.p0_vs1.test_pdf1a -v
+          python -m unittest prototype.p0_vs1.test_pdf1a_backup -v
       - name: Re-run VS1a
         run: python -m unittest prototype.p0_vs1.test_vs1a -v
       - name: Re-run VS1b

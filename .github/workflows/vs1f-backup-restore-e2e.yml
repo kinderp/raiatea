@@ -1,0 +1,43 @@
+name: VS1f catalog backup restore and E2E
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1f-backup-restore-e2e.yml"
+      - "elaboration/p0/gates/g07/**"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/vs1f-backup-restore-e2e.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  vs1f:
+    name: VS1f / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile VS1f and accepted G-07 proof
+        run: >-
+          python -m compileall -q
+          prototype/p0_vs1
+          elaboration/p0/gates/g07
+      - name: Run VS1f durability and complete vertical-slice E2E tests
+        run: |
+          python -m unittest prototype.p0_vs1.test_vs1f -v
+          python -m unittest prototype.p0_vs1.test_vs1f_versions -v
+      - name: Re-run accepted G-07 durability/authority proof
+        working-directory: elaboration/p0/gates/g07
+        run: python -m unittest test_durability_authority_proof.py -v

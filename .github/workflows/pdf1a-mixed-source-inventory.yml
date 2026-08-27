@@ -35,6 +35,7 @@ jobs:
           python -m unittest prototype.p0_vs1.test_pdf1a -v
           python -m unittest prototype.p0_vs1.test_pdf1a_backup -v
           python -m unittest prototype.p0_vs1.test_pdf1a_source_identity -v
+          python -m unittest prototype.p0_vs1.test_pdf1a_transitions -v
       - name: Re-run VS1a
         run: python -m unittest prototype.p0_vs1.test_vs1a -v
       - name: Re-run VS1b

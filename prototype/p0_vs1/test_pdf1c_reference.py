@@ -110,6 +110,28 @@ class Pdf1cDoclingReferenceTests(unittest.TestCase):
         with self.assertRaisesRegex(reference.DoclingReferenceError, "environment-mismatch"):
             self.verify(observed_freeze=changed)
 
+    def test_real_installed_environment_uses_canonical_distribution_identity(self) -> None:
+        versions = {}
+        for spec in self.freeze:
+            name, version = spec.split("==", 1)
+            versions[reference._canonical_package_name(name)] = version
+
+        def installed_version(name: str) -> str:
+            return versions[reference._canonical_package_name(name)]
+
+        with (
+            patch.object(reference, "_sha256_file", return_value=reference.DOCLING_WHEEL_SHA256),
+            patch.object(reference, "model_payload_manifest", return_value=deepcopy(self.model_manifest)),
+            patch.object(reference.importlib.metadata, "version", side_effect=installed_version),
+        ):
+            provider = reference.verify_reference_docling(
+                wheel_path=self.wheel,
+                artifacts_path=self.models,
+                observed_freeze=None,
+                platform_facts=GOOD_PLATFORM,
+            )
+        self.assertEqual(provider["version"], reference.DOCLING_VERSION)
+
     def test_installed_docling_version_mismatch_fails(self) -> None:
         with (
             patch.object(reference, "_sha256_file", return_value=reference.DOCLING_WHEEL_SHA256),

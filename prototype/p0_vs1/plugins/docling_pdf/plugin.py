@@ -23,7 +23,9 @@ from prototype.p0_vs1.docling_observation_contract import (
 from prototype.p0_vs1.docling_process_environment import (
     read_docling_provider_paths_from_env,
 )
-from prototype.p0_vs1.docling_product_parser import run_docling_pdf
+from prototype.p0_vs1.docling_provider_runtime import (
+    run_docling_pdf_product as run_docling_pdf,
+)
 from prototype.p0_vs1.docling_reference import (
     validate_reference_provider_record,
     verify_reference_docling,

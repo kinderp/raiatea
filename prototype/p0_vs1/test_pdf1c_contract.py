@@ -44,7 +44,7 @@ def valid_bundle() -> dict:
                     "text": "Introduction",
                     "provider_label": "title",
                     "semantic_type": "heading",
-                    "semantic_level": 1,
+                    "semantic_level": None,
                     "coordinate": {
                         "page_index": 0,
                         "bbox_points_bottom_left": [72.0, 700.0, 240.0, 730.0],
@@ -135,10 +135,18 @@ class Pdf1cDoclingObservationContractTests(unittest.TestCase):
         with self.assertRaisesRegex(DoclingObservationError, "semantic-level-requires-heading"):
             validate_docling_observation_bundle(bundle)
 
-    def test_title_is_policy_mapped_to_level_one(self) -> None:
+    def test_title_does_not_require_an_invented_numeric_level(self) -> None:
         bundle = valid_bundle()
-        bundle["observation"]["blocks"][0]["semantic_level"] = 2
-        with self.assertRaisesRegex(DoclingObservationError, "title-level-one"):
+        title = bundle["observation"]["blocks"][0]
+        self.assertEqual(title["provider_label"], "title")
+        self.assertEqual(title["semantic_type"], "heading")
+        self.assertIsNone(title["semantic_level"])
+        validate_docling_observation_bundle(bundle)
+
+        title["semantic_level"] = 1
+        validate_docling_observation_bundle(bundle)
+        title["semantic_level"] = 0
+        with self.assertRaisesRegex(DoclingObservationError, "semantic-level-invalid"):
             validate_docling_observation_bundle(bundle)
 
     def test_body_order_is_explicit_and_canonical(self) -> None:

@@ -11,6 +11,7 @@ import importlib.util
 import os
 from pathlib import Path
 import queue
+import shutil
 import subprocess
 import sys
 import threading
@@ -111,15 +112,77 @@ class LocalPluginProcessExited(LocalPluginProcessError):
     pass
 
 
-def _allowed_extra_env_keys(manifest: dict[str, Any] | None) -> frozenset[str]:
-    plugin_id = None
+def _plugin_id(manifest: dict[str, Any] | None) -> str | None:
     if isinstance(manifest, dict) and isinstance(manifest.get("plugin"), dict):
-        plugin_id = manifest["plugin"].get("plugin_id")
-    if plugin_id == OFFICIAL_DOCLING_PLUGIN_ID:
+        value = manifest["plugin"].get("plugin_id")
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _allowed_extra_env_keys(manifest: dict[str, Any] | None) -> frozenset[str]:
+    if _plugin_id(manifest) == OFFICIAL_DOCLING_PLUGIN_ID:
         return ALLOWED_EXTRA_ENV_KEYS
     # Preserve the accepted VS1c boundary for Local Source and for callers that
     # do not declare the PDF1c official Docling identity.
     return BASE_EXTRA_ENV_KEYS
+
+
+def _resolve_reference_tool(name: str) -> Path:
+    """Resolve one host tool from the OS default executable path, not user PATH."""
+    value = shutil.which(name, path=os.defpath)
+    if not value:
+        raise LocalPluginProcessError(f"pdf1c-docling-toolchain-unavailable:{name}")
+    resolved = Path(value).resolve()
+    if not resolved.is_absolute() or not resolved.is_file():
+        raise LocalPluginProcessError(f"pdf1c-docling-toolchain-invalid:{name}")
+    return resolved
+
+
+def resolve_docling_compiler_toolchain_path() -> str | None:
+    """Return the bounded Linux compiler path required by Docling/Torch Inductor.
+
+    The PDF1c measured route uses the host C++ toolchain while executing the
+    Docling layout model. Core resolves only the required reference tools from
+    ``os.defpath`` and never inherits an ambient/user ``PATH``. The real runtime
+    claim remains Linux/Ubuntu-only; other platforms receive no compiler PATH.
+    """
+    if not sys.platform.startswith("linux"):
+        return None
+
+    gxx = _resolve_reference_tool("g++")
+    gcc = _resolve_reference_tool("gcc")
+    assembler = _resolve_reference_tool("as")
+    linker = _resolve_reference_tool("ld")
+    try:
+        completed = subprocess.run(
+            [os.fspath(gxx), "-print-prog-name=cc1plus"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise LocalPluginProcessError(
+            "pdf1c-docling-toolchain-cc1plus-query-failed"
+        ) from exc
+    cc1plus_text = completed.stdout.strip()
+    if not cc1plus_text:
+        raise LocalPluginProcessError("pdf1c-docling-toolchain-cc1plus-unavailable")
+    cc1plus = Path(cc1plus_text)
+    if not cc1plus.is_absolute():
+        raise LocalPluginProcessError("pdf1c-docling-toolchain-cc1plus-not-absolute")
+    cc1plus = cc1plus.resolve()
+    if not cc1plus.is_file():
+        raise LocalPluginProcessError("pdf1c-docling-toolchain-cc1plus-invalid")
+
+    directories: list[str] = []
+    for tool in (gxx, gcc, assembler, linker, cc1plus):
+        directory = os.fspath(tool.parent)
+        if directory not in directories:
+            directories.append(directory)
+    return os.pathsep.join(directories)
 
 
 def build_child_environment(
@@ -150,6 +213,10 @@ def build_child_environment(
     env["PYTHONPATH"] = os.fspath(REPO_ROOT)
     env["PYTHONNOUSERSITE"] = "1"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    if _plugin_id(manifest) == OFFICIAL_DOCLING_PLUGIN_ID:
+        compiler_path = resolve_docling_compiler_toolchain_path()
+        if compiler_path is not None:
+            env["PATH"] = compiler_path
     return env
 
 
@@ -159,9 +226,7 @@ def normalize_product_command(
     values = [str(token) for token in command]
     if not values:
         raise LocalPluginProcessError("vs1c-plugin-command-required")
-    plugin_id = None
-    if isinstance(manifest, dict) and isinstance(manifest.get("plugin"), dict):
-        plugin_id = manifest["plugin"].get("plugin_id")
+    plugin_id = _plugin_id(manifest)
     if plugin_id == OFFICIAL_LOCAL_SOURCE_PLUGIN_ID:
         if values != list(OFFICIAL_LOCAL_SOURCE_COMMAND):
             raise LocalPluginProcessError(

@@ -159,6 +159,91 @@ jobs:
           )
           PY
 
+      - name: Test child-like environment with exact Python runtime library path
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DOCLING_VENV/bin/python" - <<'PY'
+          import hashlib
+          import importlib.util
+          import os
+          from pathlib import Path
+          import subprocess
+          import sys
+          import tempfile
+
+          from prototype.p0_vs1.local_process_client import (
+              OFFICIAL_DOCLING_PLUGIN_ID,
+              build_child_environment,
+          )
+
+          library_path = os.environ.get("LD_LIBRARY_PATH")
+          if not library_path:
+              raise AssertionError("pdf1c-reference-ld-library-path-unavailable")
+
+          generator_path = Path("elaboration/p0/benchmark/generate_fixtures.py").resolve()
+          spec = importlib.util.spec_from_file_location("pdf1c_child_env_generator", generator_path)
+          generator = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(generator)
+
+          child_code = r'''
+          import hashlib
+          import sys
+          from pathlib import Path
+          from prototype.p0_vs1.docling_provider_runtime import run_docling_pdf_product
+          from prototype.p0_vs1.docling_reference import verify_reference_docling
+
+          wheel = Path(sys.argv[1]).resolve()
+          artifacts = Path(sys.argv[2]).resolve()
+          source = Path(sys.argv[3]).resolve()
+          cache = Path(sys.argv[4]).resolve()
+          provider = verify_reference_docling(wheel_path=wheel, artifacts_path=artifacts)
+          source_bytes = source.read_bytes()
+          bundle = run_docling_pdf_product(
+              source_bytes,
+              source_ref_id="source-ref:" + hashlib.sha256(b"pdf1c-child-env-control").hexdigest(),
+              source_fingerprint="sha256:" + hashlib.sha256(source_bytes).hexdigest(),
+              provider=provider,
+              artifacts_path=artifacts,
+              cache_root=cache,
+          )
+          observation = bundle["observation"]
+          if observation["status"] != "success":
+              raise AssertionError({
+                  "child_like_status": observation["status"],
+                  "provider_conversion_status": observation["provider_conversion_status"],
+                  "warnings": observation["warnings"],
+              })
+          print("PASS child-like runtime-library control", observation["provider_conversion_status"])
+          '''
+
+          with tempfile.TemporaryDirectory(prefix="raiatea-pdf1c-child-env-control-") as temporary:
+              root = Path(temporary).resolve()
+              source = root / "B01-PDF-001.pdf"
+              cache = root / "cache"
+              generator.generate_pdf_single_column(source)
+              env = build_child_environment(
+                  {},
+                  manifest={"plugin": {"plugin_id": OFFICIAL_DOCLING_PLUGIN_ID}},
+              )
+              env["LD_LIBRARY_PATH"] = library_path
+              subprocess.run(
+                  [
+                      sys.executable,
+                      "-c",
+                      child_code,
+                      os.environ["PDF1C_DOCLING_WHEEL"],
+                      os.environ["PDF1C_DOCLING_ARTIFACTS"],
+                      str(source),
+                      str(cache),
+                  ],
+                  cwd=Path.cwd(),
+                  env=env,
+                  check=True,
+              )
+          PY
+
       - name: Run real end-to-end Docling product acceptance
         shell: bash
         run: |

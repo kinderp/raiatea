@@ -32,6 +32,7 @@ from prototype.p0_vs1.plugins.docling_pdf import plugin
 
 SOURCE_REF = "source-ref:" + "1" * 64
 FINGERPRINT = "sha256:" + "a" * 64
+DOCLING_MANIFEST_IDENTITY = {"plugin": {"plugin_id": "org.raiatea.pdf1.docling-extractor"}}
 
 
 def provider() -> dict:
@@ -146,7 +147,10 @@ class Pdf1cProcessEnvironmentTests(unittest.TestCase):
             ARTIFACTS_ENV: "/ambient/wrong-models",
         }
         with patch.dict(os.environ, ambient, clear=False):
-            child = build_child_environment(supplied)
+            child = build_child_environment(
+                supplied,
+                manifest=DOCLING_MANIFEST_IDENTITY,
+            )
         self.assertNotIn("OPENAI_API_KEY", child)
         self.assertNotIn("HTTP_PROXY", child)
         for key, value in supplied.items():
@@ -154,10 +158,13 @@ class Pdf1cProcessEnvironmentTests(unittest.TestCase):
 
     def test_arbitrary_extra_environment_remains_forbidden(self) -> None:
         with self.assertRaisesRegex(LocalPluginProcessError, "extra-environment-key-forbidden"):
-            build_child_environment({"RAIATEA_PDF1C_ARBITRARY": "/tmp/no"})
+            build_child_environment(
+                {"RAIATEA_PDF1C_ARBITRARY": "/tmp/no"},
+                manifest=DOCLING_MANIFEST_IDENTITY,
+            )
 
     def test_official_docling_identity_locks_command(self) -> None:
-        manifest = {"plugin": {"plugin_id": "org.raiatea.pdf1.docling-extractor"}}
+        manifest = DOCLING_MANIFEST_IDENTITY
         command = normalize_product_command(
             ["python", "-m", "prototype.p0_vs1.plugins.docling_pdf.plugin"],
             manifest,

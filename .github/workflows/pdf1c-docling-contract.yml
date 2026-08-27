@@ -3,30 +3,15 @@ name: PDF1c Docling product contracts
 on:
   pull_request:
     paths:
-      - "prototype/p0_vs1/docling_observation_contract.py"
-      - "prototype/p0_vs1/docling_reference.py"
-      - "prototype/p0_vs1/docling_product_parser.py"
-      - "prototype/p0_vs1/pdf1c_rights.py"
-      - "prototype/p0_vs1/test_pdf1c_contract.py"
-      - "prototype/p0_vs1/test_pdf1c_reference.py"
-      - "prototype/p0_vs1/test_pdf1c_parser.py"
-      - "prototype/p0_vs1/test_pdf1c_rights.py"
+      - "prototype/p0_vs1/**"
       - "elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt"
       - "elaboration/p0/benchmark/locks/docling-2.118.0-layout-model-payload.json"
+      - "elaboration/p0/contracts/plugins/**"
       - ".github/workflows/pdf1c-docling-contract.yml"
   push:
     branches: [main]
     paths:
-      - "prototype/p0_vs1/docling_observation_contract.py"
-      - "prototype/p0_vs1/docling_reference.py"
-      - "prototype/p0_vs1/docling_product_parser.py"
-      - "prototype/p0_vs1/pdf1c_rights.py"
-      - "prototype/p0_vs1/test_pdf1c_contract.py"
-      - "prototype/p0_vs1/test_pdf1c_reference.py"
-      - "prototype/p0_vs1/test_pdf1c_parser.py"
-      - "prototype/p0_vs1/test_pdf1c_rights.py"
-      - "elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt"
-      - "elaboration/p0/benchmark/locks/docling-2.118.0-layout-model-payload.json"
+      - "prototype/p0_vs1/**"
       - ".github/workflows/pdf1c-docling-contract.yml"
 
 permissions:
@@ -52,16 +37,25 @@ jobs:
           prototype/p0_vs1/docling_observation_contract.py
           prototype/p0_vs1/docling_reference.py
           prototype/p0_vs1/docling_product_parser.py
+          prototype/p0_vs1/docling_process_environment.py
           prototype/p0_vs1/pdf1c_rights.py
+          prototype/p0_vs1/plugins/docling_pdf
           prototype/p0_vs1/test_pdf1c_contract.py
           prototype/p0_vs1/test_pdf1c_reference.py
           prototype/p0_vs1/test_pdf1c_parser.py
+          prototype/p0_vs1/test_pdf1c_process.py
           prototype/p0_vs1/test_pdf1c_rights.py
+      - name: Validate Docling plugin manifest
+        run: python elaboration/p0/contracts/plugins/1.0.0/validate_manifest.py prototype/p0_vs1/plugins/docling_pdf/manifest.json
       - name: Run PDF1c observation contract tests
         run: python -m unittest prototype.p0_vs1.test_pdf1c_contract -v
       - name: Run PDF1c reference-gate tests
         run: python -m unittest prototype.p0_vs1.test_pdf1c_reference -v
       - name: Run PDF1c product parser tests
         run: python -m unittest prototype.p0_vs1.test_pdf1c_parser -v
+      - name: Run PDF1c process/environment tests
+        run: python -m unittest prototype.p0_vs1.test_pdf1c_process -v
       - name: Run PDF1c rights tests
         run: python -m unittest prototype.p0_vs1.test_pdf1c_rights -v
+      - name: Re-run accepted process environment regression
+        run: python -m unittest prototype.p0_vs1.test_vs1c_environment -v

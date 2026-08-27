@@ -142,6 +142,11 @@ whitespace rewriting. For explicit `list_item` records, when lossless Docling
 also exposes `orig`, PDF1c uses `orig` as the visible Provider surface so list
 markers such as `1.`/`2.` are not discarded before Core normalization.
 
+A known benchmark mismatch is never repaired in product code. For example, if
+Docling emits a visible link label as `section_header`, ProviderObservation keeps
+that label and the Core mapping remains `heading`; benchmark/gold knowledge does
+not rewrite the Provider result.
+
 ## Core E-05 normalization
 
 Core, not the plugin, owns E-05 records.
@@ -248,6 +253,38 @@ Resolution:
 - explicit `list_item` uses non-empty `orig` when available;
 - other labels continue to use Docling `text`;
 - no typography inference is introduced.
+
+### PDF1C-F6 — real-provider Actions workflow did not materialize a job
+
+The first real-provider workflow used runner-scoped temporary-path context before
+the runner existed, so Actions rejected/materialized no useful job.
+
+Resolution:
+- isolate the workflow with a minimal Ubuntu/Python job;
+- initialize all temporary paths at runtime from `$RUNNER_TEMP` through
+  `$GITHUB_ENV`;
+- the real-provider job now materializes normally before environment setup.
+
+### PDF1C-F7 — duplicate Docling reference authority could drift
+
+A second experimental environment verifier duplicated version/wheel/model
+constants already owned by the canonical `docling_reference.py` product verifier.
+
+Resolution:
+- remove the duplicate verifier and its parallel tests;
+- keep `docling_reference.py` as the single product/CI authority for the accepted
+  wheel, constrained environment and model payload.
+
+### PDF1C-F8 — real-provider model-prefetch command did not match accepted evidence
+
+The first product workflow attempted `python -m docling.tools.models`, which is
+not a module entry point in Docling 2.118.0.
+
+Resolution:
+- reuse the exact already-accepted benchmark entry point and syntax:
+  `docling-tools models download --quiet --output-dir <dir> layout`;
+- verify the resulting payload through the canonical product reference verifier
+  before any document processing.
 
 ## Platform boundary
 

@@ -203,10 +203,6 @@ If any check fails, no stale Docling current extraction is published.
 
 ### PDF1C-F1 — observation structure could overclaim picture/caption/body order
 
-The first contract shape risked treating an empty picture list as known-empty,
-ordering blocks by Provider ref instead of body order, and assuming captions
-participated in body order.
-
 Resolution:
 - explicit `picture_collection_state`;
 - explicit `body_order_index` + `body_order_source`;
@@ -215,28 +211,18 @@ Resolution:
 
 ### PDF1C-F2 — Provider failure could be exported as if a document existed
 
-The first runtime called `result.document.export_to_dict()` before classifying a
-normal Docling failure result.
-
 Resolution:
-- classify `result.status` first;
+- classify `result.status` before `document.export_to_dict()`;
 - failed/restricted/unknown become attempt observations with zero current blocks;
 - only completed/partial observation paths may export the lossless document.
 
 ### PDF1C-F3 — dependency verifier compared unrelated environment packages
 
-The first product verifier compared the accepted dependency lock with every
-installed distribution, including packaging/admin tools outside the lock.
-
 Resolution:
 - verify exactly the constrained package-name set;
-- packaging tools such as `pip` are irrelevant unless they are explicitly in the
-  accepted lock.
+- packaging/admin tools outside the accepted lock are not treated as Provider dependencies.
 
 ### PDF1C-F4 — normalized semantics could be misattributed or overleveled
-
-The initial mapper inferred `title -> heading level 1`, and E-05 labeled the
-Core semantic mapping `provider-native`.
 
 Resolution:
 - `title`/`section_header` may map to normalized `heading`, but numeric level is
@@ -246,9 +232,6 @@ Resolution:
 
 ### PDF1C-F5 — lossless list markers could be discarded
 
-The initial ProviderObservation always used Docling normalized `text`, although
-lossless `list_item` records may expose a more faithful visible `orig` surface.
-
 Resolution:
 - explicit `list_item` uses non-empty `orig` when available;
 - other labels continue to use Docling `text`;
@@ -256,35 +239,39 @@ Resolution:
 
 ### PDF1C-F6 — real-provider Actions workflow did not materialize a job
 
-The first real-provider workflow used runner-scoped temporary-path context before
-the runner existed, so Actions rejected/materialized no useful job.
-
 Resolution:
 - isolate the workflow with a minimal Ubuntu/Python job;
-- initialize all temporary paths at runtime from `$RUNNER_TEMP` through
-  `$GITHUB_ENV`;
-- the real-provider job now materializes normally before environment setup.
+- initialize temporary paths at runtime from `$RUNNER_TEMP` through `$GITHUB_ENV`;
+- the real-provider job now materializes normally.
 
 ### PDF1C-F7 — duplicate Docling reference authority could drift
 
-A second experimental environment verifier duplicated version/wheel/model
-constants already owned by the canonical `docling_reference.py` product verifier.
+Resolution:
+- remove the duplicate experimental environment verifier and its parallel tests;
+- keep `docling_reference.py` as the single product/CI authority for wheel,
+  dependency lock and model payload.
+
+### PDF1C-F8 — model-prefetch invocation differed from accepted evidence
 
 Resolution:
-- remove the duplicate verifier and its parallel tests;
-- keep `docling_reference.py` as the single product/CI authority for the accepted
-  wheel, constrained environment and model payload.
-
-### PDF1C-F8 — real-provider model-prefetch command did not match accepted evidence
-
-The first product workflow attempted `python -m docling.tools.models`, which is
-not a module entry point in Docling 2.118.0.
-
-Resolution:
-- reuse the exact already-accepted benchmark entry point and syntax:
+- reuse the exact accepted benchmark entry point and syntax:
   `docling-tools models download --quiet --output-dir <dir> layout`;
-- verify the resulting payload through the canonical product reference verifier
-  before any document processing.
+- verify the resulting payload through `docling_reference.py` before processing.
+
+## Acceptance gate in progress
+
+Implementation is complete. Acceptance still requires the **same frozen head** to
+show:
+
+- PDF1c contract/Core matrix green on Ubuntu/Windows Python 3.10/3.12;
+- exact real Docling Ubuntu 24.04 / Python 3.12.14 job green, including model
+  prefetch, exact reference verification and real end-to-end extraction;
+- PDF1a/PDF1b + VS1 regressions green;
+- two consecutive clean reviews with no head changes;
+- no open review threads.
+
+Until the real-provider job is green on the frozen head, PDF1c is implemented but
+not accepted.
 
 ## Platform boundary
 

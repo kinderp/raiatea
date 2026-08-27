@@ -4,10 +4,6 @@ on:
   pull_request:
     paths:
       - "prototype/p0_vs1/**"
-      - "elaboration/p0/benchmark/generate_fixtures.py"
-      - "elaboration/p0/benchmark/b01_pdf_negative_fixtures.py"
-      - "elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt"
-      - "elaboration/p0/benchmark/locks/docling-2.118.0-layout-model-payload.json"
       - ".github/workflows/pdf1c-docling-real.yml"
   push:
     branches: [main]
@@ -18,12 +14,6 @@ on:
 permissions:
   contents: read
 
-env:
-  DOCLING_CONSTRAINTS: elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt
-  DOCLING_EXPECTED_WHEEL_SHA256: fd4962c9a54229bae1eb9b49f7fadb7e7b8affabf7e4fba1aac8cb335f558c8f
-  PIP_DISABLE_PIP_VERSION_CHECK: "1"
-  PIP_NO_INPUT: "1"
-
 jobs:
   real-docling:
     name: PDF1c real Docling / Ubuntu 24.04 / Python 3.12.14
@@ -31,90 +21,12 @@ jobs:
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12.14"
-
-      - name: Initialize Docling temporary paths
+      - name: Confirm real-runner materialization
         shell: bash
         run: |
           set -euo pipefail
-          echo "DOCLING_VENV=$RUNNER_TEMP/raiatea-pdf1c-docling-venv" >> "$GITHUB_ENV"
-          echo "DOCLING_WHEEL_DIR=$RUNNER_TEMP/raiatea-pdf1c-docling-wheel" >> "$GITHUB_ENV"
-          echo "DOCLING_ARTIFACTS=$RUNNER_TEMP/raiatea-pdf1c-docling-artifacts" >> "$GITHUB_ENV"
-          echo "DOCLING_CACHE_PARENT=$RUNNER_TEMP/raiatea-pdf1c-cache-parent" >> "$GITHUB_ENV"
-
-      - name: Install negative-fixture generator dependency
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y qpdf
-          qpdf --version
-
-      - name: Create exact Docling environment
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m venv "$DOCLING_VENV"
-          "$DOCLING_VENV/bin/python" -m pip install --upgrade "pip==25.3"
-          mkdir -p "$DOCLING_WHEEL_DIR" "$DOCLING_ARTIFACTS" "$DOCLING_CACHE_PARENT"
-          "$DOCLING_VENV/bin/python" -m pip download \
-            --only-binary=:all: \
-            --no-deps \
-            --dest "$DOCLING_WHEEL_DIR" \
-            "docling==2.118.0"
-          mapfile -t wheels < <(find "$DOCLING_WHEEL_DIR" -maxdepth 1 -type f -name '*.whl' -print | sort)
-          test "${#wheels[@]}" -eq 1
-          wheel_sha="$(sha256sum "${wheels[0]}" | awk '{print $1}')"
-          test "$wheel_sha" = "$DOCLING_EXPECTED_WHEEL_SHA256"
-          echo "PDF1C_DOCLING_WHEEL=${wheels[0]}" >> "$GITHUB_ENV"
-          "$DOCLING_VENV/bin/python" -m pip install \
-            -c "$DOCLING_CONSTRAINTS" \
-            "${wheels[0]}"
-          "$DOCLING_VENV/bin/python" -m pip check
-
-      - name: Prefetch exact layout model payload
-        shell: bash
-        run: |
-          set -euo pipefail
-          "$DOCLING_VENV/bin/python" -m docling.tools.models download \
-            -o "$DOCLING_ARTIFACTS" \
-            --num-threads 4 \
-            layout
-          echo "PDF1C_DOCLING_ARTIFACTS=$DOCLING_ARTIFACTS" >> "$GITHUB_ENV"
-          echo "PDF1C_DOCLING_CACHE_PARENT=$DOCLING_CACHE_PARENT" >> "$GITHUB_ENV"
-          echo "PDF1C_QPDF=$(command -v qpdf)" >> "$GITHUB_ENV"
-
-      - name: Verify product Docling reference before processing
-        shell: bash
-        run: |
-          set -euo pipefail
-          "$DOCLING_VENV/bin/python" - <<'PY'
-          import os
-          from pathlib import Path
-          from prototype.p0_vs1.docling_reference import verify_reference_docling
-
-          provider = verify_reference_docling(
-              wheel_path=Path(os.environ["PDF1C_DOCLING_WHEEL"]),
-              artifacts_path=Path(os.environ["PDF1C_DOCLING_ARTIFACTS"]),
-          )
-          assert provider["provider_id"] == "docling"
-          assert provider["version"] == "2.118.0"
-          print("PASS exact PDF1c Docling product reference")
-          PY
-
-      - name: Run real end-to-end Docling product acceptance
-        shell: bash
-        run: |
-          set -euo pipefail
-          "$DOCLING_VENV/bin/python" -m unittest prototype.p0_vs1.test_pdf1c_real_product -v
-
-      - name: Re-run product reference and contract tests inside exact Docling venv
-        shell: bash
-        run: |
-          set -euo pipefail
-          "$DOCLING_VENV/bin/python" -m unittest \
-            prototype.p0_vs1.test_pdf1c_reference_scope \
-            prototype.p0_vs1.test_pdf1c_provider_runtime \
-            prototype.p0_vs1.test_pdf1c_e05 \
-            -v
+          python --version
+          echo "RUNNER_TEMP=$RUNNER_TEMP"

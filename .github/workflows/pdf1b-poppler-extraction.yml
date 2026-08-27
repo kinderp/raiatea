@@ -35,7 +35,9 @@ jobs:
       - name: Compile PDF1b and existing product code
         run: python -m compileall -q prototype/p0_vs1
       - name: Run dependency-light PDF1b contract and Core normalization tests
-        run: python -m unittest prototype.p0_vs1.test_pdf1b_contract -v
+        run: |
+          python -m unittest prototype.p0_vs1.test_pdf1b_contract -v
+          python -m unittest prototype.p0_vs1.test_pdf1b_rights_order -v
       - name: Re-run PDF1a source-class regressions
         run: |
           python -m unittest prototype.p0_vs1.test_pdf1a -v
@@ -75,7 +77,9 @@ jobs:
           python -m unittest prototype.p0_vs1.test_pdf1b_product -v
           python -m unittest prototype.p0_vs1.test_pdf1b_fences -v
       - name: Re-run dependency-light contract on real Provider environment
-        run: python -m unittest prototype.p0_vs1.test_pdf1b_contract -v
+        run: |
+          python -m unittest prototype.p0_vs1.test_pdf1b_contract -v
+          python -m unittest prototype.p0_vs1.test_pdf1b_rights_order -v
       - name: Validate product plugin manifest
         run: python elaboration/p0/contracts/plugins/1.0.0/validate_manifest.py prototype/p0_vs1/plugins/poppler_pdf/manifest.json
       - name: Re-run accepted E-05 semantics

@@ -57,12 +57,26 @@ MAX_NOTIFICATIONS_BEFORE_RESPONSE = 64
 MAX_STDOUT_BUFFERED_FRAMES = MAX_NOTIFICATIONS_BEFORE_RESPONSE + 8
 HANDSHAKE_TIMEOUT_SECONDS = 10.0
 MAX_INVOCATION_TIMEOUT_SECONDS = 60.0
-ALLOWED_EXTRA_ENV_KEYS = frozenset({"RAIATEA_VS1_PLUGIN_IO_BROKER"})
+ABSOLUTE_MAX_INVOCATION_TIMEOUT_SECONDS = 300.0
+ALLOWED_EXTRA_ENV_KEYS = frozenset(
+    {
+        "RAIATEA_VS1_PLUGIN_IO_BROKER",
+        "RAIATEA_PDF1C_DOCLING_WHEEL",
+        "RAIATEA_PDF1C_DOCLING_ARTIFACTS",
+        "RAIATEA_PDF1C_DOCLING_CACHE_ROOT",
+    }
+)
 OFFICIAL_LOCAL_SOURCE_PLUGIN_ID = "org.raiatea.vs1.local-source"
 OFFICIAL_LOCAL_SOURCE_COMMAND = (
     "python",
     "-m",
     "prototype.p0_vs1.plugins.local_source.plugin",
+)
+OFFICIAL_DOCLING_PLUGIN_ID = "org.raiatea.pdf1.docling-extractor"
+OFFICIAL_DOCLING_COMMAND = (
+    "python",
+    "-m",
+    "prototype.p0_vs1.plugins.docling_pdf.plugin",
 )
 # Only OS/runtime settings needed to launch the same local Python process are
 # inherited. Credentials, proxies, cloud tokens and arbitrary user variables do
@@ -105,6 +119,8 @@ def build_child_environment(extra_env: dict[str, str] | None = None) -> dict[str
         raise LocalPluginProcessError(
             f"vs1c-plugin-extra-environment-key-forbidden:{unknown[0]}"
         )
+    if any(not isinstance(value, str) or not value for value in supplied.values()):
+        raise LocalPluginProcessError("vs1c-plugin-extra-environment-value-invalid")
     env: dict[str, str] = {}
     for key in AMBIENT_ENV_ALLOWLIST:
         value = os.environ.get(key)
@@ -134,6 +150,9 @@ def normalize_product_command(
             raise LocalPluginProcessError(
                 "vs1c-official-local-source-command-forbidden"
             )
+    if plugin_id == OFFICIAL_DOCLING_PLUGIN_ID:
+        if values != list(OFFICIAL_DOCLING_COMMAND):
+            raise LocalPluginProcessError("pdf1c-official-docling-command-forbidden")
     if values[0] in {"python", "python3"}:
         values[0] = sys.executable
     return values
@@ -158,10 +177,19 @@ class LocalPluginProcessClient:
         manifest: dict[str, Any],
         *,
         extra_env: dict[str, str] | None = None,
+        max_invocation_timeout_seconds: float = MAX_INVOCATION_TIMEOUT_SECONDS,
     ) -> None:
+        if (
+            not isinstance(max_invocation_timeout_seconds, (int, float))
+            or isinstance(max_invocation_timeout_seconds, bool)
+            or max_invocation_timeout_seconds <= 0
+            or max_invocation_timeout_seconds > ABSOLUTE_MAX_INVOCATION_TIMEOUT_SECONDS
+        ):
+            raise LocalPluginProcessError("vs1c-plugin-max-invocation-timeout-invalid")
         self.command = normalize_product_command(command, manifest)
         self.manifest = manifest
         self.extra_env = dict(extra_env or {})
+        self.max_invocation_timeout_seconds = float(max_invocation_timeout_seconds)
         self.process: subprocess.Popen[bytes] | None = None
         self.handshake_record: dict[str, Any] | None = None
         self.diagnostics: list[dict[str, Any]] = []
@@ -370,7 +398,7 @@ class LocalPluginProcessClient:
         configured = hints.get("timeout_seconds", remaining)
         if not isinstance(configured, (int, float)) or isinstance(configured, bool) or configured <= 0:
             raise LocalPluginProcessError("vs1c-plugin-manifest-timeout-invalid")
-        return min(float(configured), remaining, MAX_INVOCATION_TIMEOUT_SECONDS)
+        return min(float(configured), remaining, self.max_invocation_timeout_seconds)
 
     def handshake(self) -> dict[str, Any]:
         if self.process is None:

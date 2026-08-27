@@ -55,6 +55,7 @@ def base_document() -> dict:
     return {
         "pages": {
             "1": {
+                "page_no": 1,
                 "size": {"width": 612.0, "height": 792.0},
             }
         },

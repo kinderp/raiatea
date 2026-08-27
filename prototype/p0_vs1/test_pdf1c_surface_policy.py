@@ -67,6 +67,27 @@ class Pdf1cSurfacePolicyTests(unittest.TestCase):
             "Docling normalized text",
         )
 
+    def test_explicit_docling_semantic_mismatch_is_not_corrected_from_gold_knowledge(self) -> None:
+        doc = document()
+        doc["texts"][0] = {
+            "label": "section_header",
+            "orig": "Raiatea benchmark link",
+            "text": "Raiatea benchmark link",
+            "prov": [],
+        }
+        bundle = map_docling_document(
+            doc,
+            source_ref_id=SOURCE_REF,
+            source_fingerprint=FINGERPRINT,
+            provider=provider(),
+            provider_conversion_status="ConversionStatus.SUCCESS",
+        )
+        block = bundle["observation"]["blocks"][0]
+        self.assertEqual(block["provider_label"], "section_header")
+        self.assertEqual(block["semantic_type"], "heading")
+        self.assertIsNone(block["semantic_level"])
+        self.assertEqual(block["text"], "Raiatea benchmark link")
+
 
 if __name__ == "__main__":
     unittest.main()

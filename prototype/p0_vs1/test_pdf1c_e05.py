@@ -58,12 +58,14 @@ def observation(status: str = "success") -> dict:
     ] if status in {"success", "degraded"} else []
     return {
         "status": status,
-        "provider_conversion_status": "ConversionStatus.SUCCESS" if status == "success" else None,
+        "provider_conversion_status": (
+            "ConversionStatus.SUCCESS" if status == "success" else None
+        ),
         "warnings": [],
         "body_order_source": "body.children" if blocks else "unavailable",
         "blocks": blocks,
         "picture_collection_state": "present" if blocks else "unavailable",
-        "pictures": [] if blocks else [],
+        "pictures": [],
         "caption_blocks": [],
         "picture_caption_relations": [],
         "raw_document_sha256": OBSERVATION_FINGERPRINT if blocks else None,
@@ -87,8 +89,14 @@ class Pdf1cE05Tests(unittest.TestCase):
         validate_attempt_records(adapted)
         representation = adapted["normalized_representation"]
         units = representation["units"]
-        self.assertEqual(units[0]["semantic_role"]["value"], {"type": "heading", "level": 1})
-        self.assertEqual(units[1]["semantic_role"]["value"], {"type": "list_item"})
+        self.assertEqual(
+            units[0]["semantic_role"]["value"],
+            {"type": "heading", "level": 1},
+        )
+        self.assertEqual(
+            units[1]["semantic_role"]["value"],
+            {"type": "list_item"},
+        )
         self.assertEqual(units[2]["semantic_role"]["value_state"], "unknown")
         self.assertEqual(
             units[0]["coordinate"]["value"],
@@ -99,13 +107,27 @@ class Pdf1cE05Tests(unittest.TestCase):
             },
         )
         self.assertEqual(len(representation["relations"]), 2)
-        self.assertIn("body.children", representation["relations"][0]["basis"])
+        self.assertIn(
+            "body.children",
+            representation["relations"][0]["basis"],
+        )
+
+    def test_core_semantic_mapping_is_not_mislabeled_provider_native(self) -> None:
+        units = self.adapt()["normalized_representation"]["units"]
+        self.assertEqual(units[0]["surface"]["origin"], "provider-native")
+        self.assertEqual(units[0]["semantic_role"]["origin"], "raiatea-aligned")
+        self.assertEqual(units[1]["semantic_role"]["origin"], "raiatea-aligned")
+        self.assertEqual(units[0]["coordinate"]["origin"], "raiatea-aligned")
+        self.assertEqual(units[2]["semantic_role"]["origin"], "unresolved")
 
     def test_provider_observation_is_referenced_without_coercing_picture_schema(self) -> None:
         adapted = self.adapt()
         evidence = adapted["provider_evidence"]
         self.assertEqual(evidence["provider"]["provider_id"], "docling")
-        self.assertEqual(evidence["payload_fingerprint"], OBSERVATION_FINGERPRINT)
+        self.assertEqual(
+            evidence["payload_fingerprint"],
+            OBSERVATION_FINGERPRINT,
+        )
         self.assertEqual(
             evidence["payload_locator"],
             f"catalog-provider-observation:{SOURCE_REF}:pdf-docling-native-no-ocr",
@@ -122,7 +144,11 @@ class Pdf1cE05Tests(unittest.TestCase):
         kinds = {row["record_kind"] for row in bundle["record_refs"]}
         self.assertEqual(
             kinds,
-            {"ProcessingRunRecord", "ProviderEvidenceRecord", "NormalizedRepresentationRecord"},
+            {
+                "ProcessingRunRecord",
+                "ProviderEvidenceRecord",
+                "NormalizedRepresentationRecord",
+            },
         )
 
     def test_degraded_attempt_is_not_publishable_current_content(self) -> None:
@@ -130,7 +156,10 @@ class Pdf1cE05Tests(unittest.TestCase):
         validate_attempt_records(adapted)
         self.assertEqual(adapted["run"]["outcome"]["execution"], "unknown")
         self.assertNotIn("normalized_representation", adapted)
-        with self.assertRaisesRegex(DoclingPdfE05ContractError, "run-not-publishable"):
+        with self.assertRaisesRegex(
+            DoclingPdfE05ContractError,
+            "run-not-publishable",
+        ):
             build_docling_pdf_extraction_bundle(
                 source_ref_id=SOURCE_REF,
                 source_fingerprint=FINGERPRINT,
@@ -146,8 +175,13 @@ class Pdf1cE05Tests(unittest.TestCase):
     def test_semantic_tamper_outside_accepted_mapping_fails_wrapper(self) -> None:
         adapted = self.adapt()
         changed = deepcopy(adapted)
-        changed["normalized_representation"]["units"][0]["semantic_role"]["value"]["type"] = "table"
-        with self.assertRaisesRegex(DoclingPdfE05ContractError, "semantic-type-invalid"):
+        changed["normalized_representation"]["units"][0]["semantic_role"][
+            "value"
+        ]["type"] = "table"
+        with self.assertRaisesRegex(
+            DoclingPdfE05ContractError,
+            "semantic-type-invalid",
+        ):
             validate_attempt_records(changed)
 
 

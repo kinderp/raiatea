@@ -29,17 +29,21 @@ jobs:
     name: PDF1c real Docling / Ubuntu 24.04 / Python 3.12.14
     runs-on: ubuntu-24.04
     timeout-minutes: 45
-    env:
-      DOCLING_VENV: ${{ runner.temp }}/raiatea-pdf1c-docling-venv
-      DOCLING_WHEEL_DIR: ${{ runner.temp }}/raiatea-pdf1c-docling-wheel
-      DOCLING_ARTIFACTS: ${{ runner.temp }}/raiatea-pdf1c-docling-artifacts
-      DOCLING_CACHE_PARENT: ${{ runner.temp }}/raiatea-pdf1c-cache-parent
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12.14"
+
+      - name: Initialize Docling temporary paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "DOCLING_VENV=$RUNNER_TEMP/raiatea-pdf1c-docling-venv" >> "$GITHUB_ENV"
+          echo "DOCLING_WHEEL_DIR=$RUNNER_TEMP/raiatea-pdf1c-docling-wheel" >> "$GITHUB_ENV"
+          echo "DOCLING_ARTIFACTS=$RUNNER_TEMP/raiatea-pdf1c-docling-artifacts" >> "$GITHUB_ENV"
+          echo "DOCLING_CACHE_PARENT=$RUNNER_TEMP/raiatea-pdf1c-cache-parent" >> "$GITHUB_ENV"
 
       - name: Install negative-fixture generator dependency
         run: |

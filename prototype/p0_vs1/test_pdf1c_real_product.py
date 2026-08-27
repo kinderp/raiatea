@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import os
 from pathlib import Path
 import tempfile
@@ -139,6 +140,31 @@ class Pdf1cRealProductTests(unittest.TestCase):
             if ref["record_kind"] == "NormalizedRepresentationRecord"
         )
 
+    def publication_diagnostic(self, location: str, result: dict) -> dict:
+        source_ref_id = self.source_ref(location)
+        state = self.store.load().payload.get("pdf1c", {})
+        attempts = state.get("attempts", []) if isinstance(state, dict) else []
+        matching = [
+            row for row in attempts
+            if isinstance(row, dict) and row.get("source_ref_id") == source_ref_id
+        ]
+        diagnostic = {"service_result": result}
+        if matching:
+            observation = matching[-1].get("provider_observation", {}).get("observation", {})
+            diagnostic.update(
+                {
+                    "observation_status": observation.get("status"),
+                    "provider_conversion_status": observation.get("provider_conversion_status"),
+                    "warning_codes": [
+                        row.get("code")
+                        for row in observation.get("warnings", [])
+                        if isinstance(row, dict)
+                    ],
+                    "run_execution": matching[-1].get("run", {}).get("outcome", {}).get("execution"),
+                }
+            )
+        return diagnostic
+
     def test_real_docling_product_path_preserves_semantics_and_known_limits(self) -> None:
         for location in (
             "001-single.pdf",
@@ -148,7 +174,10 @@ class Pdf1cRealProductTests(unittest.TestCase):
         ):
             with self.subTest(location=location):
                 result = self.extract(location)
-                self.assertTrue(result["published_current"])
+                self.assertTrue(
+                    result["published_current"],
+                    self.publication_diagnostic(location, result),
+                )
                 self.assertEqual(result["processing_execution"], "completed")
 
         state = self.store.load().payload["pdf1c"]

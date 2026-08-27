@@ -29,7 +29,13 @@ def provider() -> dict:
     }
 
 
-def prov(page_no: int, left: float, top: float, right: float, bottom: float) -> list[dict]:
+def prov(
+    page_no: int,
+    left: float,
+    top: float,
+    right: float,
+    bottom: float,
+) -> list[dict]:
     return [
         {
             "page_no": page_no,
@@ -46,7 +52,12 @@ def prov(page_no: int, left: float, top: float, right: float, bottom: float) -> 
 
 def document() -> dict:
     return {
-        "pages": {"1": {"page_no": 1, "size": {"width": 612.0, "height": 792.0}}},
+        "pages": {
+            "1": {
+                "page_no": 1,
+                "size": {"width": 612.0, "height": 792.0},
+            }
+        },
         "body": {
             "children": [
                 {"$ref": "#/texts/0"},
@@ -101,7 +112,11 @@ def document() -> dict:
 
 
 class Pdf1cDoclingParserTests(unittest.TestCase):
-    def map(self, doc: dict | None = None, status: str = "ConversionStatus.SUCCESS") -> dict:
+    def map(
+        self,
+        doc: dict | None = None,
+        status: str = "ConversionStatus.SUCCESS",
+    ) -> dict:
         return map_docling_document(
             document() if doc is None else doc,
             source_ref_id=SOURCE_REF,
@@ -115,9 +130,12 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
         observation = bundle["observation"]
         self.assertEqual(observation["body_order_source"], "body.children")
         self.assertEqual(
-            [(row["text"], row["semantic_type"], row["semantic_level"]) for row in observation["blocks"]],
             [
-                ("Raiatea PDF", "heading", 1),
+                (row["text"], row["semantic_type"], row["semantic_level"])
+                for row in observation["blocks"]
+            ],
+            [
+                ("Raiatea PDF", "heading", None),
                 ("Nested section", "heading", 3),
                 ("First item", "list_item", None),
             ],
@@ -130,19 +148,46 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
             },
         )
         self.assertIsNone(observation["blocks"][2]["coordinate"])
-        self.assertEqual(observation["blocks"][2]["provenance_source"], "docling-lossless-item")
+        self.assertEqual(
+            observation["blocks"][2]["provenance_source"],
+            "docling-lossless-item",
+        )
+
+    def test_title_numeric_level_requires_explicit_provider_level(self) -> None:
+        without_level = self.map()["observation"]["blocks"][0]
+        self.assertEqual(without_level["provider_label"], "title")
+        self.assertEqual(without_level["semantic_type"], "heading")
+        self.assertIsNone(without_level["semantic_level"])
+
+        doc = document()
+        doc["texts"][0]["level"] = 1
+        with_level = self.map(doc)["observation"]["blocks"][0]
+        self.assertEqual(with_level["semantic_type"], "heading")
+        self.assertEqual(with_level["semantic_level"], 1)
+
+    def test_provider_text_surface_is_not_whitespace_normalized_in_observation(self) -> None:
+        doc = document()
+        doc["texts"][0]["text"] = "Raiatea   PDF\nTitle"
+        row = self.map(doc)["observation"]["blocks"][0]
+        self.assertEqual(row["text"], "Raiatea   PDF\nTitle")
 
     def test_picture_caption_relation_is_explicit_without_invented_body_order(self) -> None:
         observation = self.map()["observation"]
         self.assertEqual(observation["picture_collection_state"], "present")
         self.assertEqual(len(observation["pictures"]), 1)
         self.assertEqual(len(observation["caption_blocks"]), 1)
-        self.assertEqual(observation["caption_blocks"][0]["provider_ref"], "#/texts/1")
+        self.assertEqual(
+            observation["caption_blocks"][0]["provider_ref"],
+            "#/texts/1",
+        )
         self.assertEqual(
             observation["picture_caption_relations"][0]["relation_source"],
             "docling-picture.captions-explicit-ref",
         )
-        self.assertNotIn("#/texts/1", {row["provider_ref"] for row in observation["blocks"]})
+        self.assertNotIn(
+            "#/texts/1",
+            {row["provider_ref"] for row in observation["blocks"]},
+        )
 
     def test_missing_picture_collection_is_unknown_not_explicit_zero(self) -> None:
         doc = document()
@@ -150,7 +195,12 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
         observation = self.map(doc)["observation"]
         self.assertEqual(observation["picture_collection_state"], "unavailable")
         self.assertEqual(observation["pictures"], [])
-        self.assertTrue(any(row["code"] == "docling-picture-collection-unavailable" for row in observation["warnings"]))
+        self.assertTrue(
+            any(
+                row["code"] == "docling-picture-collection-unavailable"
+                for row in observation["warnings"]
+            )
+        )
 
     def test_malformed_picture_item_marks_collection_degraded(self) -> None:
         doc = document()
@@ -164,7 +214,12 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
         doc.pop("body")
         observation = self.map(doc)["observation"]
         self.assertEqual(observation["body_order_source"], "texts-fallback")
-        self.assertTrue(any(row["code"] == "docling-body-order-unavailable" for row in observation["warnings"]))
+        self.assertTrue(
+            any(
+                row["code"] == "docling-body-order-unavailable"
+                for row in observation["warnings"]
+            )
+        )
 
     def test_unknown_label_remains_semantically_unknown(self) -> None:
         doc = document()
@@ -176,7 +231,9 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
         self.assertIsNone(row["semantic_level"])
 
     def test_partial_provider_status_is_degraded_not_promoted_to_success(self) -> None:
-        observation = self.map(status="ConversionStatus.PARTIAL_SUCCESS")["observation"]
+        observation = self.map(status="ConversionStatus.PARTIAL_SUCCESS")[
+            "observation"
+        ]
         self.assertEqual(observation["status"], "degraded")
         self.assertTrue(observation["blocks"])
 
@@ -191,7 +248,10 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
                     error_type="PdfiumError",
                 )
                 observation = bundle["observation"]
-                self.assertEqual(observation["status"], "restricted" if restricted else "failed")
+                self.assertEqual(
+                    observation["status"],
+                    "restricted" if restricted else "failed",
+                )
                 self.assertEqual(observation["blocks"], [])
                 self.assertIsNone(observation["raw_document_sha256"])
                 serialized = json.dumps(bundle, sort_keys=True)
@@ -204,7 +264,10 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
             artifacts = root / "models"
             artifacts.mkdir()
             cache = root / "cache"
-            with self.assertRaisesRegex(DoclingProductError, "source-fingerprint-mismatch"):
+            with self.assertRaisesRegex(
+                DoclingProductError,
+                "source-fingerprint-mismatch",
+            ):
                 run_docling_pdf(
                     SOURCE_BYTES,
                     source_ref_id=SOURCE_REF,

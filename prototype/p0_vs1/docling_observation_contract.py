@@ -201,8 +201,6 @@ def _validate_block(value: Any, index: int) -> dict[str, Any]:
     )
     if level is not None:
         _require(semantic == "heading", "docling-semantic-level-requires-heading")
-    if provider_label == "title":
-        _require(level == 1, "docling-title-level-one-required")
     if semantic != "heading":
         _require(level is None, "docling-non-heading-level-forbidden")
 

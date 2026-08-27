@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""PDF1c product Docling parser/runtime for the pinned native/no-OCR profile.
+"""PDF1c product mapping helpers for the pinned native/no-OCR Docling profile.
 
-Benchmark modules are deliberately not imported. This module carries only the
-accepted product mapping/runtime behavior needed for PDF1c.
+This module maps Docling lossless document evidence into the closed Raiatea
+DoclingObservation contract. It does not own the real Provider execution loop;
+that fail-closed lifecycle lives in ``docling_provider_runtime.py``.
+Benchmark modules are deliberately not imported.
 """
 from __future__ import annotations
 
@@ -11,7 +13,6 @@ import hashlib
 import json
 import os
 from pathlib import Path
-import tempfile
 from typing import Any, Iterator
 
 from prototype.p0_vs1.docling_observation_contract import (
@@ -23,14 +24,17 @@ from prototype.p0_vs1.docling_observation_contract import (
 from prototype.p0_vs1.docling_reference import validate_reference_provider_record
 
 
-_LABEL_MAP: dict[str, tuple[str, int | None]] = {
-    "title": ("heading", 1),
-    "section_header": ("heading", None),
-    "text": ("paragraph", None),
-    "paragraph": ("paragraph", None),
-    "list_item": ("list_item", None),
-    "code": ("code", None),
-    "caption": ("caption", None),
+# Provider labels are normalized by Raiatea Core policy. Numeric heading levels
+# are never inferred from the label itself; they are retained only when Docling
+# exposes an explicit positive integer ``level`` on the lossless item.
+_LABEL_MAP: dict[str, str] = {
+    "title": "heading",
+    "section_header": "heading",
+    "text": "paragraph",
+    "paragraph": "paragraph",
+    "list_item": "list_item",
+    "code": "code",
+    "caption": "caption",
 }
 
 
@@ -231,16 +235,17 @@ def _provider_label(item: dict[str, Any]) -> str | None:
 
 
 def _semantic(item: dict[str, Any]) -> tuple[str | None, int | None]:
-    label = _provider_label(item)
-    semantic_type, level = _LABEL_MAP.get((label or "").lower(), (None, None))
+    label = (_provider_label(item) or "").lower()
+    semantic_type = _LABEL_MAP.get(label)
+    level: int | None = None
+    provider_level = item.get("level")
     if (
         semantic_type == "heading"
-        and level is None
-        and isinstance(item.get("level"), int)
-        and not isinstance(item.get("level"), bool)
-        and item["level"] >= 1
+        and isinstance(provider_level, int)
+        and not isinstance(provider_level, bool)
+        and provider_level >= 1
     ):
-        level = item["level"]
+        level = provider_level
     return semantic_type, level
 
 
@@ -248,7 +253,10 @@ def _text_surface(item: dict[str, Any]) -> str | None:
     value = item.get("text")
     if not isinstance(value, str) or not value.strip():
         return None
-    return " ".join(value.split())
+    # ProviderObservation retains Docling's explicit text string. Whitespace
+    # normalization belongs downstream in a Core normalization/search layer, not
+    # in provider-native evidence.
+    return value
 
 
 def _caption_record(
@@ -279,7 +287,9 @@ def _caption_record(
         "coordinate": coordinate,
         "provenance_count": provenance_count,
         "provenance_source": (
-            "docling-text-provenance" if coordinate is not None else "docling-lossless-caption"
+            "docling-text-provenance"
+            if coordinate is not None
+            else "docling-lossless-caption"
         ),
     }, warnings
 
@@ -287,7 +297,13 @@ def _caption_record(
 def _picture_evidence(
     document: dict[str, Any],
     page_sizes: dict[int, tuple[float, float]],
-) -> tuple[str, list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[
+    str,
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+    list[dict[str, Any]],
+]:
     warnings: list[dict[str, Any]] = []
     value = document.get("pictures")
     if not isinstance(value, list):
@@ -321,13 +337,18 @@ def _picture_evidence(
             warnings.append(
                 {
                     "code": "docling-picture-item-invalid",
-                    "details": {"index": picture_index, "type": type(picture).__name__},
+                    "details": {
+                        "index": picture_index,
+                        "type": type(picture).__name__,
+                    },
                 }
             )
             continue
         self_ref = picture.get("self_ref")
         provider_ref = (
-            self_ref if isinstance(self_ref, str) and self_ref else f"#/pictures/{picture_index}"
+            self_ref
+            if isinstance(self_ref, str) and self_ref
+            else f"#/pictures/{picture_index}"
         )
         coordinate, provenance_count, coordinate_warnings = _coordinate(
             picture,
@@ -348,6 +369,7 @@ def _picture_evidence(
 
         captions_value = picture.get("captions", [])
         if not isinstance(captions_value, list):
+            state = "degraded"
             warnings.append(
                 {
                     "code": "docling-picture-captions-invalid",
@@ -361,12 +383,20 @@ def _picture_evidence(
                 if isinstance(caption_ref_value, dict)
                 else None
             )
-            caption_item = text_registry.get(caption_ref) if isinstance(caption_ref, str) else None
+            caption_item = (
+                text_registry.get(caption_ref)
+                if isinstance(caption_ref, str)
+                else None
+            )
             if caption_item is None:
+                state = "degraded"
                 warnings.append(
                     {
                         "code": "docling-picture-caption-ref-unresolved",
-                        "details": {"picture_ref": provider_ref, "caption_ref": caption_ref},
+                        "details": {
+                            "picture_ref": provider_ref,
+                            "caption_ref": caption_ref,
+                        },
                     }
                 )
                 continue
@@ -377,6 +407,7 @@ def _picture_evidence(
             )
             warnings.extend(caption_warnings)
             if caption_record is None:
+                state = "degraded"
                 continue
             prior = captions_by_ref.get(caption_ref)
             if prior is not None and prior != caption_record:
@@ -391,7 +422,9 @@ def _picture_evidence(
             captions_by_ref[caption_ref] = caption_record
             relations.append(
                 {
-                    "relation_id": f"relation:picture-caption:{picture_index:04d}:{caption_index:04d}",
+                    "relation_id": (
+                        f"relation:picture-caption:{picture_index:04d}:{caption_index:04d}"
+                    ),
                     "picture_ref": provider_ref,
                     "caption_ref": caption_ref,
                     "relation_source": "docling-picture.captions-explicit-ref",
@@ -399,7 +432,9 @@ def _picture_evidence(
             )
 
     pictures.sort(key=lambda row: row["provider_ref"])
-    captions = sorted(captions_by_ref.values(), key=lambda row: row["provider_ref"])
+    captions = sorted(
+        captions_by_ref.values(), key=lambda row: row["provider_ref"]
+    )
     relations.sort(key=lambda row: row["relation_id"])
     return state, pictures, captions, relations, warnings
 
@@ -454,7 +489,9 @@ def map_docling_document(
                 "coordinate": coordinate,
                 "provenance_count": provenance_count,
                 "provenance_source": (
-                    "docling-text-provenance" if coordinate is not None else "docling-lossless-item"
+                    "docling-text-provenance"
+                    if coordinate is not None
+                    else "docling-lossless-item"
                 ),
             }
         )
@@ -580,74 +617,16 @@ def run_docling_pdf(
     artifacts_path: Path,
     cache_root: Path,
 ) -> dict[str, Any]:
-    validate_reference_provider_record(provider)
-    _require(isinstance(source_bytes, bytes) and source_bytes, "docling-source-bytes-required")
-    _require(_source_sha(source_bytes) == source_fingerprint, "docling-source-fingerprint-mismatch")
-    _require(artifacts_path.resolve().is_dir(), "docling-artifacts-root-unavailable")
-    cache_root.mkdir(parents=True, exist_ok=True)
+    """Compatibility facade over the single fail-closed product runtime."""
+    from prototype.p0_vs1.docling_provider_runtime import run_docling_pdf_product
 
-    with tempfile.TemporaryDirectory(prefix="raiatea-pdf1c-docling-") as temporary:
-        local_input = Path(temporary).resolve() / "source.pdf"
-        local_input.write_bytes(source_bytes)
-        try:
-            with _offline_environment(artifacts_path, cache_root):
-                from docling.datamodel.accelerator_options import (  # type: ignore[import-not-found]
-                    AcceleratorDevice,
-                    AcceleratorOptions,
-                )
-                from docling.datamodel.base_models import InputFormat  # type: ignore[import-not-found]
-                from docling.datamodel.pipeline_options import PdfPipelineOptions  # type: ignore[import-not-found]
-                from docling.document_converter import (  # type: ignore[import-not-found]
-                    DocumentConverter,
-                    PdfFormatOption,
-                )
-
-                options = PdfPipelineOptions()
-                options.artifacts_path = artifacts_path.resolve()
-                options.enable_remote_services = False
-                options.allow_external_plugins = False
-                options.do_ocr = False
-                options.do_table_structure = False
-                options.do_code_enrichment = False
-                options.do_formula_enrichment = False
-                options.do_picture_classification = False
-                options.do_picture_description = False
-                options.do_chart_extraction = False
-                options.generate_page_images = False
-                options.generate_picture_images = False
-                options.generate_table_images = False
-                options.generate_parsed_pages = False
-                options.force_backend_text = False
-                options.accelerator_options = AcceleratorOptions(
-                    num_threads=4,
-                    device=AcceleratorDevice.CPU,
-                )
-                converter = DocumentConverter(
-                    allowed_formats=[InputFormat.PDF],
-                    format_options={
-                        InputFormat.PDF: PdfFormatOption(pipeline_options=options)
-                    },
-                )
-                result = converter.convert(local_input)
-                provider_status = str(result.status)
-                exported = result.document.export_to_dict()
-        except Exception as exc:
-            message = str(exc).casefold()
-            restricted = "password" in message or "encrypted" in message
-            return failed_docling_observation(
-                source_ref_id=source_ref_id,
-                source_fingerprint=source_fingerprint,
-                provider=provider,
-                restricted=restricted,
-                error_type=type(exc).__name__,
-            )
-
-    return map_docling_document(
-        exported,
+    return run_docling_pdf_product(
+        source_bytes,
         source_ref_id=source_ref_id,
         source_fingerprint=source_fingerprint,
         provider=provider,
-        provider_conversion_status=provider_status,
+        artifacts_path=artifacts_path,
+        cache_root=cache_root,
     )
 
 

@@ -4,10 +4,13 @@ from datetime import datetime, timedelta, timezone
 import json
 import os
 from pathlib import Path
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
 
+from prototype.p0_vs1 import docling_reference
+from prototype.p0_vs1 import local_process_client as process_client
 from prototype.p0_vs1.docling_observation_contract import (
     DOCLING_OBSERVATION_MEDIA_TYPE,
     DOCLING_OBSERVATION_VERSION,
@@ -20,7 +23,6 @@ from prototype.p0_vs1.docling_process_environment import (
     WHEEL_ENV,
     build_docling_extra_env,
 )
-from prototype.p0_vs1 import docling_reference
 from prototype.p0_vs1.local_process_client import (
     LocalPluginProcessClient,
     LocalPluginProcessError,
@@ -143,18 +145,82 @@ class Pdf1cProcessEnvironmentTests(unittest.TestCase):
         ambient = {
             "OPENAI_API_KEY": "secret",
             "HTTP_PROXY": "http://secret.invalid",
+            "PATH": "/ambient/untrusted/tools",
             WHEEL_ENV: "/ambient/wrong.whl",
             ARTIFACTS_ENV: "/ambient/wrong-models",
         }
-        with patch.dict(os.environ, ambient, clear=False):
+        with (
+            patch.dict(os.environ, ambient, clear=False),
+            patch.object(
+                process_client,
+                "resolve_docling_compiler_toolchain_path",
+                return_value="/core/reference-tools",
+            ),
+        ):
             child = build_child_environment(
                 supplied,
                 manifest=DOCLING_MANIFEST_IDENTITY,
             )
         self.assertNotIn("OPENAI_API_KEY", child)
         self.assertNotIn("HTTP_PROXY", child)
+        self.assertEqual(child["PATH"], "/core/reference-tools")
+        self.assertNotEqual(child["PATH"], ambient["PATH"])
         for key, value in supplied.items():
             self.assertEqual(child[key], value)
+
+    def test_linux_toolchain_resolver_uses_os_default_path_and_explicit_cc1plus(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary).resolve()
+            system_bin = base / "system-bin"
+            gcc_libexec = base / "gcc-libexec"
+            system_bin.mkdir()
+            gcc_libexec.mkdir()
+            tools = {}
+            for name in ("g++", "gcc", "as", "ld"):
+                tool = system_bin / name
+                tool.write_text("tool", encoding="utf-8")
+                tools[name] = tool
+            cc1plus = gcc_libexec / "cc1plus"
+            cc1plus.write_text("tool", encoding="utf-8")
+
+            which_calls: list[tuple[str, str | None]] = []
+
+            def fake_which(name: str, path: str | None = None) -> str | None:
+                which_calls.append((name, path))
+                value = tools.get(name)
+                return str(value) if value is not None else None
+
+            completed = subprocess.CompletedProcess(
+                [str(tools["g++"]), "-print-prog-name=cc1plus"],
+                0,
+                stdout=str(cc1plus) + "\n",
+                stderr="",
+            )
+            with (
+                patch.object(process_client.sys, "platform", "linux"),
+                patch.object(process_client.shutil, "which", side_effect=fake_which),
+                patch.object(process_client.subprocess, "run", return_value=completed) as run,
+            ):
+                value = process_client.resolve_docling_compiler_toolchain_path()
+
+        self.assertEqual(
+            value,
+            os.pathsep.join((str(system_bin), str(gcc_libexec))),
+        )
+        self.assertEqual(
+            which_calls,
+            [("g++", os.defpath), ("gcc", os.defpath), ("as", os.defpath), ("ld", os.defpath)],
+        )
+        run.assert_called_once()
+        self.assertEqual(run.call_args.args[0][0], str(tools["g++"].resolve()))
+
+    def test_non_linux_docling_environment_adds_no_compiler_path(self) -> None:
+        with patch.object(process_client.sys, "platform", "win32"):
+            child = build_child_environment(
+                {BROKER_ENV: "C:\\core\\broker"},
+                manifest=DOCLING_MANIFEST_IDENTITY,
+            )
+        self.assertNotIn("PATH", child)
 
     def test_arbitrary_extra_environment_remains_forbidden(self) -> None:
         with self.assertRaisesRegex(LocalPluginProcessError, "extra-environment-key-forbidden"):

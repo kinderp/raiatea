@@ -1,0 +1,82 @@
+name: PDF1b local Poppler PDF extraction
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/pdf1b-poppler-extraction.yml"
+      - "elaboration/p0/contracts/extraction/0.1.0/**"
+      - "elaboration/p0/contracts/plugins/**"
+      - "elaboration/p0/benchmark/generate_fixtures.py"
+      - "elaboration/p0/benchmark/b01_pdf_negative_fixtures.py"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/pdf1b-poppler-extraction.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  contract-core:
+    name: PDF1b Core contracts / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile PDF1b and existing product code
+        run: python -m compileall -q prototype/p0_vs1
+      - name: Run dependency-light PDF1b contract and Core normalization tests
+        run: python -m unittest prototype.p0_vs1.test_pdf1b_contract -v
+      - name: Re-run PDF1a source-class regressions
+        run: |
+          python -m unittest prototype.p0_vs1.test_pdf1a -v
+          python -m unittest prototype.p0_vs1.test_pdf1a_backup -v
+          python -m unittest prototype.p0_vs1.test_pdf1a_source_identity -v
+          python -m unittest prototype.p0_vs1.test_pdf1a_transitions -v
+      - name: Validate Poppler product manifest
+        run: python elaboration/p0/contracts/plugins/1.0.0/validate_manifest.py prototype/p0_vs1/plugins/poppler_pdf/manifest.json
+      - name: Re-run accepted E-05 semantic contract
+        run: python elaboration/p0/contracts/extraction/0.1.0/test_contract.py -v
+
+  real-poppler:
+    name: PDF1b real Poppler 24.02.0 / Ubuntu 24.04
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      EXPECTED_POPPLER_VERSION: "24.02.0"
+      EXPECTED_PDFTOHTML_SHA256: "70bd5fbb655a14d0b02cb32cb53a601d3b0842a63553a24d1a6a612cf9f0624e"
+      EXPECTED_PDFINFO_SHA256: "3293dda06d80e1e38dab859aa47368c2876aedc41cbc2e24e8fb9a4e66392078"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+      - name: Install local Provider and negative-fixture generator
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils qpdf
+      - name: Verify exact accepted Poppler reference
+        run: |
+          pdftohtml -v 2>&1 | head -1 | grep -F "version ${EXPECTED_POPPLER_VERSION}"
+          pdfinfo -v 2>&1 | head -1 | grep -F "version ${EXPECTED_POPPLER_VERSION}"
+          echo "${EXPECTED_PDFTOHTML_SHA256}  /usr/bin/pdftohtml" | sha256sum -c -
+          echo "${EXPECTED_PDFINFO_SHA256}  /usr/bin/pdfinfo" | sha256sum -c -
+      - name: Run real PDF1b product acceptance
+        run: |
+          python -m unittest prototype.p0_vs1.test_pdf1b_product -v
+          python -m unittest prototype.p0_vs1.test_pdf1b_fences -v
+      - name: Re-run dependency-light contract on real Provider environment
+        run: python -m unittest prototype.p0_vs1.test_pdf1b_contract -v
+      - name: Validate product plugin manifest
+        run: python elaboration/p0/contracts/plugins/1.0.0/validate_manifest.py prototype/p0_vs1/plugins/poppler_pdf/manifest.json
+      - name: Re-run accepted E-05 semantics
+        run: python elaboration/p0/contracts/extraction/0.1.0/test_contract.py -v

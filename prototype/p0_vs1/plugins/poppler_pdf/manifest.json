@@ -1,0 +1,56 @@
+{
+  "manifest_version": "1.0.0",
+  "plugin": {
+    "plugin_id": "org.raiatea.pdf1.poppler-extractor",
+    "name": "Raiatea PDF1 Poppler PDF Extractor",
+    "version": "0.1.0"
+  },
+  "raiatea_plugin_api": {
+    "min_inclusive": "1.0.0",
+    "max_exclusive": "2.0.0"
+  },
+  "families": ["extractor"],
+  "capabilities": [
+    {
+      "capability_id": "extract.run",
+      "profiles": [
+        {
+          "profile_id": "pdf-poppler-pdftohtml-xml",
+          "family": "extractor",
+          "input_classes": ["application/pdf"],
+          "output_classes": ["pdf1b-poppler-provider-observation"],
+          "contracts": [
+            {
+              "contract_id": "raiatea.extraction.processing-run",
+              "version_range": {
+                "min_inclusive": "0.1.0",
+                "max_exclusive": "0.2.0"
+              }
+            }
+          ],
+          "backend": "poppler-24.02.0-reference",
+          "mode": "native-geometric"
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": [],
+    "filesystem": [],
+    "secrets": [],
+    "temporary_workspace": true,
+    "resource_hints": {
+      "cpu_cores": 1,
+      "memory_mb": 256,
+      "timeout_seconds": 30
+    }
+  },
+  "entrypoint": {
+    "kind": "process",
+    "command": ["python", "-m", "prototype.p0_vs1.plugins.poppler_pdf.plugin"]
+  },
+  "trust_tier": "official",
+  "provenance": {
+    "publisher": "Raiatea"
+  }
+}

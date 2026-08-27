@@ -53,18 +53,15 @@ def valid_bundle() -> dict:
                     "provenance_source": "docling-text-provenance",
                 },
                 {
-                    "provider_ref": "#/texts/1",
+                    "provider_ref": "#/texts/3",
                     "body_order_index": 1,
-                    "text": "Figure 1. Example.",
-                    "provider_label": "caption",
-                    "semantic_type": "caption",
+                    "text": "Body paragraph.",
+                    "provider_label": "text",
+                    "semantic_type": "paragraph",
                     "semantic_level": None,
-                    "coordinate": {
-                        "page_index": 0,
-                        "bbox_points_bottom_left": [72.0, 450.0, 260.0, 470.0],
-                    },
-                    "provenance_count": 1,
-                    "provenance_source": "docling-text-provenance",
+                    "coordinate": None,
+                    "provenance_count": 0,
+                    "provenance_source": "docling-lossless-item",
                 },
             ],
             "picture_collection_state": "present",
@@ -78,6 +75,20 @@ def valid_bundle() -> dict:
                     },
                     "provenance_count": 1,
                     "provenance_source": "docling-picture-item",
+                }
+            ],
+            "caption_blocks": [
+                {
+                    "provider_ref": "#/texts/1",
+                    "text": "Figure 1. Example.",
+                    "provider_label": "caption",
+                    "semantic_type": "caption",
+                    "coordinate": {
+                        "page_index": 0,
+                        "bbox_points_bottom_left": [72.0, 450.0, 260.0, 470.0],
+                    },
+                    "provenance_count": 1,
+                    "provenance_source": "docling-text-provenance",
                 }
             ],
             "picture_caption_relations": [
@@ -104,27 +115,27 @@ class Pdf1cDoclingObservationContractTests(unittest.TestCase):
 
     def test_unknown_provider_label_cannot_gain_semantics(self) -> None:
         bundle = valid_bundle()
-        bundle["observation"]["blocks"][0]["provider_label"] = "mystery_label"
-        bundle["observation"]["blocks"][0]["semantic_type"] = "heading"
-        bundle["observation"]["blocks"][0]["semantic_level"] = None
+        block = bundle["observation"]["blocks"][0]
+        block["provider_label"] = "mystery_label"
+        block["semantic_type"] = "heading"
+        block["semantic_level"] = None
         with self.assertRaisesRegex(DoclingObservationError, "unmapped-label"):
             validate_docling_observation_bundle(bundle)
 
     def test_known_provider_label_cannot_be_retyped(self) -> None:
         bundle = valid_bundle()
-        bundle["observation"]["blocks"][1]["semantic_type"] = "paragraph"
+        bundle["observation"]["blocks"][1]["semantic_type"] = "code"
         with self.assertRaisesRegex(DoclingObservationError, "semantic-type-mismatch"):
             validate_docling_observation_bundle(bundle)
 
     def test_semantic_level_requires_heading(self) -> None:
         bundle = valid_bundle()
-        block = bundle["observation"]["blocks"][0]
-        block["provider_label"] = "paragraph"
-        block["semantic_type"] = "paragraph"
+        block = bundle["observation"]["blocks"][1]
+        block["semantic_level"] = 2
         with self.assertRaisesRegex(DoclingObservationError, "semantic-level-requires-heading"):
             validate_docling_observation_bundle(bundle)
 
-    def test_title_is_the_only_policy_mapped_level_one_heading(self) -> None:
+    def test_title_is_policy_mapped_to_level_one(self) -> None:
         bundle = valid_bundle()
         bundle["observation"]["blocks"][0]["semantic_level"] = 2
         with self.assertRaisesRegex(DoclingObservationError, "title-level-one"):
@@ -137,6 +148,12 @@ class Pdf1cDoclingObservationContractTests(unittest.TestCase):
         with self.assertRaisesRegex(DoclingObservationError, "body-order-not-canonical"):
             validate_docling_observation_bundle(bundle)
 
+    def test_caption_relation_does_not_imply_body_order(self) -> None:
+        bundle = valid_bundle()
+        body_refs = {row["provider_ref"] for row in bundle["observation"]["blocks"]}
+        self.assertNotIn("#/texts/1", body_refs)
+        validate_docling_observation_bundle(bundle)
+
     def test_relation_must_reference_explicit_picture_and_caption(self) -> None:
         for key, value, message in (
             ("picture_ref", "#/pictures/missing", "picture-unknown"),
@@ -148,11 +165,31 @@ class Pdf1cDoclingObservationContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(DoclingObservationError, message):
                     validate_docling_observation_bundle(bundle)
 
+    def test_same_caption_ref_in_body_must_not_conflict(self) -> None:
+        bundle = valid_bundle()
+        caption = bundle["observation"]["caption_blocks"][0]
+        bundle["observation"]["blocks"].append(
+            {
+                "provider_ref": caption["provider_ref"],
+                "body_order_index": 2,
+                "text": "Different text",
+                "provider_label": "caption",
+                "semantic_type": "caption",
+                "semantic_level": None,
+                "coordinate": deepcopy(caption["coordinate"]),
+                "provenance_count": 1,
+                "provenance_source": "docling-text-provenance",
+            }
+        )
+        with self.assertRaisesRegex(DoclingObservationError, "caption-body-text-conflict"):
+            validate_docling_observation_bundle(bundle)
+
     def test_unavailable_picture_collection_is_not_explicit_zero(self) -> None:
         bundle = valid_bundle()
         observation = bundle["observation"]
         observation["picture_collection_state"] = "unavailable"
         observation["pictures"] = []
+        observation["caption_blocks"] = []
         observation["picture_caption_relations"] = []
         validate_docling_observation_bundle(bundle)
         self.assertEqual(observation["picture_collection_state"], "unavailable")

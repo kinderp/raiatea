@@ -38,6 +38,7 @@ jobs:
           prototype/p0_vs1/docling_observation_contract.py
           prototype/p0_vs1/docling_reference.py
           prototype/p0_vs1/docling_product_parser.py
+          prototype/p0_vs1/docling_provider_runtime.py
           prototype/p0_vs1/docling_process_environment.py
           prototype/p0_vs1/docling_e05_adapter.py
           prototype/p0_vs1/pdf1c_e05_contract.py
@@ -47,6 +48,7 @@ jobs:
           prototype/p0_vs1/test_pdf1c_contract.py
           prototype/p0_vs1/test_pdf1c_reference.py
           prototype/p0_vs1/test_pdf1c_parser.py
+          prototype/p0_vs1/test_pdf1c_provider_runtime.py
           prototype/p0_vs1/test_pdf1c_process.py
           prototype/p0_vs1/test_pdf1c_e05.py
           prototype/p0_vs1/test_pdf1c_rights.py
@@ -59,6 +61,8 @@ jobs:
         run: python -m unittest prototype.p0_vs1.test_pdf1c_reference -v
       - name: Run PDF1c product parser tests
         run: python -m unittest prototype.p0_vs1.test_pdf1c_parser -v
+      - name: Run PDF1c provider-result classification tests
+        run: python -m unittest prototype.p0_vs1.test_pdf1c_provider_runtime -v
       - name: Run PDF1c process/environment tests
         run: python -m unittest prototype.p0_vs1.test_pdf1c_process -v
       - name: Run PDF1c E-05 tests

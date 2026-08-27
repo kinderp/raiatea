@@ -58,14 +58,15 @@ MAX_STDOUT_BUFFERED_FRAMES = MAX_NOTIFICATIONS_BEFORE_RESPONSE + 8
 HANDSHAKE_TIMEOUT_SECONDS = 10.0
 MAX_INVOCATION_TIMEOUT_SECONDS = 60.0
 ABSOLUTE_MAX_INVOCATION_TIMEOUT_SECONDS = 300.0
-ALLOWED_EXTRA_ENV_KEYS = frozenset(
+BASE_EXTRA_ENV_KEYS = frozenset({"RAIATEA_VS1_PLUGIN_IO_BROKER"})
+DOCLING_EXTRA_ENV_KEYS = frozenset(
     {
-        "RAIATEA_VS1_PLUGIN_IO_BROKER",
         "RAIATEA_PDF1C_DOCLING_WHEEL",
         "RAIATEA_PDF1C_DOCLING_ARTIFACTS",
         "RAIATEA_PDF1C_DOCLING_CACHE_ROOT",
     }
 )
+ALLOWED_EXTRA_ENV_KEYS = BASE_EXTRA_ENV_KEYS | DOCLING_EXTRA_ENV_KEYS
 OFFICIAL_LOCAL_SOURCE_PLUGIN_ID = "org.raiatea.vs1.local-source"
 OFFICIAL_LOCAL_SOURCE_COMMAND = (
     "python",
@@ -110,11 +111,27 @@ class LocalPluginProcessExited(LocalPluginProcessError):
     pass
 
 
-def build_child_environment(extra_env: dict[str, str] | None = None) -> dict[str, str]:
-    """Build the bounded environment visible to the official VS1c plugin."""
+def _allowed_extra_env_keys(manifest: dict[str, Any] | None) -> frozenset[str]:
+    plugin_id = None
+    if isinstance(manifest, dict) and isinstance(manifest.get("plugin"), dict):
+        plugin_id = manifest["plugin"].get("plugin_id")
+    if plugin_id == OFFICIAL_DOCLING_PLUGIN_ID:
+        return ALLOWED_EXTRA_ENV_KEYS
+    # Preserve the accepted VS1c boundary for Local Source and for callers that
+    # do not declare the PDF1c official Docling identity.
+    return BASE_EXTRA_ENV_KEYS
+
+
+def build_child_environment(
+    extra_env: dict[str, str] | None = None,
+    *,
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    """Build the bounded environment visible to one official product plugin."""
 
     supplied = dict(extra_env or {})
-    unknown = sorted(set(supplied) - ALLOWED_EXTRA_ENV_KEYS)
+    allowed = _allowed_extra_env_keys(manifest)
+    unknown = sorted(set(supplied) - allowed)
     if unknown:
         raise LocalPluginProcessError(
             f"vs1c-plugin-extra-environment-key-forbidden:{unknown[0]}"
@@ -246,7 +263,7 @@ class LocalPluginProcessClient:
     def start(self) -> None:
         if self.process is not None:
             raise LocalPluginProcessError("vs1c-plugin-process-already-started")
-        env = build_child_environment(self.extra_env)
+        env = build_child_environment(self.extra_env, manifest=self.manifest)
         self._reader_stop.clear()
         self.process = subprocess.Popen(
             self.command,

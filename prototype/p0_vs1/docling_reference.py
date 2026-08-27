@@ -73,12 +73,22 @@ def freeze_sha256(entries: list[str]) -> str:
     return hashlib.sha256(("\n".join(entries) + "\n").encode("utf-8")).hexdigest()
 
 
-def installed_freeze() -> list[str]:
+def installed_freeze(expected_entries: list[str]) -> list[str]:
+    """Return versions only for the accepted constrained package set.
+
+    Packaging/admin tools such as pip or setuptools are intentionally outside
+    the accepted Docling dependency freeze unless they appear in the constraints
+    lock. This mirrors the accepted benchmark verifier semantics.
+    """
     entries: list[str] = []
-    for dist in importlib.metadata.distributions():
-        name = dist.metadata.get("Name")
-        if name:
-            entries.append(f"{name}=={dist.version}")
+    for name in sorted({_package_name(spec) for spec in expected_entries}):
+        try:
+            version = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError as exc:
+            raise DoclingReferenceError(
+                f"docling-reference-package-missing:{name}"
+            ) from exc
+        entries.append(f"{name}=={version}")
     return sorted(entries, key=_package_name)
 
 
@@ -182,7 +192,11 @@ def verify_reference_docling(
 
     expected_freeze = load_constraints(constraints_path)
     _require(freeze_sha256(expected_freeze) == ENVIRONMENT_FREEZE_SHA256, "docling-reference-constraints-drift")
-    actual_freeze = installed_freeze() if observed_freeze is None else sorted(observed_freeze, key=_package_name)
+    actual_freeze = (
+        installed_freeze(expected_freeze)
+        if observed_freeze is None
+        else sorted(observed_freeze, key=_package_name)
+    )
     _require(actual_freeze == expected_freeze, "docling-reference-environment-mismatch")
     try:
         installed_version = importlib.metadata.version("docling")

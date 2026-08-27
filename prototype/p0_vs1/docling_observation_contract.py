@@ -149,6 +149,23 @@ def _validate_provider_label(value: Any, label: str) -> str | None:
     return value
 
 
+def _validate_provenance(
+    row: dict[str, Any],
+    *,
+    count_key: str,
+    source_key: str,
+    coordinate_key: str,
+    required_source: str | None,
+    label: str,
+) -> None:
+    _int(row[count_key], f"{label}-provenance-count")
+    _require(isinstance(row[source_key], str) and row[source_key], f"{label}-provenance-source-invalid")
+    if required_source is not None:
+        _require(row[source_key] == required_source, f"{label}-provenance-source-invalid")
+    if row[coordinate_key] is not None:
+        _require(row[count_key] >= 1, f"{label}-coordinate-provenance-required")
+
+
 def _validate_block(value: Any, index: int) -> dict[str, Any]:
     row = _exact(
         value,
@@ -165,18 +182,12 @@ def _validate_block(value: Any, index: int) -> dict[str, Any]:
         },
         f"docling-block-{index}",
     )
-    _require(
-        isinstance(row["provider_ref"], str) and row["provider_ref"],
-        "docling-block-ref-invalid",
-    )
+    _require(isinstance(row["provider_ref"], str) and row["provider_ref"], "docling-block-ref-invalid")
     _int(row["body_order_index"], "docling-block-body-order-index")
     _require(isinstance(row["text"], str) and row["text"], "docling-block-text-invalid")
     provider_label = _validate_provider_label(row["provider_label"], "docling-block-label")
     semantic = row["semantic_type"]
-    _require(
-        semantic is None or semantic in _ACCEPTED_SEMANTIC_TYPES,
-        "docling-block-semantic-type-invalid",
-    )
+    _require(semantic is None or semantic in _ACCEPTED_SEMANTIC_TYPES, "docling-block-semantic-type-invalid")
     expected_semantic = _LABEL_SEMANTICS.get(provider_label or "")
     if expected_semantic is None:
         _require(semantic is None, "docling-unmapped-label-cannot-have-semantic-type")
@@ -185,8 +196,7 @@ def _validate_block(value: Any, index: int) -> dict[str, Any]:
 
     level = row["semantic_level"]
     _require(
-        level is None
-        or (isinstance(level, int) and not isinstance(level, bool) and level >= 1),
+        level is None or (isinstance(level, int) and not isinstance(level, bool) and level >= 1),
         "docling-block-semantic-level-invalid",
     )
     if level is not None:
@@ -197,51 +207,83 @@ def _validate_block(value: Any, index: int) -> dict[str, Any]:
         _require(level is None, "docling-non-heading-level-forbidden")
 
     _validate_coordinate(row["coordinate"], f"docling-block-{index}-coordinate")
-    _int(row["provenance_count"], "docling-block-provenance-count")
+    _validate_provenance(
+        row,
+        count_key="provenance_count",
+        source_key="provenance_source",
+        coordinate_key="coordinate",
+        required_source=None,
+        label="docling-block",
+    )
     _require(
-        row["provenance_source"]
-        in {"docling-text-provenance", "docling-lossless-item"},
+        row["provenance_source"] in {"docling-text-provenance", "docling-lossless-item"},
         "docling-block-provenance-source-invalid",
     )
     if row["coordinate"] is not None:
-        _require(row["provenance_count"] >= 1, "docling-block-coordinate-provenance-required")
-        _require(
-            row["provenance_source"] == "docling-text-provenance",
-            "docling-block-coordinate-source-invalid",
-        )
+        _require(row["provenance_source"] == "docling-text-provenance", "docling-block-coordinate-source-invalid")
+    return row
+
+
+def _validate_caption_block(value: Any, index: int) -> dict[str, Any]:
+    row = _exact(
+        value,
+        {
+            "provider_ref",
+            "text",
+            "provider_label",
+            "semantic_type",
+            "coordinate",
+            "provenance_count",
+            "provenance_source",
+        },
+        f"docling-caption-{index}",
+    )
+    _require(isinstance(row["provider_ref"], str) and row["provider_ref"], "docling-caption-ref-invalid")
+    _require(isinstance(row["text"], str) and row["text"], "docling-caption-text-invalid")
+    provider_label = _validate_provider_label(row["provider_label"], "docling-caption-label")
+    semantic = row["semantic_type"]
+    _require(semantic is None or semantic == "caption", "docling-caption-semantic-type-invalid")
+    if provider_label == "caption":
+        _require(semantic == "caption", "docling-caption-label-semantic-mismatch")
+    elif provider_label is None or provider_label != "caption":
+        _require(semantic is None, "docling-caption-unmapped-label-cannot-have-semantics")
+    _validate_coordinate(row["coordinate"], f"docling-caption-{index}-coordinate")
+    _validate_provenance(
+        row,
+        count_key="provenance_count",
+        source_key="provenance_source",
+        coordinate_key="coordinate",
+        required_source=None,
+        label="docling-caption",
+    )
+    _require(
+        row["provenance_source"] in {"docling-text-provenance", "docling-lossless-caption"},
+        "docling-caption-provenance-source-invalid",
+    )
+    if row["coordinate"] is not None:
+        _require(row["provenance_source"] == "docling-text-provenance", "docling-caption-coordinate-source-invalid")
     return row
 
 
 def _validate_picture(value: Any, index: int) -> dict[str, Any]:
     row = _exact(
         value,
-        {
-            "provider_ref",
-            "provider_label",
-            "coordinate",
-            "provenance_count",
-            "provenance_source",
-        },
+        {"provider_ref", "provider_label", "coordinate", "provenance_count", "provenance_source"},
         f"docling-picture-{index}",
     )
-    _require(
-        isinstance(row["provider_ref"], str) and row["provider_ref"],
-        "docling-picture-ref-invalid",
-    )
+    _require(isinstance(row["provider_ref"], str) and row["provider_ref"], "docling-picture-ref-invalid")
     provider_label = _validate_provider_label(row["provider_label"], "docling-picture-label")
     if provider_label is not None:
         _require(provider_label == "picture", "docling-picture-label-invalid")
     _validate_coordinate(row["coordinate"], f"docling-picture-{index}-coordinate")
-    _int(row["provenance_count"], "docling-picture-provenance-count")
-    _require(
-        row["provenance_source"] == "docling-picture-item",
-        "docling-picture-source-invalid",
+    _validate_provenance(
+        row,
+        count_key="provenance_count",
+        source_key="provenance_source",
+        coordinate_key="coordinate",
+        required_source="docling-picture-item",
+        label="docling-picture",
     )
-    if row["coordinate"] is not None:
-        _require(
-            row["provenance_count"] >= 1,
-            "docling-picture-coordinate-provenance-required",
-        )
     return row
 
 
@@ -252,10 +294,7 @@ def _validate_caption_relation(value: Any, index: int) -> dict[str, Any]:
         f"docling-caption-relation-{index}",
     )
     for key in ("relation_id", "picture_ref", "caption_ref"):
-        _require(
-            isinstance(row[key], str) and row[key],
-            f"docling-caption-relation-{key}-invalid",
-        )
+        _require(isinstance(row[key], str) and row[key], f"docling-caption-relation-{key}-invalid")
     _require(
         row["relation_source"] == "docling-picture.captions-explicit-ref",
         "docling-caption-relation-source-invalid",
@@ -277,36 +316,20 @@ def validate_docling_observation_bundle(value: Any) -> dict[str, Any]:
         },
         "docling-observation-bundle",
     )
+    _require(bundle["bundle_version"] == DOCLING_OBSERVATION_VERSION, "docling-observation-version-unsupported")
+    _require(bundle["record_kind"] == "DoclingObservationBundle", "docling-observation-kind-invalid")
     _require(
-        bundle["bundle_version"] == DOCLING_OBSERVATION_VERSION,
-        "docling-observation-version-unsupported",
-    )
-    _require(
-        bundle["record_kind"] == "DoclingObservationBundle",
-        "docling-observation-kind-invalid",
-    )
-    _require(
-        isinstance(bundle["source_ref_id"], str)
-        and bundle["source_ref_id"].startswith("source-ref:"),
+        isinstance(bundle["source_ref_id"], str) and bundle["source_ref_id"].startswith("source-ref:"),
         "docling-source-ref-invalid",
     )
     _sha(bundle["source_fingerprint"], "docling-source-fingerprint")
     provider = _exact(
         bundle["provider"],
-        {
-            "provider_id",
-            "version",
-            "wheel_sha256",
-            "environment_freeze_sha256",
-            "model_payload_sha256",
-        },
+        {"provider_id", "version", "wheel_sha256", "environment_freeze_sha256", "model_payload_sha256"},
         "docling-provider",
     )
     _require(provider["provider_id"] == DOCLING_PROVIDER_ID, "docling-provider-id-invalid")
-    _require(
-        provider["version"] == DOCLING_PROVIDER_VERSION,
-        "docling-provider-version-invalid",
-    )
+    _require(provider["version"] == DOCLING_PROVIDER_VERSION, "docling-provider-version-invalid")
     _sha(provider["wheel_sha256"], "docling-wheel-sha")
     _sha(provider["environment_freeze_sha256"], "docling-environment-freeze-sha")
     _sha(provider["model_payload_sha256"], "docling-model-payload-sha")
@@ -322,22 +345,19 @@ def validate_docling_observation_bundle(value: Any) -> dict[str, Any]:
             "blocks",
             "picture_collection_state",
             "pictures",
+            "caption_blocks",
             "picture_caption_relations",
             "raw_document_sha256",
         },
         "docling-observation",
     )
     _require(
-        observation["status"]
-        in {"success", "degraded", "failed", "restricted", "unknown"},
+        observation["status"] in {"success", "degraded", "failed", "restricted", "unknown"},
         "docling-status-invalid",
     )
     _require(
         observation["provider_conversion_status"] is None
-        or (
-            isinstance(observation["provider_conversion_status"], str)
-            and observation["provider_conversion_status"]
-        ),
+        or (isinstance(observation["provider_conversion_status"], str) and observation["provider_conversion_status"]),
         "docling-provider-conversion-status-invalid",
     )
     _require(
@@ -353,18 +373,12 @@ def validate_docling_observation_bundle(value: Any) -> dict[str, Any]:
     for index, row in enumerate(blocks):
         _validate_block(row, index)
     body_indexes = [row["body_order_index"] for row in blocks]
-    _require(
-        body_indexes == list(range(len(body_indexes))),
-        "docling-block-body-order-not-canonical",
-    )
+    _require(body_indexes == list(range(len(body_indexes))), "docling-block-body-order-not-canonical")
     block_refs = [row["provider_ref"] for row in blocks]
     _require(len(block_refs) == len(set(block_refs)), "docling-block-ref-duplicate")
 
     picture_state = observation["picture_collection_state"]
-    _require(
-        picture_state in {"present", "unavailable", "degraded"},
-        "docling-picture-collection-state-invalid",
-    )
+    _require(picture_state in {"present", "unavailable", "degraded"}, "docling-picture-collection-state-invalid")
     pictures = observation["pictures"]
     _require(isinstance(pictures, list), "docling-pictures-invalid")
     for index, row in enumerate(pictures):
@@ -374,8 +388,16 @@ def validate_docling_observation_bundle(value: Any) -> dict[str, Any]:
         picture_refs == sorted(picture_refs) and len(picture_refs) == len(set(picture_refs)),
         "docling-pictures-not-canonical",
     )
-    if picture_state == "unavailable":
-        _require(not pictures, "docling-unavailable-picture-collection-must-not-claim-pictures")
+
+    captions = observation["caption_blocks"]
+    _require(isinstance(captions, list), "docling-caption-blocks-invalid")
+    for index, row in enumerate(captions):
+        _validate_caption_block(row, index)
+    caption_refs = [row["provider_ref"] for row in captions]
+    _require(
+        caption_refs == sorted(caption_refs) and len(caption_refs) == len(set(caption_refs)),
+        "docling-captions-not-canonical",
+    )
 
     relations = observation["picture_caption_relations"]
     _require(isinstance(relations, list), "docling-picture-caption-relations-invalid")
@@ -386,41 +408,35 @@ def validate_docling_observation_bundle(value: Any) -> dict[str, Any]:
         relation_ids == sorted(relation_ids) and len(relation_ids) == len(set(relation_ids)),
         "docling-caption-relations-not-canonical",
     )
-    if picture_state == "unavailable":
-        _require(
-            not relations,
-            "docling-unavailable-picture-collection-relations-forbidden",
-        )
-    known_caption_refs = set(block_refs)
-    known_picture_refs = set(picture_refs)
-    for relation in relations:
-        _require(
-            relation["picture_ref"] in known_picture_refs,
-            "docling-caption-relation-picture-unknown",
-        )
-        _require(
-            relation["caption_ref"] in known_caption_refs,
-            "docling-caption-relation-caption-unknown",
-        )
 
-    _sha(
-        observation["raw_document_sha256"],
-        "docling-raw-document-sha",
-        nullable=True,
-    )
+    if picture_state == "unavailable":
+        _require(not pictures, "docling-unavailable-picture-collection-must-not-claim-pictures")
+        _require(not captions, "docling-unavailable-picture-collection-captions-forbidden")
+        _require(not relations, "docling-unavailable-picture-collection-relations-forbidden")
+
+    known_caption_refs = set(caption_refs)
+    known_picture_refs = set(picture_refs)
+    caption_by_ref = {row["provider_ref"]: row for row in captions}
+    block_by_ref = {row["provider_ref"]: row for row in blocks}
+    for relation in relations:
+        _require(relation["picture_ref"] in known_picture_refs, "docling-caption-relation-picture-unknown")
+        _require(relation["caption_ref"] in known_caption_refs, "docling-caption-relation-caption-unknown")
+    for caption_ref in known_caption_refs & set(block_by_ref):
+        caption = caption_by_ref[caption_ref]
+        block = block_by_ref[caption_ref]
+        _require(caption["text"] == block["text"], "docling-caption-body-text-conflict")
+        _require(caption["provider_label"] == block["provider_label"], "docling-caption-body-label-conflict")
+        _require(caption["coordinate"] == block["coordinate"], "docling-caption-body-coordinate-conflict")
+
+    _sha(observation["raw_document_sha256"], "docling-raw-document-sha", nullable=True)
     if observation["status"] in {"success", "degraded"}:
-        _require(
-            observation["raw_document_sha256"] is not None,
-            "docling-observed-document-fingerprint-required",
-        )
+        _require(observation["raw_document_sha256"] is not None, "docling-observed-document-fingerprint-required")
     if observation["status"] in {"failed", "restricted", "unknown"}:
         _require(not blocks, "docling-non-completed-blocks-forbidden")
         _require(not pictures, "docling-non-completed-pictures-forbidden")
+        _require(not captions, "docling-non-completed-captions-forbidden")
         _require(not relations, "docling-non-completed-relations-forbidden")
-        _require(
-            observation["body_order_source"] == "unavailable",
-            "docling-non-completed-body-order-forbidden",
-        )
+        _require(observation["body_order_source"] == "unavailable", "docling-non-completed-body-order-forbidden")
 
     _walk_no_host_path(bundle)
     canonical_json_bytes(bundle)

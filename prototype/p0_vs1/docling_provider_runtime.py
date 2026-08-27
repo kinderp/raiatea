@@ -49,6 +49,65 @@ def _restriction_signal(result: Any) -> bool:
     return "password" in combined or "encrypted" in combined
 
 
+def _enum_value(value: Any) -> str | None:
+    candidate = getattr(value, "value", value)
+    if isinstance(candidate, str) and candidate:
+        return candidate
+    return None
+
+
+def _provider_error_evidence(result: Any) -> list[dict[str, Any]]:
+    """Keep only bounded structural Docling error metadata, never free-form text."""
+    errors = getattr(result, "errors", None)
+    if not isinstance(errors, (list, tuple)):
+        return []
+    evidence: list[dict[str, Any]] = []
+    for error in errors[:16]:
+        row: dict[str, Any] = {"error_type": type(error).__name__}
+        component = _enum_value(getattr(error, "component_type", None))
+        category = _enum_value(getattr(error, "category", None))
+        page_no = getattr(error, "page_no", None)
+        module_name = getattr(error, "module_name", None)
+        if component is not None:
+            row["component_type"] = component
+        if category is not None:
+            row["category"] = category
+        if isinstance(page_no, int) and not isinstance(page_no, bool) and page_no >= 1:
+            row["page_no"] = page_no
+        if (
+            isinstance(module_name, str)
+            and 0 < len(module_name) <= 128
+            and all(ch.isalnum() or ch in "._" for ch in module_name)
+        ):
+            row["module_name"] = module_name
+        evidence.append(row)
+    return evidence
+
+
+def _failed_result_observation(
+    *,
+    source_ref_id: str,
+    source_fingerprint: str,
+    provider: dict[str, Any],
+    result: Any,
+) -> dict[str, Any]:
+    provider_status = str(getattr(result, "status", ""))
+    bundle = failed_docling_observation(
+        source_ref_id=source_ref_id,
+        source_fingerprint=source_fingerprint,
+        provider=provider,
+        restricted=_restriction_signal(result),
+        error_type="DoclingConversionFailure",
+    )
+    observation = bundle["observation"]
+    observation["provider_conversion_status"] = provider_status or None
+    details = observation["warnings"][0]["details"]
+    if isinstance(details, dict):
+        details["provider_errors"] = _provider_error_evidence(result)
+    validate_docling_observation_bundle(bundle)
+    return bundle
+
+
 def _unknown_observation(
     *,
     source_ref_id: str,
@@ -145,7 +204,9 @@ def run_docling_pdf_product(
                         InputFormat.PDF: PdfFormatOption(pipeline_options=options)
                     },
                 )
-                result = converter.convert(local_input)
+                # Normal Provider failures are structured ConversionResult evidence,
+                # not exceptional control flow. Unexpected exceptions still fail closed.
+                result = converter.convert(local_input, raises_on_error=False)
         except Exception as exc:
             message = str(exc).casefold()
             restricted = "password" in message or "encrypted" in message
@@ -160,12 +221,11 @@ def run_docling_pdf_product(
         provider_status = str(result.status)
         normalized_status = _provider_status(provider_status)
         if normalized_status == "failed":
-            return failed_docling_observation(
+            return _failed_result_observation(
                 source_ref_id=source_ref_id,
                 source_fingerprint=source_fingerprint,
                 provider=provider,
-                restricted=_restriction_signal(result),
-                error_type="DoclingConversionFailure",
+                result=result,
             )
         if normalized_status == "unknown":
             return _unknown_observation(

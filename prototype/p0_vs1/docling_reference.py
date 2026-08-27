@@ -11,6 +11,7 @@ import hashlib
 import importlib.metadata
 import json
 import platform
+import re
 from pathlib import Path
 from typing import Any
 
@@ -54,6 +55,20 @@ def _package_name(spec: str) -> str:
     return spec.split("==", 1)[0].strip().lower()
 
 
+def _canonical_package_name(name: str) -> str:
+    """Return the PEP 503-style identity used for installed distributions."""
+    return re.sub(r"[-_.]+", "-", name.strip()).lower()
+
+
+def _canonical_environment(entries: list[str]) -> list[str]:
+    canonical: list[str] = []
+    for spec in entries:
+        _require("==" in spec, "docling-environment-entry-unsupported")
+        name, version = spec.split("==", 1)
+        canonical.append(f"{_canonical_package_name(name)}=={version.strip()}")
+    return sorted(canonical, key=_package_name)
+
+
 def load_constraints(path: Path = DEFAULT_CONSTRAINTS) -> list[str]:
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
@@ -76,12 +91,17 @@ def freeze_sha256(entries: list[str]) -> str:
 def installed_freeze(expected_entries: list[str]) -> list[str]:
     """Return versions only for the accepted constrained package set.
 
-    Packaging/admin tools such as pip or setuptools are intentionally outside
-    the accepted Docling dependency freeze unless they appear in the constraints
-    lock. This mirrors the accepted benchmark verifier semantics.
+    The lock's original spelling is retained for its byte-level freeze hash,
+    while installed distribution identity is compared using PEP 503-style
+    canonical names. This avoids treating ``PyYAML``/``pyyaml`` or
+    ``pydantic_core``/``pydantic-core`` as different packages.
     """
     entries: list[str] = []
-    for name in sorted({_package_name(spec) for spec in expected_entries}):
+    names = {
+        _canonical_package_name(spec.split("==", 1)[0])
+        for spec in expected_entries
+    }
+    for name in sorted(names):
         try:
             version = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError as exc:
@@ -192,12 +212,13 @@ def verify_reference_docling(
 
     expected_freeze = load_constraints(constraints_path)
     _require(freeze_sha256(expected_freeze) == ENVIRONMENT_FREEZE_SHA256, "docling-reference-constraints-drift")
-    actual_freeze = (
+    expected_environment = _canonical_environment(expected_freeze)
+    actual_environment = (
         installed_freeze(expected_freeze)
         if observed_freeze is None
-        else sorted(observed_freeze, key=_package_name)
+        else _canonical_environment(observed_freeze)
     )
-    _require(actual_freeze == expected_freeze, "docling-reference-environment-mismatch")
+    _require(actual_environment == expected_environment, "docling-reference-environment-mismatch")
     try:
         installed_version = importlib.metadata.version("docling")
     except importlib.metadata.PackageNotFoundError as exc:

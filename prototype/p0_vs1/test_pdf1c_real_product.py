@@ -151,15 +151,15 @@ class Pdf1cRealProductTests(unittest.TestCase):
         diagnostic = {"service_result": result}
         if matching:
             observation = matching[-1].get("provider_observation", {}).get("observation", {})
+            warnings = [
+                row for row in observation.get("warnings", [])
+                if isinstance(row, dict)
+            ]
             diagnostic.update(
                 {
                     "observation_status": observation.get("status"),
                     "provider_conversion_status": observation.get("provider_conversion_status"),
-                    "warning_codes": [
-                        row.get("code")
-                        for row in observation.get("warnings", [])
-                        if isinstance(row, dict)
-                    ],
+                    "warnings": warnings,
                     "run_execution": matching[-1].get("run", {}).get("outcome", {}).get("execution"),
                 }
             )

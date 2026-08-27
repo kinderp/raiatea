@@ -7,6 +7,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
+from prototype.p0_vs1 import local_process_client as process_client
 from prototype.p0_vs1.local_process_client import (
     MAX_STDOUT_BUFFERED_FRAMES,
     LocalPluginProcessClient,
@@ -29,6 +30,7 @@ class Vs1cChildEnvironmentTests(unittest.TestCase):
             "GITHUB_TOKEN": "do-not-inherit",
             "OPENAI_API_KEY": "do-not-inherit",
             "HTTP_PROXY": "http://user:password@example.invalid",
+            "PATH": "/tmp/ambient-untrusted-tools",
             "PYTHONPATH": "/tmp/ambient-untrusted-pythonpath",
             "RAIATEA_VS1_PLUGIN_IO_BROKER": "/tmp/ambient-wrong-broker",
         }
@@ -42,6 +44,7 @@ class Vs1cChildEnvironmentTests(unittest.TestCase):
             "GITHUB_TOKEN",
             "OPENAI_API_KEY",
             "HTTP_PROXY",
+            "PATH",
         ):
             self.assertNotIn(forbidden, child)
         self.assertEqual(
@@ -81,6 +84,19 @@ class Vs1cChildEnvironmentTests(unittest.TestCase):
                         },
                         manifest=LOCAL_SOURCE_MANIFEST,
                     )
+
+    def test_local_source_never_resolves_or_receives_docling_compiler_path(self) -> None:
+        with patch.object(
+            process_client,
+            "resolve_docling_compiler_toolchain_path",
+            return_value="/should/not/be/used",
+        ) as resolver:
+            child = build_child_environment(
+                {"RAIATEA_VS1_PLUGIN_IO_BROKER": "/tmp/core-issued-broker"},
+                manifest=LOCAL_SOURCE_MANIFEST,
+            )
+        resolver.assert_not_called()
+        self.assertNotIn("PATH", child)
 
     def test_manifest_python_token_uses_current_interpreter(self) -> None:
         command = normalize_product_command(

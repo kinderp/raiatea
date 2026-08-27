@@ -98,7 +98,7 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
             provider_conversion_status="ConversionStatus.SUCCESS",
         )
         observation = bundle["observation"]
-        self.assertEqual(observation["body_order_source"], "docling-body.children")
+        self.assertEqual(observation["body_order_source"], "body.children")
         self.assertEqual([row["body_order_index"] for row in observation["blocks"]], [0, 1, 2])
         self.assertEqual(observation["blocks"][0]["semantic_type"], "heading")
         self.assertEqual(observation["blocks"][0]["semantic_level"], 2)
@@ -163,7 +163,7 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
             provider_conversion_status="ConversionStatus.SUCCESS",
         )
         observation = bundle["observation"]
-        self.assertEqual(observation["body_order_source"], "docling-texts-fallback")
+        self.assertEqual(observation["body_order_source"], "texts-fallback")
         self.assertTrue(any(row["code"] == "docling-body-order-unavailable" for row in observation["warnings"]))
 
     def test_missing_picture_collection_is_unknown_not_explicit_zero(self) -> None:

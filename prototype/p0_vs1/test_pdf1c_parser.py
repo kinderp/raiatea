@@ -71,18 +71,18 @@ def base_document() -> dict:
                 "label": "title",
                 "text": "Document title",
                 "level": 2,
-                "prov": prov(1, 72.0, 720.0, 240.0, 690.0),
+                "prov": prov(1, 72.0, 690.0, 240.0, 720.0),
             },
             {
                 "label": "paragraph",
                 "text": "Body paragraph",
-                "prov": prov(1, 72.0, 650.0, 300.0, 620.0),
+                "prov": prov(1, 72.0, 620.0, 300.0, 650.0),
             },
             {
                 "label": "list_item",
                 "orig": "1. First item",
                 "text": "First item",
-                "prov": prov(1, 72.0, 600.0, 220.0, 580.0),
+                "prov": prov(1, 72.0, 580.0, 220.0, 600.0),
             },
         ],
         "pictures": [],
@@ -199,13 +199,13 @@ class Pdf1cDoclingParserTests(unittest.TestCase):
             {
                 "label": "caption",
                 "text": "Figure caption",
-                "prov": prov(1, 72.0, 490.0, 250.0, 470.0),
+                "prov": prov(1, 72.0, 470.0, 250.0, 490.0),
             }
         )
         document["pictures"] = [
             {
                 "label": "picture",
-                "prov": prov(1, 72.0, 620.0, 252.0, 500.0),
+                "prov": prov(1, 72.0, 500.0, 252.0, 620.0),
                 "captions": [{"$ref": "#/texts/3"}],
             }
         ]

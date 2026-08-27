@@ -76,6 +76,7 @@ jobs:
         run: |
           python -m unittest prototype.p0_vs1.test_pdf1b_product -v
           python -m unittest prototype.p0_vs1.test_pdf1b_fences -v
+          python -m unittest prototype.p0_vs1.test_pdf1b_persisted_state -v
       - name: Re-run dependency-light contract on real Provider environment
         run: |
           python -m unittest prototype.p0_vs1.test_pdf1b_contract -v

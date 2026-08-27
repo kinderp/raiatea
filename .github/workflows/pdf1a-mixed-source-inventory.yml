@@ -1,0 +1,59 @@
+name: PDF1a mixed EPUB PDF source inventory
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/pdf1a-mixed-source-inventory.yml"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/pdf1a-mixed-source-inventory.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  pdf1a:
+    name: PDF1a / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile PDF1a and VS1 product code
+        run: python -m compileall -q prototype/p0_vs1
+      - name: Run PDF1a mixed-source tests
+        run: |
+          python -m unittest prototype.p0_vs1.test_pdf1a -v
+          python -m unittest prototype.p0_vs1.test_pdf1a_backup -v
+          python -m unittest prototype.p0_vs1.test_pdf1a_source_identity -v
+          python -m unittest prototype.p0_vs1.test_pdf1a_transitions -v
+      - name: Re-run VS1a
+        run: python -m unittest prototype.p0_vs1.test_vs1a -v
+      - name: Re-run VS1b
+        run: |
+          python -m unittest prototype.p0_vs1.test_alfred_observation -v
+          python -m unittest prototype.p0_vs1.test_vs1b_reconciliation -v
+          python -m unittest prototype.p0_vs1.test_vs1b_inventory_fence -v
+      - name: Re-run VS1c
+        run: |
+          python -m unittest prototype.p0_vs1.test_vs1c -v
+          python -m unittest prototype.p0_vs1.test_vs1c_environment -v
+          python -m unittest prototype.p0_vs1.test_vs1c_limits -v
+      - name: Re-run VS1d
+        run: |
+          python -m unittest prototype.p0_vs1.test_vs1d -v
+          python -m unittest prototype.p0_vs1.test_vs1d_source_fence -v
+          python -m unittest prototype.p0_vs1.test_vs1d_provenance -v
+      - name: Re-run VS1e
+        run: python -m unittest prototype.p0_vs1.test_vs1e -v
+      - name: Re-run VS1f
+        run: python -m unittest prototype.p0_vs1.test_vs1f -v

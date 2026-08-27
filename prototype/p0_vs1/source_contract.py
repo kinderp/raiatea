@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""VS1c internal DiscoverySnapshot and SourceReference contracts.
+"""Internal DiscoverySnapshot and SourceReference contracts.
 
-These records are intentionally private to the first vertical slice. They make
-Core/plugin behavior executable without freezing a public Catalog or Source API.
+VS1 established the first private contract for local EPUB Sources. PDF1a keeps
+that contract internal/revisable and broadens only the bounded media admission
+set to local EPUB + PDF Sources. This is not a public Catalog or Source API.
 """
 from __future__ import annotations
 
@@ -17,8 +18,10 @@ SOURCE_BUNDLE_VERSION = "raiatea.vs1c.source-reference-bundle.0.1.0"
 SOURCE_REFERENCE_CONTRACT_ID = "raiatea.vs1.source-reference"
 SOURCE_REFERENCE_CONTRACT_VERSION = "0.1.0"
 EPUB_MEDIA_TYPE = "application/epub+zip"
+PDF_MEDIA_TYPE = "application/pdf"
+SUPPORTED_SOURCE_MEDIA_TYPES = frozenset({EPUB_MEDIA_TYPE, PDF_MEDIA_TYPE})
 # The Runtime result carries one record-ref per discovered source in a single
-# JSON-RPC frame. Keep VS1c intentionally bounded below the accepted 256 KiB
+# JSON-RPC frame. Keep this intentionally bounded below the accepted 256 KiB
 # transport frame; scalable pagination/batching is a later product increment.
 MAX_DISCOVERY_ITEMS = 512
 
@@ -90,7 +93,10 @@ def validate_discovery_item(value: Any) -> dict[str, Any]:
     _require_ref(item["catalog_entry_ref"], "catalog-entry-ref")
     _require_ref(item["stored_instance_ref"], "stored-instance-ref")
     _require_ref(item["logical_candidate_ref"], "logical-candidate-ref")
-    _require(item["media_type"] == EPUB_MEDIA_TYPE, "discovery-item-media-type-unsupported")
+    _require(
+        item["media_type"] in SUPPORTED_SOURCE_MEDIA_TYPES,
+        "discovery-item-media-type-unsupported",
+    )
     _require(
         isinstance(item["byte_length"], int)
         and not isinstance(item["byte_length"], bool)
@@ -148,6 +154,10 @@ def discovery_snapshot_fingerprint(snapshot: dict[str, Any]) -> str:
 def deterministic_source_ref_id(scope_ref: str, item: dict[str, Any]) -> str:
     _require_ref(scope_ref, "source-ref-scope")
     validate_discovery_item(item)
+    # Preserve the exact accepted VS1 identity basis for EPUB so an upgrade to
+    # PDF1a does not rename every existing EPUB SourceReference. New source
+    # classes bind media type explicitly so they cannot collide with the legacy
+    # EPUB namespace for the same catalog instance/fingerprint.
     basis = {
         "version": SOURCE_REFERENCE_VERSION,
         "scope_ref": scope_ref,
@@ -155,6 +165,8 @@ def deterministic_source_ref_id(scope_ref: str, item: dict[str, Any]) -> str:
         "stored_instance_ref": item["stored_instance_ref"],
         "fingerprint": item["fingerprint"],
     }
+    if item["media_type"] != EPUB_MEDIA_TYPE:
+        basis["media_type"] = item["media_type"]
     return "source-ref:" + hashlib.sha256(canonical_json_bytes(basis)).hexdigest()
 
 
@@ -202,7 +214,10 @@ def validate_source_reference(value: Any) -> dict[str, Any]:
     _require(record["source_class"] == "local-user-authorized-catalog-reference", "source-reference-class-invalid")
     for key in ("catalog_entry_ref", "stored_instance_ref", "logical_candidate_ref"):
         _require_ref(record[key], f"source-reference-{key}")
-    _require(record["media_type"] == EPUB_MEDIA_TYPE, "source-reference-media-type-unsupported")
+    _require(
+        record["media_type"] in SUPPORTED_SOURCE_MEDIA_TYPES,
+        "source-reference-media-type-unsupported",
+    )
     _require(
         isinstance(record["byte_length"], int)
         and not isinstance(record["byte_length"], bool)

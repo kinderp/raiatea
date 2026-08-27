@@ -1,16 +1,24 @@
-name: PDF1c Docling observation contract
+name: PDF1c Docling observation and reference contracts
 
 on:
   pull_request:
     paths:
       - "prototype/p0_vs1/docling_observation_contract.py"
+      - "prototype/p0_vs1/docling_reference.py"
       - "prototype/p0_vs1/test_pdf1c_contract.py"
+      - "prototype/p0_vs1/test_pdf1c_reference.py"
+      - "elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt"
+      - "elaboration/p0/benchmark/locks/docling-2.118.0-layout-model-payload.json"
       - ".github/workflows/pdf1c-docling-contract.yml"
   push:
     branches: [main]
     paths:
       - "prototype/p0_vs1/docling_observation_contract.py"
+      - "prototype/p0_vs1/docling_reference.py"
       - "prototype/p0_vs1/test_pdf1c_contract.py"
+      - "prototype/p0_vs1/test_pdf1c_reference.py"
+      - "elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt"
+      - "elaboration/p0/benchmark/locks/docling-2.118.0-layout-model-payload.json"
       - ".github/workflows/pdf1c-docling-contract.yml"
 
 permissions:
@@ -18,7 +26,7 @@ permissions:
 
 jobs:
   contract:
-    name: PDF1c contract / ${{ matrix.os }} / Python ${{ matrix.python }}
+    name: PDF1c contracts / ${{ matrix.os }} / Python ${{ matrix.python }}
     strategy:
       fail-fast: false
       matrix:
@@ -30,7 +38,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Compile contract
-        run: python -m compileall -q prototype/p0_vs1/docling_observation_contract.py prototype/p0_vs1/test_pdf1c_contract.py
-      - name: Run PDF1c contract tests
+      - name: Compile PDF1c contracts
+        run: >-
+          python -m compileall -q
+          prototype/p0_vs1/docling_observation_contract.py
+          prototype/p0_vs1/docling_reference.py
+          prototype/p0_vs1/test_pdf1c_contract.py
+          prototype/p0_vs1/test_pdf1c_reference.py
+      - name: Run PDF1c observation contract tests
         run: python -m unittest prototype.p0_vs1.test_pdf1c_contract -v
+      - name: Run PDF1c reference-gate tests
+        run: python -m unittest prototype.p0_vs1.test_pdf1c_reference -v

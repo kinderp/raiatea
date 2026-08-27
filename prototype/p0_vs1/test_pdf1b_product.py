@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -14,7 +13,6 @@ from prototype.p0_vs1.pdf1a import (
 )
 from prototype.p0_vs1.pdf1b_service import (
     LocalPopplerPdfExtractionService,
-    PdfExtractionError,
     validate_pdf1b_state,
 )
 from prototype.p0_vs1.poppler_product_parser import (
@@ -227,14 +225,18 @@ class Pdf1bNegativeProductTests(Pdf1bProductFixture):
         self.assertNotEqual(attempt["run"]["outcome"]["execution"], "completed")
         self.assertEqual(attempt["provider_observation"]["observation"]["blocks"], [])
 
-    def test_password_protected_pdf_is_rejected_without_current_content(self) -> None:
+    def test_password_protected_pdf_fails_closed_without_inferred_restriction_or_current_content(self) -> None:
         source_ref = self.source_ref_for_location("protected.pdf")
         result = self.service.extract(source_ref, rights_evidence_state="known-permitted")
         self.assertFalse(result["published_current"])
-        self.assertEqual(result["processing_execution"], "rejected")
+        # This exact pdftohtml route is measured to fail without necessarily
+        # exposing an explicit password/encryption signal. Core must preserve
+        # that limited evidence instead of upgrading a generic Provider failure
+        # to a restriction claim merely because the test fixture is known here.
+        self.assertEqual(result["processing_execution"], "failed")
         state = self.store.load().payload["pdf1b"]
         attempt = next(row for row in state["attempts"] if row["source_ref_id"] == source_ref)
-        self.assertEqual(attempt["provider_observation"]["observation"]["status"], "restricted")
+        self.assertEqual(attempt["provider_observation"]["observation"]["status"], "failed")
         self.assertFalse(attempt["rights_decision"]["credentials_supplied"])
         self.assertFalse(attempt["rights_decision"]["access_control_override"])
         self.assertFalse(any(row["source_ref_id"] == source_ref for row in state["current_extractions"]))

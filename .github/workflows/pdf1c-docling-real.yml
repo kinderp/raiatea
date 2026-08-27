@@ -104,6 +104,61 @@ jobs:
           print("PASS exact PDF1c Docling product reference")
           PY
 
+      - name: Run direct Docling runtime control before IPC
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DOCLING_VENV/bin/python" - <<'PY'
+          import hashlib
+          import importlib.util
+          import os
+          from pathlib import Path
+          import tempfile
+
+          from prototype.p0_vs1.docling_provider_runtime import run_docling_pdf_product
+          from prototype.p0_vs1.docling_reference import verify_reference_docling
+
+          generator_path = Path("elaboration/p0/benchmark/generate_fixtures.py").resolve()
+          spec = importlib.util.spec_from_file_location("pdf1c_direct_control_generator", generator_path)
+          generator = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(generator)
+
+          wheel = Path(os.environ["PDF1C_DOCLING_WHEEL"]).resolve()
+          artifacts = Path(os.environ["PDF1C_DOCLING_ARTIFACTS"]).resolve()
+          provider = verify_reference_docling(wheel_path=wheel, artifacts_path=artifacts)
+
+          with tempfile.TemporaryDirectory(prefix="raiatea-pdf1c-direct-control-") as temporary:
+              root = Path(temporary).resolve()
+              source = root / "B01-PDF-001.pdf"
+              cache = root / "cache"
+              generator.generate_pdf_single_column(source)
+              source_bytes = source.read_bytes()
+              source_fingerprint = "sha256:" + hashlib.sha256(source_bytes).hexdigest()
+              bundle = run_docling_pdf_product(
+                  source_bytes,
+                  source_ref_id="source-ref:" + hashlib.sha256(b"pdf1c-direct-control").hexdigest(),
+                  source_fingerprint=source_fingerprint,
+                  provider=provider,
+                  artifacts_path=artifacts,
+                  cache_root=cache,
+              )
+          observation = bundle["observation"]
+          if observation["status"] != "success":
+              raise AssertionError(
+                  {
+                      "direct_runtime_status": observation["status"],
+                      "provider_conversion_status": observation["provider_conversion_status"],
+                      "warnings": observation["warnings"],
+                  }
+              )
+          print(
+              "PASS direct PDF1c runtime control",
+              observation["provider_conversion_status"],
+              len(observation["blocks"]),
+          )
+          PY
+
       - name: Run real end-to-end Docling product acceptance
         shell: bash
         run: |

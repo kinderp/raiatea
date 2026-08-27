@@ -18,7 +18,12 @@ def _source(source_id: str, fingerprint: str) -> dict[str, Any]:
     }
 
 
-def _present(value: Any, basis: str, *, origin: str = "provider-native") -> dict[str, Any]:
+def _present(
+    value: Any,
+    basis: str,
+    *,
+    origin: str = "provider-native",
+) -> dict[str, Any]:
     return {
         "evidence_state": "present",
         "value_state": "populated",
@@ -111,7 +116,9 @@ def adapt_docling_observation(
         "route_profile": route,
         "channel": CHANNEL,
         "native_status": native_status,
-        "payload_locator": f"catalog-provider-observation:{source_id}:pdf-docling-native-no-ocr",
+        "payload_locator": (
+            f"catalog-provider-observation:{source_id}:pdf-docling-native-no-ocr"
+        ),
         "payload_fingerprint": provider_observation_fingerprint,
         "diagnostics": diagnostics,
     }
@@ -137,7 +144,9 @@ def adapt_docling_observation(
                 "Docling supplied attributable page provenance and the official product parser mapped its explicit bbox into bottom-left PDF points",
                 origin="raiatea-aligned",
             )
-            if isinstance(page_index, int) and isinstance(bbox, list) and len(bbox) == 4
+            if isinstance(page_index, int)
+            and isinstance(bbox, list)
+            and len(bbox) == 4
             else _unknown(
                 "Docling did not expose attributable PDF geometry for this body-order block"
             )
@@ -146,12 +155,14 @@ def adapt_docling_observation(
         if isinstance(semantic_type, str) and semantic_type:
             semantic_value: dict[str, Any] = {"type": semantic_type}
             semantic_level = block.get("semantic_level")
-            if isinstance(semantic_level, int) and not isinstance(semantic_level, bool):
+            if isinstance(semantic_level, int) and not isinstance(
+                semantic_level, bool
+            ):
                 semantic_value["level"] = semantic_level
             semantic_role = _present(
                 semantic_value,
-                "Raiatea Core preserves the explicit Docling provider label mapping; typography/layout is not used to invent semantics",
-                origin="provider-native",
+                "Raiatea Core maps the explicit Docling provider label into the accepted normalized semantic vocabulary; typography/layout is not used to invent semantics",
+                origin="raiatea-aligned",
             )
         else:
             semantic_role = _unknown(

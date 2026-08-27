@@ -11,7 +11,7 @@ from prototype.p0_vs1.pdf1a import (
     MixedDocumentReconciliationEngine,
     MixedLocalSourceDiscoveryService,
 )
-from prototype.p0_vs1.pdf1b_service import (
+from prototype.p0_vs1.pdf1b_product_service import (
     LocalPopplerPdfExtractionService,
     validate_pdf1b_state,
 )

@@ -21,10 +21,6 @@ permissions:
 env:
   DOCLING_CONSTRAINTS: elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt
   DOCLING_EXPECTED_WHEEL_SHA256: fd4962c9a54229bae1eb9b49f7fadb7e7b8affabf7e4fba1aac8cb335f558c8f
-  DOCLING_VENV: ${{ runner.temp }}/raiatea-pdf1c-docling-venv
-  DOCLING_WHEEL_DIR: ${{ runner.temp }}/raiatea-pdf1c-docling-wheel
-  DOCLING_ARTIFACTS: ${{ runner.temp }}/raiatea-pdf1c-docling-artifacts
-  DOCLING_CACHE_PARENT: ${{ runner.temp }}/raiatea-pdf1c-cache-parent
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
   PIP_NO_INPUT: "1"
 
@@ -33,6 +29,11 @@ jobs:
     name: PDF1c real Docling / Ubuntu 24.04 / Python 3.12.14
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    env:
+      DOCLING_VENV: ${{ runner.temp }}/raiatea-pdf1c-docling-venv
+      DOCLING_WHEEL_DIR: ${{ runner.temp }}/raiatea-pdf1c-docling-wheel
+      DOCLING_ARTIFACTS: ${{ runner.temp }}/raiatea-pdf1c-docling-artifacts
+      DOCLING_CACHE_PARENT: ${{ runner.temp }}/raiatea-pdf1c-cache-parent
     steps:
       - uses: actions/checkout@v4
 

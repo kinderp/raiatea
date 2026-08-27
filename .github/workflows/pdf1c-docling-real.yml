@@ -159,15 +159,15 @@ jobs:
           )
           PY
 
-      - name: Test child-like environment with exact Python runtime library path
+      - name: Test child-like environment with bounded compiler toolchain path
         shell: bash
         run: |
           set -euo pipefail
           "$DOCLING_VENV/bin/python" - <<'PY'
-          import hashlib
           import importlib.util
           import os
           from pathlib import Path
+          import shutil
           import subprocess
           import sys
           import tempfile
@@ -177,9 +177,37 @@ jobs:
               build_child_environment,
           )
 
-          library_path = os.environ.get("LD_LIBRARY_PATH")
-          if not library_path:
-              raise AssertionError("pdf1c-reference-ld-library-path-unavailable")
+          def require_tool(name: str) -> Path:
+              value = shutil.which(name)
+              if not value:
+                  raise AssertionError(f"pdf1c-reference-tool-unavailable:{name}")
+              return Path(value).resolve()
+
+          gxx = require_tool("g++")
+          gcc = require_tool("gcc")
+          assembler = require_tool("as")
+          linker = require_tool("ld")
+          cc1plus_raw = subprocess.check_output(
+              [str(gxx), "-print-prog-name=cc1plus"],
+              text=True,
+          ).strip()
+          cc1plus = Path(cc1plus_raw)
+          if not cc1plus.is_absolute():
+              resolved = shutil.which(cc1plus_raw)
+              if not resolved:
+                  raise AssertionError("pdf1c-reference-tool-unavailable:cc1plus")
+              cc1plus = Path(resolved)
+          cc1plus = cc1plus.resolve()
+          if not cc1plus.is_file():
+              raise AssertionError("pdf1c-reference-tool-unavailable:cc1plus")
+
+          tool_dirs = []
+          for tool in (gxx, gcc, assembler, linker, cc1plus):
+              directory = str(tool.parent)
+              if directory not in tool_dirs:
+                  tool_dirs.append(directory)
+          bounded_tool_path = os.pathsep.join(tool_dirs)
+          print("PDF1c bounded compiler dirs:", bounded_tool_path)
 
           generator_path = Path("elaboration/p0/benchmark/generate_fixtures.py").resolve()
           spec = importlib.util.spec_from_file_location("pdf1c_child_env_generator", generator_path)
@@ -215,7 +243,7 @@ jobs:
                   "provider_conversion_status": observation["provider_conversion_status"],
                   "warnings": observation["warnings"],
               })
-          print("PASS child-like runtime-library control", observation["provider_conversion_status"])
+          print("PASS child-like bounded-toolchain control", observation["provider_conversion_status"])
           '''
 
           with tempfile.TemporaryDirectory(prefix="raiatea-pdf1c-child-env-control-") as temporary:
@@ -227,7 +255,7 @@ jobs:
                   {},
                   manifest={"plugin": {"plugin_id": OFFICIAL_DOCLING_PLUGIN_ID}},
               )
-              env["LD_LIBRARY_PATH"] = library_path
+              env["PATH"] = bounded_tool_path
               subprocess.run(
                   [
                       sys.executable,

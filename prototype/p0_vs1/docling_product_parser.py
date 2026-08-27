@@ -250,12 +250,18 @@ def _semantic(item: dict[str, Any]) -> tuple[str | None, int | None]:
 
 
 def _text_surface(item: dict[str, Any]) -> str | None:
+    label = (_provider_label(item) or "").lower()
+    if label == "list_item":
+        original = item.get("orig")
+        if isinstance(original, str) and original.strip():
+            return original
     value = item.get("text")
     if not isinstance(value, str) or not value.strip():
         return None
     # ProviderObservation retains Docling's explicit text string. Whitespace
     # normalization belongs downstream in a Core normalization/search layer, not
-    # in provider-native evidence.
+    # in provider-native evidence. For explicit list_item evidence, lossless
+    # ``orig`` is preferred only when present so visible list markers survive.
     return value
 
 

@@ -34,10 +34,13 @@ def valid_bundle() -> dict:
         "route_profile": DOCLING_PROFILE,
         "observation": {
             "status": "success",
+            "provider_conversion_status": "ConversionStatus.SUCCESS",
             "warnings": [],
+            "body_order_source": "body.children",
             "blocks": [
                 {
                     "provider_ref": "#/texts/0",
+                    "body_order_index": 0,
                     "text": "Introduction",
                     "provider_label": "title",
                     "semantic_type": "heading",
@@ -46,10 +49,12 @@ def valid_bundle() -> dict:
                         "page_index": 0,
                         "bbox_points_bottom_left": [72.0, 700.0, 240.0, 730.0],
                     },
+                    "provenance_count": 1,
                     "provenance_source": "docling-text-provenance",
                 },
                 {
                     "provider_ref": "#/texts/1",
+                    "body_order_index": 1,
                     "text": "Figure 1. Example.",
                     "provider_label": "caption",
                     "semantic_type": "caption",
@@ -58,9 +63,11 @@ def valid_bundle() -> dict:
                         "page_index": 0,
                         "bbox_points_bottom_left": [72.0, 450.0, 260.0, 470.0],
                     },
-                    "provenance_source": "docling-lossless-item",
+                    "provenance_count": 1,
+                    "provenance_source": "docling-text-provenance",
                 },
             ],
+            "picture_collection_state": "present",
             "pictures": [
                 {
                     "provider_ref": "#/pictures/0",
@@ -69,6 +76,7 @@ def valid_bundle() -> dict:
                         "page_index": 0,
                         "bbox_points_bottom_left": [72.0, 500.0, 252.0, 620.0],
                     },
+                    "provenance_count": 1,
                     "provenance_source": "docling-picture-item",
                 }
             ],
@@ -89,19 +97,44 @@ class Pdf1cDoclingObservationContractTests(unittest.TestCase):
     def test_valid_semantic_picture_caption_bundle_is_canonical(self) -> None:
         bundle = valid_bundle()
         self.assertIs(validate_docling_observation_bundle(bundle), bundle)
-        self.assertEqual(encode_docling_observation_bundle(bundle), encode_docling_observation_bundle(deepcopy(bundle)))
+        self.assertEqual(
+            encode_docling_observation_bundle(bundle),
+            encode_docling_observation_bundle(deepcopy(bundle)),
+        )
 
     def test_unknown_provider_label_cannot_gain_semantics(self) -> None:
         bundle = valid_bundle()
         bundle["observation"]["blocks"][0]["provider_label"] = "mystery_label"
         bundle["observation"]["blocks"][0]["semantic_type"] = "heading"
+        bundle["observation"]["blocks"][0]["semantic_level"] = None
         with self.assertRaisesRegex(DoclingObservationError, "unmapped-label"):
+            validate_docling_observation_bundle(bundle)
+
+    def test_known_provider_label_cannot_be_retyped(self) -> None:
+        bundle = valid_bundle()
+        bundle["observation"]["blocks"][1]["semantic_type"] = "paragraph"
+        with self.assertRaisesRegex(DoclingObservationError, "semantic-type-mismatch"):
             validate_docling_observation_bundle(bundle)
 
     def test_semantic_level_requires_heading(self) -> None:
         bundle = valid_bundle()
-        bundle["observation"]["blocks"][0]["semantic_type"] = "paragraph"
+        block = bundle["observation"]["blocks"][0]
+        block["provider_label"] = "paragraph"
+        block["semantic_type"] = "paragraph"
         with self.assertRaisesRegex(DoclingObservationError, "semantic-level-requires-heading"):
+            validate_docling_observation_bundle(bundle)
+
+    def test_title_is_the_only_policy_mapped_level_one_heading(self) -> None:
+        bundle = valid_bundle()
+        bundle["observation"]["blocks"][0]["semantic_level"] = 2
+        with self.assertRaisesRegex(DoclingObservationError, "title-level-one"):
+            validate_docling_observation_bundle(bundle)
+
+    def test_body_order_is_explicit_and_canonical(self) -> None:
+        bundle = valid_bundle()
+        bundle["observation"]["blocks"][0]["body_order_index"] = 1
+        bundle["observation"]["blocks"][1]["body_order_index"] = 0
+        with self.assertRaisesRegex(DoclingObservationError, "body-order-not-canonical"):
             validate_docling_observation_bundle(bundle)
 
     def test_relation_must_reference_explicit_picture_and_caption(self) -> None:
@@ -115,6 +148,24 @@ class Pdf1cDoclingObservationContractTests(unittest.TestCase):
                 with self.assertRaisesRegex(DoclingObservationError, message):
                     validate_docling_observation_bundle(bundle)
 
+    def test_unavailable_picture_collection_is_not_explicit_zero(self) -> None:
+        bundle = valid_bundle()
+        observation = bundle["observation"]
+        observation["picture_collection_state"] = "unavailable"
+        observation["pictures"] = []
+        observation["picture_caption_relations"] = []
+        validate_docling_observation_bundle(bundle)
+        self.assertEqual(observation["picture_collection_state"], "unavailable")
+
+        observation["pictures"] = [valid_bundle()["observation"]["pictures"][0]]
+        with self.assertRaisesRegex(DoclingObservationError, "must-not-claim-pictures"):
+            validate_docling_observation_bundle(bundle)
+
+    def test_degraded_picture_collection_can_preserve_bounded_valid_evidence(self) -> None:
+        bundle = valid_bundle()
+        bundle["observation"]["picture_collection_state"] = "degraded"
+        validate_docling_observation_bundle(bundle)
+
     def test_host_path_authority_is_rejected_recursively(self) -> None:
         bundle = valid_bundle()
         bundle["observation"]["warnings"].append(
@@ -123,17 +174,25 @@ class Pdf1cDoclingObservationContractTests(unittest.TestCase):
         with self.assertRaisesRegex(DoclingObservationError, "host-path-field-forbidden"):
             validate_docling_observation_bundle(bundle)
 
-    def test_non_success_cannot_carry_current_content(self) -> None:
+    def test_failed_observation_cannot_carry_current_content(self) -> None:
         bundle = valid_bundle()
         bundle["observation"]["status"] = "failed"
-        with self.assertRaisesRegex(DoclingObservationError, "non-success-blocks-forbidden"):
+        with self.assertRaisesRegex(DoclingObservationError, "non-completed-blocks"):
             validate_docling_observation_bundle(bundle)
+
+    def test_degraded_observation_may_preserve_provider_evidence(self) -> None:
+        bundle = valid_bundle()
+        bundle["observation"]["status"] = "degraded"
+        validate_docling_observation_bundle(bundle)
+        self.assertTrue(bundle["observation"]["blocks"])
 
     def test_missing_coordinate_stays_explicitly_unknown(self) -> None:
         bundle = valid_bundle()
-        bundle["observation"]["blocks"][0]["coordinate"] = None
+        block = bundle["observation"]["blocks"][0]
+        block["coordinate"] = None
+        block["provenance_source"] = "docling-lossless-item"
         validate_docling_observation_bundle(bundle)
-        self.assertIsNone(bundle["observation"]["blocks"][0]["coordinate"])
+        self.assertIsNone(block["coordinate"])
 
 
 if __name__ == "__main__":

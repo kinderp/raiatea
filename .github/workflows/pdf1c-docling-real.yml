@@ -77,10 +77,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          "$DOCLING_VENV/bin/python" -m docling.tools.models download \
-            -o "$DOCLING_ARTIFACTS" \
-            --num-threads 4 \
+          "$DOCLING_VENV/bin/docling-tools" models download \
+            --quiet \
+            --output-dir "$DOCLING_ARTIFACTS" \
             layout
+          test -n "$(find "$DOCLING_ARTIFACTS" -type f -print -quit)"
           echo "PDF1C_DOCLING_ARTIFACTS=$DOCLING_ARTIFACTS" >> "$GITHUB_ENV"
           echo "PDF1C_DOCLING_CACHE_PARENT=$DOCLING_CACHE_PARENT" >> "$GITHUB_ENV"
           echo "PDF1C_QPDF=$(command -v qpdf)" >> "$GITHUB_ENV"

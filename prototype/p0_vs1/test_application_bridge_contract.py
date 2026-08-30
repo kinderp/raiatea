@@ -1,17 +1,31 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
 import unittest
 
 from prototype.p0_vs1.application_bridge_contract import (
     ApplicationBridgeContractError,
     BRIDGE_VERSION,
     METHOD_GATEWAY_STATUS,
+    METHOD_LIBRARY_PAGE,
     decode_frame,
     encode_frame,
     error_message,
     request_message,
     result_message,
     validate_result_envelope,
+)
+
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SHARED_LIBRARY_FIXTURE = (
+    REPO_ROOT
+    / "frontend"
+    / "src"
+    / "gateway"
+    / "fixtures"
+    / "bridge-library-page.json"
 )
 
 
@@ -28,6 +42,16 @@ class ApplicationBridgeContractTests(unittest.TestCase):
         round_trip = decode_frame(encode_frame(response))
         self.assertEqual(round_trip, response)
         self.assertEqual(round_trip["result"]["bridge_version"], BRIDGE_VERSION)
+
+    def test_shared_library_fixture_is_valid_python_bridge_evidence(self) -> None:
+        fixture = json.loads(SHARED_LIBRARY_FIXTURE.read_text(encoding="utf-8"))
+        validated = validate_result_envelope(fixture)
+        self.assertEqual(validated["bridge_version"], BRIDGE_VERSION)
+        self.assertEqual(validated["method"], METHOD_LIBRARY_PAGE)
+        self.assertEqual(
+            validated["payload"]["items"][0]["location"]["current_relative_location"],
+            "Books/fixture.epub",
+        )
 
     def test_host_authority_fields_are_rejected_recursively(self) -> None:
         for forbidden in (

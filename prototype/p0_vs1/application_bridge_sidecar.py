@@ -270,10 +270,24 @@ def serve(
             request = decode_frame(raw)
             if "method" not in request:
                 raise ApplicationBridgeContractError("bridge-request-expected")
-        except ApplicationBridgeContractError:
+        except ApplicationBridgeContractError as exc:
+            # JSON text/UTF-8 failures are parse errors. A syntactically valid
+            # JSON value that violates the closed bridge request contract is an
+            # invalid request instead; do not collapse those two protocol facts.
+            contract_error = str(exc)
+            parse_error = contract_error in {
+                "bridge-malformed-json-frame",
+                "bridge-frame-missing-newline",
+                "bridge-multiple-lines-in-frame",
+                "bridge-empty-frame",
+            }
             _write_response(
                 output_stream,
-                error_message(None, JSONRPC_PARSE_ERROR, "bridge-invalid-request-frame"),
+                error_message(
+                    None,
+                    JSONRPC_PARSE_ERROR if parse_error else JSONRPC_INVALID_REQUEST,
+                    "bridge-parse-error" if parse_error else "bridge-invalid-request",
+                ),
             )
             continue
         _write_response(output_stream, handle_request(service, request))

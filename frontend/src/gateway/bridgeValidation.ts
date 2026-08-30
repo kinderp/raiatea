@@ -244,7 +244,16 @@ export function validateLibraryItem(value: unknown): LibraryItem {
   if (contentState !== 'current' && contentState !== 'not-established') {
     fail('content-freshness-invalid');
   }
-  if (catalog !== 'fresh' && (sourceRef !== null || contentState === 'current')) {
+  const extraction = validateExtractionProjection(row.extraction);
+  const capabilities = stringArray(row.capabilities, 'capabilities');
+  if (
+    catalog !== 'fresh' &&
+    (sourceRef !== null ||
+      contentState === 'current' ||
+      extraction.state === 'current' ||
+      capabilities.includes('view-original') ||
+      capabilities.includes('request-extraction'))
+  ) {
     fail('nonfresh-item-cannot-claim-current-source');
   }
   return {
@@ -259,10 +268,10 @@ export function validateLibraryItem(value: unknown): LibraryItem {
     display: validateDisplay(row.display),
     location: validateLocation(row.location),
     content: validateContent(row.content),
-    extraction: validateExtractionProjection(row.extraction),
+    extraction,
     freshness: { catalog, content: contentState },
     warnings: validateWarningSummary(row.warnings),
-    capabilities: stringArray(row.capabilities, 'capabilities'),
+    capabilities,
   };
 }
 

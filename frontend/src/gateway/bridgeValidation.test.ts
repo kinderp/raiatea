@@ -41,6 +41,28 @@ describe('GUI bridge runtime validation', () => {
     }
   });
 
+  it('rejects a non-fresh Library item that still claims current extraction', () => {
+    const copy = structuredClone(libraryFixture);
+    copy.payload.catalog_freshness = 'reconcile-required';
+    copy.payload.counts_basis = 'last-known';
+    const item = copy.payload.items[0]!;
+    item.source_ref_id = null;
+    item.freshness.catalog = 'reconcile-required';
+    item.freshness.content = 'not-established';
+    item.capabilities = ['view-history'];
+    item.extraction = {
+      state: 'current',
+      current_representation_id: 'representation:stale',
+      provider_profile_summary: {
+        provider_id: 'test-provider',
+        route_profile: 'test-route',
+      },
+    };
+    expect(() => validateLibraryPage(copy.payload)).toThrow(
+      'nonfresh-item-cannot-claim-current-source',
+    );
+  });
+
   it('rejects stale search carrying current rows', () => {
     expect(() =>
       validateSearchPage({

@@ -245,7 +245,8 @@ class ApplicationBridgeSubprocessTests(vs1e_tests.Vs1eFixture):
         self.process.stdin.write(raw_request)
         self.process.stdin.flush()
         rejected = decode_frame(self.process.stdout.readline())
-        self.assertEqual(rejected["error"]["code"], -32700)
+        self.assertEqual(rejected["error"]["code"], -32600)
+        self.assertEqual(rejected["error"]["message"], "bridge-invalid-request")
 
         unknown = self._rpc("rpc:unknown", "system.shell", {})
         self.assertEqual(unknown["error"]["code"], JSONRPC_METHOD_NOT_FOUND)

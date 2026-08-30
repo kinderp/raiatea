@@ -1,0 +1,289 @@
+name: PDF1c real pinned Docling product acceptance
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/**"
+      - "elaboration/p0/benchmark/generate_fixtures.py"
+      - "elaboration/p0/benchmark/b01_pdf_negative_fixtures.py"
+      - "elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt"
+      - "elaboration/p0/benchmark/locks/docling-2.118.0-layout-model-payload.json"
+      - ".github/workflows/pdf1c-docling-real.yml"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/**"
+      - ".github/workflows/pdf1c-docling-real.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  real-docling:
+    name: PDF1c real Docling / Ubuntu 24.04 / Python 3.12.14
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.14"
+
+      - name: Initialize exact Docling reference and temporary paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "DOCLING_CONSTRAINTS=elaboration/p0/benchmark/locks/docling-2.118.0-python312-linux-x86_64.txt" >> "$GITHUB_ENV"
+          echo "DOCLING_EXPECTED_WHEEL_SHA256=fd4962c9a54229bae1eb9b49f7fadb7e7b8affabf7e4fba1aac8cb335f558c8f" >> "$GITHUB_ENV"
+          echo "PIP_DISABLE_PIP_VERSION_CHECK=1" >> "$GITHUB_ENV"
+          echo "PIP_NO_INPUT=1" >> "$GITHUB_ENV"
+          echo "DOCLING_VENV=$RUNNER_TEMP/raiatea-pdf1c-docling-venv" >> "$GITHUB_ENV"
+          echo "DOCLING_WHEEL_DIR=$RUNNER_TEMP/raiatea-pdf1c-docling-wheel" >> "$GITHUB_ENV"
+          echo "DOCLING_ARTIFACTS=$RUNNER_TEMP/raiatea-pdf1c-docling-artifacts" >> "$GITHUB_ENV"
+          echo "DOCLING_CACHE_PARENT=$RUNNER_TEMP/raiatea-pdf1c-cache-parent" >> "$GITHUB_ENV"
+
+      - name: Install negative-fixture generator dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y qpdf
+          qpdf --version
+
+      - name: Create exact Docling environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$DOCLING_VENV"
+          "$DOCLING_VENV/bin/python" -m pip --version
+          mkdir -p "$DOCLING_WHEEL_DIR" "$DOCLING_ARTIFACTS" "$DOCLING_CACHE_PARENT"
+          "$DOCLING_VENV/bin/python" -m pip download \
+            --only-binary=:all: \
+            --no-deps \
+            --dest "$DOCLING_WHEEL_DIR" \
+            "docling==2.118.0"
+          mapfile -t wheels < <(find "$DOCLING_WHEEL_DIR" -maxdepth 1 -type f -name '*.whl' -print | sort)
+          test "${#wheels[@]}" -eq 1
+          wheel_sha="$(sha256sum "${wheels[0]}" | awk '{print $1}')"
+          test "$wheel_sha" = "$DOCLING_EXPECTED_WHEEL_SHA256"
+          echo "PDF1C_DOCLING_WHEEL=${wheels[0]}" >> "$GITHUB_ENV"
+          "$DOCLING_VENV/bin/python" -m pip install \
+            -c "$DOCLING_CONSTRAINTS" \
+            "${wheels[0]}"
+          "$DOCLING_VENV/bin/python" -m pip check
+
+      - name: Prefetch exact layout model payload
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DOCLING_VENV/bin/docling-tools" models download \
+            --quiet \
+            --output-dir "$DOCLING_ARTIFACTS" \
+            layout
+          test -n "$(find "$DOCLING_ARTIFACTS" -type f -print -quit)"
+          echo "PDF1C_DOCLING_ARTIFACTS=$DOCLING_ARTIFACTS" >> "$GITHUB_ENV"
+          echo "PDF1C_DOCLING_CACHE_PARENT=$DOCLING_CACHE_PARENT" >> "$GITHUB_ENV"
+          echo "PDF1C_QPDF=$(command -v qpdf)" >> "$GITHUB_ENV"
+
+      - name: Verify product Docling reference before processing
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DOCLING_VENV/bin/python" - <<'PY'
+          import os
+          from pathlib import Path
+          from prototype.p0_vs1.docling_reference import verify_reference_docling
+
+          provider = verify_reference_docling(
+              wheel_path=Path(os.environ["PDF1C_DOCLING_WHEEL"]),
+              artifacts_path=Path(os.environ["PDF1C_DOCLING_ARTIFACTS"]),
+          )
+          assert provider["provider_id"] == "docling"
+          assert provider["version"] == "2.118.0"
+          print("PASS exact PDF1c Docling product reference")
+          PY
+
+      - name: Run direct Docling runtime control before IPC
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DOCLING_VENV/bin/python" - <<'PY'
+          import hashlib
+          import importlib.util
+          import os
+          from pathlib import Path
+          import tempfile
+
+          from prototype.p0_vs1.docling_provider_runtime import run_docling_pdf_product
+          from prototype.p0_vs1.docling_reference import verify_reference_docling
+
+          generator_path = Path("elaboration/p0/benchmark/generate_fixtures.py").resolve()
+          spec = importlib.util.spec_from_file_location("pdf1c_direct_control_generator", generator_path)
+          generator = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(generator)
+
+          wheel = Path(os.environ["PDF1C_DOCLING_WHEEL"]).resolve()
+          artifacts = Path(os.environ["PDF1C_DOCLING_ARTIFACTS"]).resolve()
+          provider = verify_reference_docling(wheel_path=wheel, artifacts_path=artifacts)
+
+          with tempfile.TemporaryDirectory(prefix="raiatea-pdf1c-direct-control-") as temporary:
+              root = Path(temporary).resolve()
+              source = root / "B01-PDF-001.pdf"
+              cache = root / "cache"
+              generator.generate_pdf_single_column(source)
+              source_bytes = source.read_bytes()
+              source_fingerprint = "sha256:" + hashlib.sha256(source_bytes).hexdigest()
+              bundle = run_docling_pdf_product(
+                  source_bytes,
+                  source_ref_id="source-ref:" + hashlib.sha256(b"pdf1c-direct-control").hexdigest(),
+                  source_fingerprint=source_fingerprint,
+                  provider=provider,
+                  artifacts_path=artifacts,
+                  cache_root=cache,
+              )
+          observation = bundle["observation"]
+          if observation["status"] != "success":
+              raise AssertionError(
+                  {
+                      "direct_runtime_status": observation["status"],
+                      "provider_conversion_status": observation["provider_conversion_status"],
+                      "warnings": observation["warnings"],
+                  }
+              )
+          print(
+              "PASS direct PDF1c runtime control",
+              observation["provider_conversion_status"],
+              len(observation["blocks"]),
+          )
+          PY
+
+      - name: Test child-like environment with bounded compiler toolchain path
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DOCLING_VENV/bin/python" - <<'PY'
+          import importlib.util
+          import os
+          from pathlib import Path
+          import shutil
+          import subprocess
+          import sys
+          import tempfile
+
+          from prototype.p0_vs1.local_process_client import (
+              OFFICIAL_DOCLING_PLUGIN_ID,
+              build_child_environment,
+          )
+
+          def require_tool(name: str) -> Path:
+              value = shutil.which(name)
+              if not value:
+                  raise AssertionError(f"pdf1c-reference-tool-unavailable:{name}")
+              return Path(value).resolve()
+
+          gxx = require_tool("g++")
+          gcc = require_tool("gcc")
+          assembler = require_tool("as")
+          linker = require_tool("ld")
+          cc1plus_raw = subprocess.check_output(
+              [str(gxx), "-print-prog-name=cc1plus"],
+              text=True,
+          ).strip()
+          cc1plus = Path(cc1plus_raw)
+          if not cc1plus.is_absolute():
+              resolved = shutil.which(cc1plus_raw)
+              if not resolved:
+                  raise AssertionError("pdf1c-reference-tool-unavailable:cc1plus")
+              cc1plus = Path(resolved)
+          cc1plus = cc1plus.resolve()
+          if not cc1plus.is_file():
+              raise AssertionError("pdf1c-reference-tool-unavailable:cc1plus")
+
+          tool_dirs = []
+          for tool in (gxx, gcc, assembler, linker, cc1plus):
+              directory = str(tool.parent)
+              if directory not in tool_dirs:
+                  tool_dirs.append(directory)
+          bounded_tool_path = os.pathsep.join(tool_dirs)
+          print("PDF1c bounded compiler dirs:", bounded_tool_path)
+
+          generator_path = Path("elaboration/p0/benchmark/generate_fixtures.py").resolve()
+          spec = importlib.util.spec_from_file_location("pdf1c_child_env_generator", generator_path)
+          generator = importlib.util.module_from_spec(spec)
+          assert spec.loader is not None
+          spec.loader.exec_module(generator)
+
+          child_code = r'''
+          import hashlib
+          import sys
+          from pathlib import Path
+          from prototype.p0_vs1.docling_provider_runtime import run_docling_pdf_product
+          from prototype.p0_vs1.docling_reference import verify_reference_docling
+
+          wheel = Path(sys.argv[1]).resolve()
+          artifacts = Path(sys.argv[2]).resolve()
+          source = Path(sys.argv[3]).resolve()
+          cache = Path(sys.argv[4]).resolve()
+          provider = verify_reference_docling(wheel_path=wheel, artifacts_path=artifacts)
+          source_bytes = source.read_bytes()
+          bundle = run_docling_pdf_product(
+              source_bytes,
+              source_ref_id="source-ref:" + hashlib.sha256(b"pdf1c-child-env-control").hexdigest(),
+              source_fingerprint="sha256:" + hashlib.sha256(source_bytes).hexdigest(),
+              provider=provider,
+              artifacts_path=artifacts,
+              cache_root=cache,
+          )
+          observation = bundle["observation"]
+          if observation["status"] != "success":
+              raise AssertionError({
+                  "child_like_status": observation["status"],
+                  "provider_conversion_status": observation["provider_conversion_status"],
+                  "warnings": observation["warnings"],
+              })
+          print("PASS child-like bounded-toolchain control", observation["provider_conversion_status"])
+          '''
+
+          with tempfile.TemporaryDirectory(prefix="raiatea-pdf1c-child-env-control-") as temporary:
+              root = Path(temporary).resolve()
+              source = root / "B01-PDF-001.pdf"
+              cache = root / "cache"
+              generator.generate_pdf_single_column(source)
+              env = build_child_environment(
+                  {},
+                  manifest={"plugin": {"plugin_id": OFFICIAL_DOCLING_PLUGIN_ID}},
+              )
+              env["PATH"] = bounded_tool_path
+              subprocess.run(
+                  [
+                      sys.executable,
+                      "-c",
+                      child_code,
+                      os.environ["PDF1C_DOCLING_WHEEL"],
+                      os.environ["PDF1C_DOCLING_ARTIFACTS"],
+                      str(source),
+                      str(cache),
+                  ],
+                  cwd=Path.cwd(),
+                  env=env,
+                  check=True,
+              )
+          PY
+
+      - name: Run real end-to-end Docling product acceptance
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DOCLING_VENV/bin/python" -m unittest prototype.p0_vs1.test_pdf1c_real_product -v
+
+      - name: Re-run product reference and contract tests inside exact Docling venv
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$DOCLING_VENV/bin/python" -m unittest \
+            prototype.p0_vs1.test_pdf1c_reference_scope \
+            prototype.p0_vs1.test_pdf1c_provider_runtime \
+            prototype.p0_vs1.test_pdf1c_e05 \
+            -v

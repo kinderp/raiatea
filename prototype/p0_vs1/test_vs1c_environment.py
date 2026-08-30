@@ -7,6 +7,7 @@ import sys
 import unittest
 from unittest.mock import patch
 
+from prototype.p0_vs1 import local_process_client as process_client
 from prototype.p0_vs1.local_process_client import (
     MAX_STDOUT_BUFFERED_FRAMES,
     LocalPluginProcessClient,
@@ -16,6 +17,12 @@ from prototype.p0_vs1.local_process_client import (
 )
 
 
+LOCAL_SOURCE_MANIFEST = {
+    "plugin": {"plugin_id": "org.raiatea.vs1.local-source"},
+    "permissions": {"resource_hints": {"timeout_seconds": 30}},
+}
+
+
 class Vs1cChildEnvironmentTests(unittest.TestCase):
     def test_ambient_credentials_and_pythonpath_do_not_cross_plugin_boundary(self) -> None:
         ambient = {
@@ -23,18 +30,21 @@ class Vs1cChildEnvironmentTests(unittest.TestCase):
             "GITHUB_TOKEN": "do-not-inherit",
             "OPENAI_API_KEY": "do-not-inherit",
             "HTTP_PROXY": "http://user:password@example.invalid",
+            "PATH": "/tmp/ambient-untrusted-tools",
             "PYTHONPATH": "/tmp/ambient-untrusted-pythonpath",
             "RAIATEA_VS1_PLUGIN_IO_BROKER": "/tmp/ambient-wrong-broker",
         }
         with patch.dict(os.environ, ambient, clear=False):
             child = build_child_environment(
-                {"RAIATEA_VS1_PLUGIN_IO_BROKER": "/tmp/core-issued-broker"}
+                {"RAIATEA_VS1_PLUGIN_IO_BROKER": "/tmp/core-issued-broker"},
+                manifest=LOCAL_SOURCE_MANIFEST,
             )
         for forbidden in (
             "AWS_SECRET_ACCESS_KEY",
             "GITHUB_TOKEN",
             "OPENAI_API_KEY",
             "HTTP_PROXY",
+            "PATH",
         ):
             self.assertNotIn(forbidden, child)
         self.assertEqual(
@@ -51,7 +61,42 @@ class Vs1cChildEnvironmentTests(unittest.TestCase):
             LocalPluginProcessError,
             "extra-environment-key-forbidden",
         ):
-            build_child_environment({"OTHER_SECRET": "not-allowed"})
+            build_child_environment(
+                {"OTHER_SECRET": "not-allowed"},
+                manifest=LOCAL_SOURCE_MANIFEST,
+            )
+
+    def test_local_source_cannot_receive_docling_provider_authority(self) -> None:
+        for key in (
+            "RAIATEA_PDF1C_DOCLING_WHEEL",
+            "RAIATEA_PDF1C_DOCLING_ARTIFACTS",
+            "RAIATEA_PDF1C_DOCLING_CACHE_ROOT",
+        ):
+            with self.subTest(key=key):
+                with self.assertRaisesRegex(
+                    LocalPluginProcessError,
+                    "extra-environment-key-forbidden",
+                ):
+                    build_child_environment(
+                        {
+                            "RAIATEA_VS1_PLUGIN_IO_BROKER": "/tmp/core-issued-broker",
+                            key: "/tmp/docling-authority",
+                        },
+                        manifest=LOCAL_SOURCE_MANIFEST,
+                    )
+
+    def test_local_source_never_resolves_or_receives_docling_compiler_path(self) -> None:
+        with patch.object(
+            process_client,
+            "resolve_docling_compiler_toolchain_path",
+            return_value="/should/not/be/used",
+        ) as resolver:
+            child = build_child_environment(
+                {"RAIATEA_VS1_PLUGIN_IO_BROKER": "/tmp/core-issued-broker"},
+                manifest=LOCAL_SOURCE_MANIFEST,
+            )
+        resolver.assert_not_called()
+        self.assertNotIn("PATH", child)
 
     def test_manifest_python_token_uses_current_interpreter(self) -> None:
         command = normalize_product_command(
@@ -64,17 +109,13 @@ class Vs1cChildEnvironmentTests(unittest.TestCase):
         )
 
     def test_official_local_source_identity_cannot_select_another_command(self) -> None:
-        manifest = {
-            "plugin": {"plugin_id": "org.raiatea.vs1.local-source"},
-            "permissions": {"resource_hints": {"timeout_seconds": 30}},
-        }
         with self.assertRaisesRegex(
             LocalPluginProcessError,
             "official-local-source-command-forbidden",
         ):
             LocalPluginProcessClient(
                 [sys.executable, "-c", "print('not the official plugin')"],
-                manifest,
+                LOCAL_SOURCE_MANIFEST,
             )
 
     def test_unresponsive_plugin_handshake_times_out_and_can_be_closed(self) -> None:

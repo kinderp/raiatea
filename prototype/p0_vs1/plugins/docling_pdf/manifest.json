@@ -1,0 +1,56 @@
+{
+  "manifest_version": "1.0.0",
+  "plugin": {
+    "plugin_id": "org.raiatea.pdf1.docling-extractor",
+    "name": "Raiatea PDF1 Docling PDF Extractor",
+    "version": "0.1.0"
+  },
+  "raiatea_plugin_api": {
+    "min_inclusive": "1.0.0",
+    "max_exclusive": "2.0.0"
+  },
+  "families": ["extractor"],
+  "capabilities": [
+    {
+      "capability_id": "extract.run",
+      "profiles": [
+        {
+          "profile_id": "docling-2.118.0-standard-pdf-native-no-ocr",
+          "family": "extractor",
+          "input_classes": ["application/pdf"],
+          "output_classes": ["pdf1c-docling-provider-observation"],
+          "contracts": [
+            {
+              "contract_id": "raiatea.extraction.processing-run",
+              "version_range": {
+                "min_inclusive": "0.1.0",
+                "max_exclusive": "0.2.0"
+              }
+            }
+          ],
+          "backend": "docling-2.118.0-reference",
+          "mode": "native-semantic-no-ocr",
+          "model_revision": "sha256:c9afe973808a41c359c1f270f063097972985c096468089b206031395f8a885e"
+        }
+      ]
+    }
+  ],
+  "permissions": {
+    "network": [],
+    "filesystem": [],
+    "secrets": [],
+    "temporary_workspace": true,
+    "resource_hints": {
+      "cpu_cores": 4,
+      "timeout_seconds": 300
+    }
+  },
+  "entrypoint": {
+    "kind": "process",
+    "command": ["python", "-m", "prototype.p0_vs1.plugins.docling_pdf.plugin"]
+  },
+  "trust_tier": "official",
+  "provenance": {
+    "publisher": "Raiatea"
+  }
+}

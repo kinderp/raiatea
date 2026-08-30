@@ -11,6 +11,7 @@ import importlib.util
 import os
 from pathlib import Path
 import queue
+import shutil
 import subprocess
 import sys
 import threading
@@ -57,12 +58,27 @@ MAX_NOTIFICATIONS_BEFORE_RESPONSE = 64
 MAX_STDOUT_BUFFERED_FRAMES = MAX_NOTIFICATIONS_BEFORE_RESPONSE + 8
 HANDSHAKE_TIMEOUT_SECONDS = 10.0
 MAX_INVOCATION_TIMEOUT_SECONDS = 60.0
-ALLOWED_EXTRA_ENV_KEYS = frozenset({"RAIATEA_VS1_PLUGIN_IO_BROKER"})
+ABSOLUTE_MAX_INVOCATION_TIMEOUT_SECONDS = 300.0
+BASE_EXTRA_ENV_KEYS = frozenset({"RAIATEA_VS1_PLUGIN_IO_BROKER"})
+DOCLING_EXTRA_ENV_KEYS = frozenset(
+    {
+        "RAIATEA_PDF1C_DOCLING_WHEEL",
+        "RAIATEA_PDF1C_DOCLING_ARTIFACTS",
+        "RAIATEA_PDF1C_DOCLING_CACHE_ROOT",
+    }
+)
+ALLOWED_EXTRA_ENV_KEYS = BASE_EXTRA_ENV_KEYS | DOCLING_EXTRA_ENV_KEYS
 OFFICIAL_LOCAL_SOURCE_PLUGIN_ID = "org.raiatea.vs1.local-source"
 OFFICIAL_LOCAL_SOURCE_COMMAND = (
     "python",
     "-m",
     "prototype.p0_vs1.plugins.local_source.plugin",
+)
+OFFICIAL_DOCLING_PLUGIN_ID = "org.raiatea.pdf1.docling-extractor"
+OFFICIAL_DOCLING_COMMAND = (
+    "python",
+    "-m",
+    "prototype.p0_vs1.plugins.docling_pdf.plugin",
 )
 # Only OS/runtime settings needed to launch the same local Python process are
 # inherited. Credentials, proxies, cloud tokens and arbitrary user variables do
@@ -96,15 +112,95 @@ class LocalPluginProcessExited(LocalPluginProcessError):
     pass
 
 
-def build_child_environment(extra_env: dict[str, str] | None = None) -> dict[str, str]:
-    """Build the bounded environment visible to the official VS1c plugin."""
+def _plugin_id(manifest: dict[str, Any] | None) -> str | None:
+    if isinstance(manifest, dict) and isinstance(manifest.get("plugin"), dict):
+        value = manifest["plugin"].get("plugin_id")
+        if isinstance(value, str) and value:
+            return value
+    return None
+
+
+def _allowed_extra_env_keys(manifest: dict[str, Any] | None) -> frozenset[str]:
+    if _plugin_id(manifest) == OFFICIAL_DOCLING_PLUGIN_ID:
+        return ALLOWED_EXTRA_ENV_KEYS
+    # Preserve the accepted VS1c boundary for Local Source and for callers that
+    # do not declare the PDF1c official Docling identity.
+    return BASE_EXTRA_ENV_KEYS
+
+
+def _resolve_reference_tool(name: str) -> Path:
+    """Resolve one host tool from the OS default executable path, not user PATH."""
+    value = shutil.which(name, path=os.defpath)
+    if not value:
+        raise LocalPluginProcessError(f"pdf1c-docling-toolchain-unavailable:{name}")
+    resolved = Path(value).resolve()
+    if not resolved.is_absolute() or not resolved.is_file():
+        raise LocalPluginProcessError(f"pdf1c-docling-toolchain-invalid:{name}")
+    return resolved
+
+
+def resolve_docling_compiler_toolchain_path() -> str | None:
+    """Return the bounded Linux compiler path required by Docling/Torch Inductor.
+
+    The PDF1c measured route uses the host C++ toolchain while executing the
+    Docling layout model. Core resolves only the required reference tools from
+    ``os.defpath`` and never inherits an ambient/user ``PATH``. The real runtime
+    claim remains Linux/Ubuntu-only; other platforms receive no compiler PATH.
+    """
+    if not sys.platform.startswith("linux"):
+        return None
+
+    gxx = _resolve_reference_tool("g++")
+    gcc = _resolve_reference_tool("gcc")
+    assembler = _resolve_reference_tool("as")
+    linker = _resolve_reference_tool("ld")
+    try:
+        completed = subprocess.run(
+            [os.fspath(gxx), "-print-prog-name=cc1plus"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise LocalPluginProcessError(
+            "pdf1c-docling-toolchain-cc1plus-query-failed"
+        ) from exc
+    cc1plus_text = completed.stdout.strip()
+    if not cc1plus_text:
+        raise LocalPluginProcessError("pdf1c-docling-toolchain-cc1plus-unavailable")
+    cc1plus = Path(cc1plus_text)
+    if not cc1plus.is_absolute():
+        raise LocalPluginProcessError("pdf1c-docling-toolchain-cc1plus-not-absolute")
+    cc1plus = cc1plus.resolve()
+    if not cc1plus.is_file():
+        raise LocalPluginProcessError("pdf1c-docling-toolchain-cc1plus-invalid")
+
+    directories: list[str] = []
+    for tool in (gxx, gcc, assembler, linker, cc1plus):
+        directory = os.fspath(tool.parent)
+        if directory not in directories:
+            directories.append(directory)
+    return os.pathsep.join(directories)
+
+
+def build_child_environment(
+    extra_env: dict[str, str] | None = None,
+    *,
+    manifest: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    """Build the bounded environment visible to one official product plugin."""
 
     supplied = dict(extra_env or {})
-    unknown = sorted(set(supplied) - ALLOWED_EXTRA_ENV_KEYS)
+    allowed = _allowed_extra_env_keys(manifest)
+    unknown = sorted(set(supplied) - allowed)
     if unknown:
         raise LocalPluginProcessError(
             f"vs1c-plugin-extra-environment-key-forbidden:{unknown[0]}"
         )
+    if any(not isinstance(value, str) or not value for value in supplied.values()):
+        raise LocalPluginProcessError("vs1c-plugin-extra-environment-value-invalid")
     env: dict[str, str] = {}
     for key in AMBIENT_ENV_ALLOWLIST:
         value = os.environ.get(key)
@@ -117,6 +213,10 @@ def build_child_environment(extra_env: dict[str, str] | None = None) -> dict[str
     env["PYTHONPATH"] = os.fspath(REPO_ROOT)
     env["PYTHONNOUSERSITE"] = "1"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
+    if _plugin_id(manifest) == OFFICIAL_DOCLING_PLUGIN_ID:
+        compiler_path = resolve_docling_compiler_toolchain_path()
+        if compiler_path is not None:
+            env["PATH"] = compiler_path
     return env
 
 
@@ -126,14 +226,15 @@ def normalize_product_command(
     values = [str(token) for token in command]
     if not values:
         raise LocalPluginProcessError("vs1c-plugin-command-required")
-    plugin_id = None
-    if isinstance(manifest, dict) and isinstance(manifest.get("plugin"), dict):
-        plugin_id = manifest["plugin"].get("plugin_id")
+    plugin_id = _plugin_id(manifest)
     if plugin_id == OFFICIAL_LOCAL_SOURCE_PLUGIN_ID:
         if values != list(OFFICIAL_LOCAL_SOURCE_COMMAND):
             raise LocalPluginProcessError(
                 "vs1c-official-local-source-command-forbidden"
             )
+    if plugin_id == OFFICIAL_DOCLING_PLUGIN_ID:
+        if values != list(OFFICIAL_DOCLING_COMMAND):
+            raise LocalPluginProcessError("pdf1c-official-docling-command-forbidden")
     if values[0] in {"python", "python3"}:
         values[0] = sys.executable
     return values
@@ -158,10 +259,19 @@ class LocalPluginProcessClient:
         manifest: dict[str, Any],
         *,
         extra_env: dict[str, str] | None = None,
+        max_invocation_timeout_seconds: float = MAX_INVOCATION_TIMEOUT_SECONDS,
     ) -> None:
+        if (
+            not isinstance(max_invocation_timeout_seconds, (int, float))
+            or isinstance(max_invocation_timeout_seconds, bool)
+            or max_invocation_timeout_seconds <= 0
+            or max_invocation_timeout_seconds > ABSOLUTE_MAX_INVOCATION_TIMEOUT_SECONDS
+        ):
+            raise LocalPluginProcessError("vs1c-plugin-max-invocation-timeout-invalid")
         self.command = normalize_product_command(command, manifest)
         self.manifest = manifest
         self.extra_env = dict(extra_env or {})
+        self.max_invocation_timeout_seconds = float(max_invocation_timeout_seconds)
         self.process: subprocess.Popen[bytes] | None = None
         self.handshake_record: dict[str, Any] | None = None
         self.diagnostics: list[dict[str, Any]] = []
@@ -218,7 +328,7 @@ class LocalPluginProcessClient:
     def start(self) -> None:
         if self.process is not None:
             raise LocalPluginProcessError("vs1c-plugin-process-already-started")
-        env = build_child_environment(self.extra_env)
+        env = build_child_environment(self.extra_env, manifest=self.manifest)
         self._reader_stop.clear()
         self.process = subprocess.Popen(
             self.command,
@@ -370,7 +480,7 @@ class LocalPluginProcessClient:
         configured = hints.get("timeout_seconds", remaining)
         if not isinstance(configured, (int, float)) or isinstance(configured, bool) or configured <= 0:
             raise LocalPluginProcessError("vs1c-plugin-manifest-timeout-invalid")
-        return min(float(configured), remaining, MAX_INVOCATION_TIMEOUT_SECONDS)
+        return min(float(configured), remaining, self.max_invocation_timeout_seconds)
 
     def handshake(self) -> dict[str, Any]:
         if self.process is None:

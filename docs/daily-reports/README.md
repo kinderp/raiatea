@@ -12,3 +12,4 @@ Indice cronologico dei report di fine giornata previsti dalle [regole operative]
 - [2026-07-25](2026-07-25.md) — stato invariato; PR #110 e #95 ancora aperte, CI del pilot verde e nessuna Action rossa.
 - [2026-07-26](2026-07-26.md) — nessun nuovo incremento funzionale; PR #110 e #95 ancora aperte, CI del pilot verde e nessuna Action rossa.
 - [2026-07-27](2026-07-27.md) — stato invariato; Genesis, pilot e fondazione P0 restano tracciati, nessuna Action rossa.
+- [2026-08-27](2026-08-27.md) — VS1 EPUB accettata; PDF1a/PDF1b accettate; PDF1c Docling semantic route implementata con final real-provider acceptance in corso.

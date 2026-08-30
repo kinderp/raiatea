@@ -1,0 +1,18 @@
+.freshness-notice {
+  padding: 10px 14px;
+  border-bottom: 1px solid #765d2a;
+  background: rgba(111, 83, 24, 0.22);
+  color: #cdbb83;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.freshness-notice strong {
+  color: #f2d483;
+}
+
+.search-result-banner--blocked {
+  border-bottom-color: #764055;
+  background: rgba(104, 39, 63, 0.22);
+  color: #efb0c3;
+}

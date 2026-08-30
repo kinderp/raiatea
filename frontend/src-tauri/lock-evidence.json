@@ -14,5 +14,5 @@
     "macos-latest",
     "windows-latest"
   ],
-  "note": "All three desktop CI targets independently generated this exact Cargo.lock SHA-256 from the pinned direct dependency manifest before the evidence value was accepted."
+  "note": "All three desktop CI targets independently generated this exact Cargo.lock SHA-256 from the pinned direct dependency manifest before the identical reviewed lock was committed to the repository."
 }

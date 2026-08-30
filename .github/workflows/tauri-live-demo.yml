@@ -4,9 +4,11 @@ on:
   pull_request:
     paths:
       - ".gitattributes"
+      - "architecture/tauri-live-demo.md"
       - "prototype/p0_vs1/gui_demo_bootstrap.py"
       - "prototype/p0_vs1/gui_demo_prepare.py"
       - "prototype/p0_vs1/test_gui_demo_bootstrap.py"
+      - "frontend/README.md"
       - "frontend/package.json"
       - "frontend/package-lock.json"
       - "frontend/.env.tauri"
@@ -19,9 +21,11 @@ on:
     branches: [main]
     paths:
       - ".gitattributes"
+      - "architecture/tauri-live-demo.md"
       - "prototype/p0_vs1/gui_demo_bootstrap.py"
       - "prototype/p0_vs1/gui_demo_prepare.py"
       - "prototype/p0_vs1/test_gui_demo_bootstrap.py"
+      - "frontend/README.md"
       - "frontend/package.json"
       - "frontend/package-lock.json"
       - "frontend/.env.tauri"

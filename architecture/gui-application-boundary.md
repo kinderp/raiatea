@@ -42,13 +42,15 @@ The GUI must not change because an extraction route moves from a local child pro
 
 1. Prototype/internal records are not frontend contracts.
 2. A `SourceReference` remains path-free; first-party display Location comes from Raiatea catalog authority, never from a Provider or plugin record.
-3. Search freshness is explicit. A stale index cannot be rendered as current search truth.
-4. Smart Collection rule is authority; current membership is derived state.
-5. ProviderEvidence and NormalizedRepresentation remain distinguishable in Source Detail.
-6. Missing/partial/unknown evidence stays visible as such; the GUI must not manufacture completeness.
-7. Read models are paginable and must not inherit VS1 internal collection limits as product UX limits.
-8. UI layout/docking state is local presentation state and never mutates Raiatea knowledge authority.
-9. The frontend requests capabilities and application actions, not concrete parser/provider behavior.
+3. The initial Location projection is the authorized-scope relative Location. Absolute host roots/paths are not a general frontend contract.
+4. Search freshness is explicit. A stale index cannot be rendered as current search truth.
+5. Smart Collection rule is authority; current membership is derived state.
+6. ProviderEvidence and NormalizedRepresentation remain distinguishable in Source Detail.
+7. Missing/partial/unknown evidence stays visible as such; the GUI must not manufacture completeness.
+8. Read models are paginable and must not inherit VS1 internal collection limits as product UX limits.
+9. UI layout/docking state is local presentation state and never mutates Raiatea knowledge authority.
+10. The frontend requests capabilities and application actions, not concrete parser/provider behavior.
+11. Current `logical_candidate_ref` remains explicitly provisional; the Application Layer must not relabel it as a finalized universal Logical Identity.
 
 ## First read models
 
@@ -59,10 +61,11 @@ Purpose: safe orientation over real current capabilities.
 ```text
 HomeSummary
   catalog_freshness
+  counts_basis                 # current / last-known / unavailable
   source_counts_by_media_type[]
-  current_source_count
-  available_source_count
-  missing_or_unknown_count
+  current_source_count?
+  available_source_count?
+  missing_or_unknown_count?
   processing_summary
   warning_summary
   recent_activity[]
@@ -70,6 +73,8 @@ HomeSummary
   smart_collection_count
   backup_status?
 ```
+
+Counts must be qualified by catalog freshness. A stale/reconcile-required catalog cannot be summarized as if the counts were guaranteed current.
 
 No Observatory/Horizon/public-world metrics belong in this first read model.
 
@@ -79,9 +84,10 @@ The first reusable row/card model for Library, search results and collection mem
 
 ```text
 LibraryItem
-  object_id                 # Raiatea application identity for navigation
-  source_ref_id?            # technical reference, not primary display identity
-  logical_identity_ref
+  item_ref                    # application navigation ref; no final ontology claim
+  catalog_entry_ref
+  source_ref_id?              # processing/evidence ref; not primary display identity
+  logical_candidate_ref       # current revisable catalog candidate
   stored_instance_ref
   display
     title?
@@ -89,7 +95,8 @@ LibraryItem
     media_type
     kind
   location
-    current_display_location?
+    scope_ref
+    current_relative_location?
     availability
     history_count
   content
@@ -108,7 +115,9 @@ LibraryItem
   capabilities[]
 ```
 
-`current_display_location` is a Raiatea catalog projection. It must never be sourced from `SourceReference` or ProviderEvidence.
+`item_ref` exists for application navigation and must not silently become a universal Work/Manifestation/Logical Identity ontology. Its exact durable basis is a later contract decision.
+
+`current_relative_location` is a Raiatea catalog projection inside an authorized scope. It must never be sourced from `SourceReference` or ProviderEvidence. A future local-only action such as `Reveal in filesystem` may resolve a host path through a Core-owned command without making that path part of the generic read contract.
 
 `title` is optional until Raiatea has attributable title metadata. The UI uses `fallback_name` rather than pretending a filename-derived value is authoritative bibliographic metadata.
 
@@ -118,8 +127,11 @@ Composition root for the first important GUI screen.
 
 ```text
 SourceDetail
-  object_id
-  identity
+  item_ref
+  catalog_entry_ref
+  logical_candidate_ref
+  stored_instance_ref
+  source_ref_id?
   display
   locations[]
   availability
@@ -178,7 +190,8 @@ Content units are paged/streamed at the application boundary. The GUI must not r
 
 ```text
 ProcessingStatus
-  source_object_id
+  item_ref
+  source_ref_id?
   current_state
   attempts[]
     run_id
@@ -266,7 +279,7 @@ Critical rule: when the accepted search basis is stale, the application layer re
 ```text
 SavedView
   view_id
-  display_name
+  label?                     # application-owned user metadata when introduced
   request_plan
   projection
   result_summary
@@ -275,12 +288,14 @@ SavedView
 
 A View remains query + projection. It does not own a separate member list.
 
+The current VS1 View contract does not define a user-facing display name. A persisted `label` therefore requires an explicit Raiatea application-metadata addition; the GUI must not pretend it already exists in the accepted View record.
+
 ### `SmartCollectionView`
 
 ```text
 SmartCollectionView
   collection_id
-  display_name
+  label?                     # application-owned user metadata when introduced
   rule
   evaluation_freshness
   evaluated_basis
@@ -290,6 +305,8 @@ SmartCollectionView
 ```
 
 The rule is authoritative. Membership is derived and must not be hand-edited through this surface.
+
+As with Views, a friendly persisted label is new application metadata unless/until separately accepted.
 
 ### `ActivityItem`
 
@@ -328,7 +345,7 @@ InspectorModel
   available_actions[]
 ```
 
-The Inspector is the common drill-down surface from visible object to identity, source, representation, evidence, processing and provenance.
+The Inspector is the common drill-down surface from visible object to catalog candidate, Source, representation, evidence, processing and provenance.
 
 ## First command boundary
 
@@ -345,6 +362,7 @@ RequestReconciliation
 RequestExtraction / Reprocess
 CreateBackup
 RestoreBackup   # guarded workflow, not a one-click blind mutation
+RevealInFilesystem?  # local-only capability; host path stays out of generic read models
 ```
 
 Commands invoke application services that enforce Core authority. The GUI cannot widen filesystem scope, manufacture Processing Rights or pass Provider-specific command-line options directly.
@@ -417,8 +435,9 @@ The first facade maps existing accepted/current behavior rather than replacing i
 
 | GUI/application concept | Current source of truth |
 | --- | --- |
-| catalog freshness / availability / Location history | Raiatea reconciliation/catalog state |
+| catalog freshness / availability / relative Location history | Raiatea reconciliation/catalog state |
 | path-free processable Source identity | SourceReference contract |
+| current revisable logical candidate | Raiatea reconciliation/catalog state |
 | deterministic filter semantics | VS1e QueryPlan/search contract |
 | View rule/projection | VS1e View contract |
 | Smart rule + evaluated members/basis | VS1e Smart Collection contract |
@@ -430,6 +449,8 @@ The facade is intentionally allowed to compose these truths into one `SourceDeta
 
 ## Explicitly deferred
 
+- final durable basis/versioning for `item_ref`;
+- user-label persistence for Views/Smart Collections;
 - frontend technology/framework selection;
 - REST vs GraphQL vs local IPC protocol;
 - drag/drop docking implementation;
@@ -447,8 +468,10 @@ Before selecting a UI framework, prototype the Raiatea Application Layer as a th
 
 1. no prototype store object leaks into the read models;
 2. no Provider can supply/display catalog Location authority;
-3. stale search remains visibly blocked;
-4. Smart rule/member authority remains distinct;
-5. PDF/EPUB use one Source Detail composition path;
-6. content and Library listing are paginable;
-7. Source Plane extraction can later replace current in-repo extraction behind the same application contract.
+3. absolute host path/root is not part of the generic frontend read contract;
+4. current logical candidates are not upgraded into a final ontology by naming;
+5. stale search remains visibly blocked;
+6. Smart rule/member authority remains distinct;
+7. PDF/EPUB use one Source Detail composition path;
+8. content and Library listing are paginable;
+9. Source Plane extraction can later replace current in-repo extraction behind the same application contract.

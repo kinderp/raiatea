@@ -1,0 +1,13 @@
+{
+  "contract": "raiatea.tauri-demo-lock-evidence.0.1.0",
+  "cargo_lock_sha256": "123f04fc902bcd27500e3ea9979bd594131d2b2ed4fb97a11ca0ba376e698ca4",
+  "resolved_direct_dependencies": {
+    "serde": "1.0.229",
+    "serde_json": "1.0.151",
+    "tauri": "2.11.5",
+    "tauri-build": "2.6.3"
+  },
+  "tauri_cli": "2.11.4",
+  "evidence_workflow_run": 33319082572,
+  "evidence_artifact_sha256": "62ed106fabc126b3f2c7fa3e2005e0f99b7a141bf298b287ac77ceb596bedba6"
+}

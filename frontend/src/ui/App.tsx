@@ -12,6 +12,7 @@ import type { RaiateaGateway } from '../gateway/RaiateaGateway';
 import { DockLayout } from './DockLayout';
 import { Panel } from './Panel';
 import { createPanelCapabilities } from './panels';
+import { firstLibrarySelection, firstSearchSelection } from './selection';
 
 const gateway: RaiateaGateway = demoGateway;
 const fixedPanel = createPanelCapabilities();
@@ -178,8 +179,7 @@ export function App() {
     gateway.libraryPage({ pageSize: 50 }).then((page) => {
       if (!live) return;
       setLibrary(page);
-      const first = page.items[0];
-      if (first !== undefined) setSelectedItem(first);
+      setSelectedItem(firstLibrarySelection(page));
     }).catch((reason: unknown) => {
       if (live) setError(reason instanceof Error ? reason.message : 'Library load failed');
     });
@@ -213,7 +213,7 @@ export function App() {
   function clearSearch() {
     setSearch(null);
     setSearchText('');
-    setSelectedItem(library?.items[0] ?? null);
+    setSelectedItem(firstLibrarySelection(library));
   }
 
   async function runSearch(event: FormEvent<HTMLFormElement>) {
@@ -231,7 +231,7 @@ export function App() {
     try {
       const result = await gateway.searchPage(plan, { pageSize: 50 });
       setSearch(result);
-      setSelectedItem(result.items[0]?.item ?? null);
+      setSelectedItem(firstSearchSelection(result));
       setSurface('library');
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : 'Search failed');

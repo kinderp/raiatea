@@ -1,0 +1,2 @@
+# Keep dependency lock evidence byte-stable across desktop platforms.
+frontend/src-tauri/Cargo.lock text eol=lf

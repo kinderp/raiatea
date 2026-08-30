@@ -76,6 +76,8 @@ npm run build
 
 See `architecture/tauri-live-demo.md` for prerequisites, the disposable demo-state contract and the CI-proven local flow.
 
+Both dependency graphs are committed: `frontend/package-lock.json` for React/Vite and `frontend/src-tauri/Cargo.lock` for the Desktop Core. The preparation command verifies them instead of resolving an unreviewed graph.
+
 From the repository root, once prerequisites are installed:
 
 ```bash

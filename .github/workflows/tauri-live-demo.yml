@@ -29,8 +29,11 @@ on:
       - "frontend/src-tauri/**"
       - ".github/workflows/tauri-live-demo.yml"
 
+# Temporary write permission exists only to commit the already verified
+# Cargo.lock on same-repository PR #224. Final reviewed workflow returns to
+# contents: read and contains no self-modification step.
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: tauri-live-demo-${{ github.event.pull_request.number || github.ref }}
@@ -90,6 +93,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -114,13 +119,20 @@ jobs:
         run: cargo generate-lockfile
       - name: Verify exact Rust lock evidence
         run: python -c "import hashlib,json,pathlib; root=pathlib.Path('frontend/src-tauri'); expected=json.loads((root/'lock-evidence.json').read_text())['cargo_lock_sha256']; actual=hashlib.sha256((root/'Cargo.lock').read_bytes()).hexdigest(); print('Cargo.lock sha256',actual); assert actual == expected, f'cargo-lock-drift:{actual}'"
-      - name: Upload reviewed Cargo lock candidate
-        if: runner.os == 'Linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: tauri-cargo-lock-candidate
-          path: frontend/src-tauri/Cargo.lock
-          if-no-files-found: error
+      - name: Commit exact reviewed Cargo lock once
+        if: ${{ runner.os == 'Linux' && github.event_name == 'pull_request' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f frontend/src-tauri/Cargo.lock
+          if git diff --cached --quiet; then
+            echo "Cargo.lock already committed"
+          else
+            git commit -m "Pin Tauri desktop dependencies"
+            git push origin "HEAD:${GITHUB_HEAD_REF}"
+          fi
       - name: Test bounded Desktop Core
         working-directory: frontend/src-tauri
         run: cargo test --locked

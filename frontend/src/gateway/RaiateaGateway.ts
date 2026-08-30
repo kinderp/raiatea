@@ -13,7 +13,7 @@ export interface PageRequest {
 }
 
 export interface RaiateaGateway {
-  status(): GatewayStatus;
+  status(): Promise<GatewayStatus>;
   libraryPage(request?: PageRequest): Promise<LibraryPage>;
   sourceDetail(itemRef: string): Promise<SourceDetail>;
   searchPage(plan: QueryPlan, request?: PageRequest): Promise<SearchPage>;

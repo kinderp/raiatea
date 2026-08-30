@@ -19,8 +19,14 @@ interface DockLayoutProps {
   inspector: ReactNode;
 }
 
+export type DockLayoutColumnMode = 'two' | 'three';
+
+export function dockLayoutColumnMode(hasSecondary: boolean): DockLayoutColumnMode {
+  return hasSecondary ? 'three' : 'two';
+}
+
 export function DockLayout({ primary, secondary, inspector }: DockLayoutProps) {
-  const columnMode = secondary === undefined ? 'two' : 'three';
+  const columnMode = dockLayoutColumnMode(secondary !== undefined);
   return (
     <div
       className={`dock-layout dock-layout--${columnMode}`}

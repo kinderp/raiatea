@@ -3,6 +3,7 @@ name: Tauri live desktop demo
 on:
   pull_request:
     paths:
+      - ".gitattributes"
       - "prototype/p0_vs1/gui_demo_bootstrap.py"
       - "prototype/p0_vs1/gui_demo_prepare.py"
       - "prototype/p0_vs1/test_gui_demo_bootstrap.py"
@@ -17,6 +18,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".gitattributes"
       - "prototype/p0_vs1/gui_demo_bootstrap.py"
       - "prototype/p0_vs1/gui_demo_prepare.py"
       - "prototype/p0_vs1/test_gui_demo_bootstrap.py"

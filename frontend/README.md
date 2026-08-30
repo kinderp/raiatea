@@ -1,6 +1,6 @@
-# Raiatea frontend renderer — GUI slice #217
+# Raiatea frontend renderer
 
-This directory contains the first **renderer-only** Raiatea GUI vertical slice.
+The React/TypeScript renderer consumes only Raiatea Application Layer read models.
 
 ## Current boundary
 
@@ -10,29 +10,45 @@ React / TypeScript renderer
         v
 RaiateaGateway
         |
-        +-- DemoRaiateaGateway       [current renderer proof only]
-        \-- live application bridge  [next decision / not implemented here]
+        +-- DemoRaiateaGateway
+        |
+        +-- LiveRaiateaGateway
                 |
-                v
+         ApplicationTransport
+                |
+        future Desktop Core adapter
+                |
+        local ApplicationFacade sidecar
+                |
         RaiateaApplicationFacade
 ```
 
-The renderer does not import Python persistence, SourcePlugin, Provider-native or E-05 records. It speaks only application read-model shapes.
+The renderer does not import Python persistence, SourcePlugin, Provider-native or E-05 records and does not own process launch, JSON-RPC framing or sidecar lifecycle.
 
-## Why demo data exists
+`DemoRaiateaGateway` remains deterministic renderer-development data and is visibly labelled **Prototype data**. `LiveRaiateaGateway` is the #220 transport-neutral live client: it consumes an abstract `ApplicationTransport` and validates every returned bridge payload at runtime before exposing it to components.
 
-The first renderer slice intentionally does **not** choose the Python/desktop transport. `DemoRaiateaGateway` is deterministic development data and the UI labels it visibly as **Prototype data**. It must never be represented as the user's current Raiatea Library or as Observatory knowledge.
+## Live bridge truth boundary
 
-The next bridge can replace the gateway without rewriting panels or screens.
+The current bridge candidate preserves these rules on both Python and TypeScript sides:
+
+- only Raiatea-specific read methods are exposed;
+- host filesystem/root authority never belongs to renderer requests or results;
+- current catalog Location is an authorized-scope relative projection only;
+- stale Search is blocked and carries no current rows;
+- non-fresh catalog/source state cannot be upgraded into current Source/content claims;
+- retained representation ids still pass through the Python ApplicationFacade currentness fence;
+- bridge/process success does not establish knowledge truth.
+
+The current `App` intentionally instantiates the demo gateway until a trusted Desktop Core/Tauri adapter is proven. Switching to live must be a gateway-composition decision, not a component rewrite.
 
 ## Truth-state rendering
 
-The renderer preserves the application boundary's distinction between an empty current result and an unavailable current result:
+The renderer distinguishes an empty current result from an unavailable current result:
 
 - a fresh search with no matches may display `0 match(es)`;
 - a stale/blocked search displays the `blocked_reason`, renders no current rows and does not promote a Source into the Inspector;
 - a non-fresh Library may show last-known catalog rows, but it displays a prominent last-known notice rather than implying current Source/content access;
-- future live adapters must not turn `stale`, `not-established` or last-known state into empty/current UI claims.
+- live adapters must not turn `stale`, `not-established` or last-known state into empty/current UI claims.
 
 ## Run locally
 
@@ -52,11 +68,11 @@ npm run test
 npm run build
 ```
 
-`package-lock.json` is committed and CI installs strictly through `npm ci`. Updating frontend dependencies therefore requires an explicit lockfile change rather than an unconstrained CI resolution.
+`package-lock.json` is committed and CI installs strictly through `npm ci`.
 
 ## Panel architecture
 
-The first visual layout is static, but content is already separated as:
+The visual layout is still static, but content is separated as:
 
 ```text
 DockLayout
@@ -64,14 +80,17 @@ DockLayout
        -> Panel
 ```
 
-Each panel carries explicit capability flags for resize/move/dock/tab/close/float. All are `false` in this slice. Future drag/drop must change the layout implementation, not knowledge/read-model semantics inside a panel.
+Each panel carries explicit capability flags for resize/move/dock/tab/close/float. All remain `false`. Future drag/drop changes layout behavior, not knowledge/read-model semantics inside a panel.
 
-Dockview is a compatible future candidate but is deliberately **not a dependency** yet.
+Dockview remains a compatible future candidate but is not yet a dependency.
 
 ## Deliberately absent
 
 - Tauri / desktop packaging;
-- Python sidecar or HTTP/IPC bridge;
+- Rust/Desktop Core adapter;
+- renderer shell/process permissions;
+- localhost HTTP/WebSocket API;
+- Python executable bundling;
 - real filesystem-scope onboarding;
 - drag/drop or saved layouts;
 - Explore / Observatory / Horizon / Agora logic;

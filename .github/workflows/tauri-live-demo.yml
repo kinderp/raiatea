@@ -114,6 +114,13 @@ jobs:
         run: cargo generate-lockfile
       - name: Verify exact Rust lock evidence
         run: python -c "import hashlib,json,pathlib; root=pathlib.Path('frontend/src-tauri'); expected=json.loads((root/'lock-evidence.json').read_text())['cargo_lock_sha256']; actual=hashlib.sha256((root/'Cargo.lock').read_bytes()).hexdigest(); print('Cargo.lock sha256',actual); assert actual == expected, f'cargo-lock-drift:{actual}'"
+      - name: Upload reviewed Cargo lock candidate
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tauri-cargo-lock-candidate
+          path: frontend/src-tauri/Cargo.lock
+          if-no-files-found: error
       - name: Test bounded Desktop Core
         working-directory: frontend/src-tauri
         run: cargo test --locked

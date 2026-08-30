@@ -70,13 +70,11 @@ npm run test
 npm run build
 ```
 
-`package-lock.json` is committed and CI installs strictly through `npm ci`.
+Both dependency graphs are locked: `package-lock.json` is committed for the renderer and `src-tauri/Cargo.lock` is committed for the Desktop Core. CI and local preparation consume them read-only.
 
 ## Live Tauri demo
 
 See `architecture/tauri-live-demo.md` for prerequisites, the disposable demo-state contract and the CI-proven local flow.
-
-Both dependency graphs are committed: `frontend/package-lock.json` for React/Vite and `frontend/src-tauri/Cargo.lock` for the Desktop Core. The preparation command verifies them instead of resolving an unreviewed graph.
 
 From the repository root, once prerequisites are installed:
 

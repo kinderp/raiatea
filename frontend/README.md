@@ -25,6 +25,15 @@ The first renderer slice intentionally does **not** choose the Python/desktop tr
 
 The next bridge can replace the gateway without rewriting panels or screens.
 
+## Truth-state rendering
+
+The renderer preserves the application boundary's distinction between an empty current result and an unavailable current result:
+
+- a fresh search with no matches may display `0 match(es)`;
+- a stale/blocked search displays the `blocked_reason`, renders no current rows and does not promote a Source into the Inspector;
+- a non-fresh Library may show last-known catalog rows, but it displays a prominent last-known notice rather than implying current Source/content access;
+- future live adapters must not turn `stale`, `not-established` or last-known state into empty/current UI claims.
+
 ## Run locally
 
 Requires Node 22.12+.

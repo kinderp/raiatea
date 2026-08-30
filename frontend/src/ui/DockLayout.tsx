@@ -20,8 +20,13 @@ interface DockLayoutProps {
 }
 
 export function DockLayout({ primary, secondary, inspector }: DockLayoutProps) {
+  const columnMode = secondary === undefined ? 'two' : 'three';
   return (
-    <div className="dock-layout" data-layout-mode="static-v0">
+    <div
+      className={`dock-layout dock-layout--${columnMode}`}
+      data-layout-mode="static-v0"
+      data-layout-columns={columnMode}
+    >
       <PanelHost region="primary">{primary}</PanelHost>
       {secondary === undefined ? null : (
         <PanelHost region="secondary">{secondary}</PanelHost>

@@ -51,6 +51,7 @@ def _canonical_bytes(value: Any) -> bytes:
             sort_keys=True,
             separators=(",", ":"),
             ensure_ascii=False,
+            allow_nan=False,
         ).encode("utf-8")
     except (TypeError, ValueError) as exc:
         raise ApplicationFacadeError("application-value-not-canonical-json") from exc
@@ -655,29 +656,15 @@ class RaiateaApplicationFacade:
         }
 
     @staticmethod
-    def _catalog_basis(
-        entries: list[dict[str, Any]],
-        freshness: dict[str, Any],
-    ) -> str:
-        return _basis_ref(
-            {
-                "freshness": freshness,
-                "entries": [
-                    {
-                        "entry_id": row["entry_id"],
-                        "logical_candidate_id": row["logical_candidate_id"],
-                        "stored_instance_id": row["stored_instance_id"],
-                        "current_location": row.get("current_location"),
-                        "availability": row.get("availability"),
-                        "fingerprint": row.get("fingerprint"),
-                        "byte_length": row.get("byte_length"),
-                        "media_type": row.get("media_type"),
-                        "superseded_by": row.get("superseded_by"),
-                    }
-                    for row in entries
-                ],
-            }
-        )
+    def _result_basis(*, freshness: Any, rows: list[Any]) -> str:
+        """Bind a cursor to the full application-visible result basis.
+
+        Catalog/source/extraction changes can alter rendered rows even when the
+        underlying catalog entry list is unchanged. Cursors therefore bind to
+        the composed read model rather than only the storage/catalog subset.
+        """
+
+        return _basis_ref({"freshness": freshness, "rows": rows})
 
     def library_page(
         self,
@@ -705,7 +692,7 @@ class RaiateaApplicationFacade:
                     catalog_freshness=freshness_status,
                 )
             )
-        basis = self._catalog_basis(entries, freshness)
+        basis = self._result_basis(freshness=freshness, rows=models)
         selected, next_cursor = _page(
             models,
             page_size=page_size,
@@ -829,6 +816,26 @@ class RaiateaApplicationFacade:
         cursor: str | None = None,
     ) -> dict[str, Any]:
         snapshot = self._load()
+        entries, sources, extractions = self._catalog_projection(snapshot)
+        freshness = snapshot.payload["vs1b"]["freshness"]["status"]
+        _require(freshness == "fresh", "application-representation-not-current")
+
+        # A caller may retain an old representation id after a filesystem or
+        # reconciliation change. Only representations reachable through the
+        # *current* SourceReference/extraction projection are readable here.
+        current_representation_ids = {
+            extraction["representation"]["representation_id"]
+            for extraction in extractions.values()
+            if isinstance(extraction, dict)
+            and isinstance(extraction.get("representation"), dict)
+            and isinstance(
+                extraction["representation"].get("representation_id"), str
+            )
+        }
+        _require(
+            representation_id in current_representation_ids,
+            "application-representation-not-current",
+        )
         return self._extractions.representation_page(
             snapshot,
             representation_id,
@@ -941,7 +948,7 @@ class RaiateaApplicationFacade:
             {
                 "upstream": current_basis,
                 "plan": normalized_plan,
-                "source_ids": source_ids,
+                "rows": rows,
             }
         )
         selected, next_cursor = _page(

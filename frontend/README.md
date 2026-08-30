@@ -31,7 +31,7 @@ Requires Node 22.12+.
 
 ```bash
 cd frontend
-npm install
+npm ci
 npm run dev
 ```
 
@@ -43,7 +43,7 @@ npm run test
 npm run build
 ```
 
-A committed lockfile becomes mandatory before #217 can merge. The initial CI may generate the first lockfile artifact from these exact top-level dependency pins; once committed, CI switches to `npm ci` only.
+`package-lock.json` is committed and CI installs strictly through `npm ci`. Updating frontend dependencies therefore requires an explicit lockfile change rather than an unconstrained CI resolution.
 
 ## Panel architecture
 

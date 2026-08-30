@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import subprocess
 import sys
 import unittest
@@ -90,17 +89,19 @@ class ApplicationBridgeServiceTests(vs1e_tests.Vs1eFixture):
         self.assertEqual(representation["representation_id"], representation_id)
         self.assertTrue(representation["units"])
 
-    def test_bridge_does_not_accept_host_authority_or_unknown_methods(self) -> None:
+    def test_service_rejects_unknown_methods_and_parameters(self) -> None:
         unknown = self._request("system.shell", {})
         self.assertEqual(unknown["error"]["code"], JSONRPC_METHOD_NOT_FOUND)
 
-        forbidden = self._request(
+        # Host-authority keys such as `path` are rejected earlier by the wire
+        # contract and are covered by the real-subprocess test below. Use a
+        # non-privileged unknown key here to prove the dispatcher itself is
+        # closed and fails invalid parameters without bypassing the wire layer.
+        invalid = self._request(
             METHOD_LIBRARY_PAGE,
-            {"page_size": 10, "cursor": None, "path": "/tmp/escape"},
+            {"page_size": 10, "cursor": None, "unexpected": "value"},
         )
-        # The wire contract itself rejects this key before dispatch in real I/O;
-        # direct service dispatch still fails closed as an unknown parameter.
-        self.assertEqual(forbidden["error"]["code"], JSONRPC_INVALID_PARAMS)
+        self.assertEqual(invalid["error"]["code"], JSONRPC_INVALID_PARAMS)
 
     def test_stale_search_remains_blocked_through_bridge(self) -> None:
         current = self.store.load()
@@ -149,14 +150,18 @@ class ApplicationBridgeSubprocessTests(vs1e_tests.Vs1eFixture):
         assert self.process.stderr is not None
 
     def tearDown(self) -> None:
-        if getattr(self, "process", None) is not None:
-            assert self.process.stdin is not None
-            self.process.stdin.close()
+        process = getattr(self, "process", None)
+        if process is not None:
+            if process.stdin is not None and not process.stdin.closed:
+                process.stdin.close()
             try:
-                self.process.wait(timeout=5)
+                process.wait(timeout=5)
             except subprocess.TimeoutExpired:
-                self.process.kill()
-                self.process.wait(timeout=5)
+                process.kill()
+                process.wait(timeout=5)
+            for stream in (process.stdout, process.stderr):
+                if stream is not None and not stream.closed:
+                    stream.close()
         super().tearDown()
 
     def _rpc(self, request_id: str, method: str, params: dict) -> dict:

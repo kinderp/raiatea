@@ -1,6 +1,6 @@
 # ADR-0004 — Local GUI Application Bridge boundary
 
-Status: **Proposed**
+Status: **Accepted**
 
 Issue: #220  
 Renderer decision: ADR-0003  
@@ -62,7 +62,7 @@ Requests are closed objects and notifications are not part of v0.1. Responses wr
 - application responses are scanned again by TypeScript runtime validators;
 - current relative catalog Location is permitted, absolute host paths are not;
 - stale Search cannot carry current rows;
-- non-fresh catalog/source models cannot be upgraded to current content;
+- non-fresh catalog/source models cannot be upgraded to current content/extraction authority;
 - retained representation ids still pass through `RaiateaApplicationFacade` currentness fences;
 - process completion is not knowledge truth.
 
@@ -97,9 +97,9 @@ Costs/constraints:
 - current 1 MiB wire frame bound requires paginated application surfaces and may need measured revision later;
 - Desktop Core must eventually own cancellation, restart and lifecycle failure semantics.
 
-## Acceptance evidence required
+## Acceptance evidence
 
-This ADR remains Proposed until #220 demonstrates on a frozen head:
+Accepted after #220 demonstrated on frozen head `96e9144d61855bd07caa2156ece703c27f7d21e9`:
 
 1. real Python subprocess sidecar over current VS1 ApplicationFacade data;
 2. Library -> Source Detail -> Search -> Representation live read chain;
@@ -108,7 +108,8 @@ This ADR remains Proposed until #220 demonstrates on a frozen head:
 5. `LiveRaiateaGateway` maps all methods through transport-neutral `ApplicationTransport`;
 6. Linux/Windows Python 3.10/3.12 bridge tests green;
 7. locked frontend typecheck/tests/build green;
-8. two consecutive clean review rounds.
+8. all applicable VS1/PDF/AppShell regressions green;
+9. two consecutive clean review rounds on the frozen implementation head: `5061135198`, `5061135795`.
 
 ## Not decided here
 

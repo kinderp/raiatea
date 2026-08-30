@@ -106,8 +106,9 @@ def prepare_demo(workspace: Path = DEFAULT_WORKSPACE) -> dict[str, object]:
 
     manifest = bootstrap_demo(workspace)
 
-    # The normal React/Vite lockfile remains committed and unchanged by the
-    # desktop proof, so renderer dependencies install strictly with npm ci.
+    # Renderer dependencies and the Rust desktop dependency graph are both
+    # committed. Preparation may install/verify them but must not rewrite either
+    # lockfile.
     _run(["npm", "ci"], cwd=FRONTEND_ROOT)
 
     evidence = json.loads(LOCK_EVIDENCE.read_text(encoding="utf-8"))
@@ -116,14 +117,21 @@ def prepare_demo(workspace: Path = DEFAULT_WORKSPACE) -> dict[str, object]:
         raise GuiDemoPrepareError("gui-demo-lock-evidence-invalid")
 
     cargo_lock = TAURI_ROOT / "Cargo.lock"
-    if cargo_lock.exists():
-        cargo_lock.unlink()
-    _run(["cargo", "generate-lockfile"], cwd=TAURI_ROOT)
+    if not cargo_lock.is_file():
+        raise GuiDemoPrepareError("gui-demo-cargo-lock-missing")
     actual_lock = _sha256(cargo_lock)
     if actual_lock != expected_lock:
         raise GuiDemoPrepareError(
             f"gui-demo-cargo-lock-drift:expected-{expected_lock}:actual-{actual_lock}"
         )
+
+    # Prove Cargo accepts the committed lock without permitting resolution to
+    # rewrite it. The later Tauri dev/build commands use the same lock.
+    _run(
+        ["cargo", "metadata", "--locked", "--format-version", "1", "--no-deps"],
+        cwd=TAURI_ROOT,
+        capture=True,
+    )
 
     result: dict[str, object] = {
         "demo_manifest": manifest,

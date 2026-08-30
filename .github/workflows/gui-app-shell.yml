@@ -44,8 +44,7 @@ jobs:
       - name: Build production renderer
         working-directory: frontend
         run: npm run build
-      - name: Upload generated lockfile for initial pin
-        if: ${{ hashFiles('frontend/package-lock.json') == '' }}
+      - name: Upload dependency lock evidence
         uses: actions/upload-artifact@v4
         with:
           name: gui-app-shell-package-lock

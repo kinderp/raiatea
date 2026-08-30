@@ -73,6 +73,9 @@ jobs:
       - name: Build browser renderer
         working-directory: frontend
         run: npm run build
+      - name: Build live Tauri renderer mode
+        working-directory: frontend
+        run: npm run build:tauri
 
   desktop-core:
     name: Desktop Core / ${{ matrix.os }}
@@ -118,3 +121,27 @@ jobs:
       - name: Check desktop application crate
         working-directory: frontend/src-tauri
         run: cargo check --locked
+
+  documented-macos-flow:
+    name: Documented local flow / macOS
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install exact Tauri CLI used by the local instructions
+        run: cargo install tauri-cli --version 2.11.4 --locked
+      - name: Run the documented preparation command
+        run: python -m prototype.p0_vs1.gui_demo_prepare
+      - name: Verify Tauri project discovery
+        working-directory: frontend
+        run: cargo tauri info
+      - name: Build the live desktop application without bundling
+        working-directory: frontend
+        run: cargo tauri build --no-bundle --ci

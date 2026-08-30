@@ -13,28 +13,46 @@ on:
       - "adr/0003-gui-renderer-stack.md"
       - ".github/workflows/gui-app-shell.yml"
 
+# Temporary write permission is used only by the guarded bootstrap step below to
+# commit the exact package-lock.json artifact produced by run 33300377247. The
+# final reviewed workflow removes this permission and uses npm ci only.
 permissions:
-  contents: read
+  actions: read
+  contents: write
 
 jobs:
   renderer:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      - name: Bootstrap exact dependency lock once
+        if: ${{ github.event_name == 'pull_request' && hashFiles('frontend/package-lock.json') == '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LOCK_ARTIFACT_ID: "9728734902"
+          LOCK_ARCHIVE_SHA256: "e3484d3c646ac86c813072e799fc062c0cacf28ff15fd36e7d4180453123da32"
+          HEAD_BRANCH: ${{ github.head_ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${LOCK_ARTIFACT_ID}/zip" > /tmp/gui-lock.zip
+          echo "${LOCK_ARCHIVE_SHA256}  /tmp/gui-lock.zip" | sha256sum -c -
+          unzip -p /tmp/gui-lock.zip package-lock.json > frontend/package-lock.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/package-lock.json
+          git commit -m "Pin GUI renderer dependencies"
+          git push origin "HEAD:${HEAD_BRANCH}"
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-          cache: ${{ hashFiles('frontend/package-lock.json') != '' && 'npm' || '' }}
+          cache: npm
           cache-dependency-path: frontend/package-lock.json
-      - name: Install frontend dependencies
+      - name: Install frontend dependencies from lock
         working-directory: frontend
-        shell: bash
-        run: |
-          if [[ -f package-lock.json ]]; then
-            npm ci
-          else
-            npm install --ignore-scripts
-          fi
+        run: npm ci
       - name: Typecheck
         working-directory: frontend
         run: npm run typecheck
@@ -44,9 +62,3 @@ jobs:
       - name: Build production renderer
         working-directory: frontend
         run: npm run build
-      - name: Upload dependency lock evidence
-        uses: actions/upload-artifact@v4
-        with:
-          name: gui-app-shell-package-lock
-          path: frontend/package-lock.json
-          if-no-files-found: error

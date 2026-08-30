@@ -20,6 +20,19 @@ const measuredNoWarnings = {
   highest_severity: null,
 };
 
+function syntheticFingerprint(seed: string): string {
+  // Demo-only deterministic value that still respects the application read-model
+  // contract: sha256: followed by exactly 64 lowercase hexadecimal characters.
+  // It is not presented as a cryptographic digest of real user content.
+  let state = 0x811c9dc5;
+  for (const character of seed) {
+    state ^= character.codePointAt(0) ?? 0;
+    state = Math.imul(state, 0x01000193) >>> 0;
+  }
+  const word = state.toString(16).padStart(8, '0');
+  return `sha256:${word.repeat(8)}`;
+}
+
 function makeItem(
   id: string,
   name: string,
@@ -48,7 +61,7 @@ function makeItem(
     },
     content: {
       byte_length: id === 'ai-infra' ? 2_540_812 : 684_221,
-      fingerprint_summary: `sha256:${id.padEnd(64, '0').slice(0, 64)}`,
+      fingerprint_summary: syntheticFingerprint(id),
     },
     extraction: {
       state: 'current',
@@ -200,6 +213,9 @@ function page<T>(rows: T[], request: PageRequest = {}): {
   nextCursor: string | null;
 } {
   const pageSize = request.pageSize ?? 50;
+  if (!Number.isInteger(pageSize) || pageSize <= 0) {
+    throw new Error('demo-page-size-invalid');
+  }
   const offset = request.cursor === null || request.cursor === undefined
     ? 0
     : Number.parseInt(request.cursor.replace('demo-cursor:', ''), 10);
@@ -242,6 +258,32 @@ function criterionMatches(record: DemoRecord, plan: QueryPlan): boolean {
   });
 }
 
+function sortValue(record: DemoRecord, plan: QueryPlan): string | number {
+  if (plan.sort_field === 'source_ref_id') {
+    return record.item.source_ref_id ?? '';
+  }
+  if (plan.sort_field === 'media_type') {
+    return record.item.display.media_type;
+  }
+  return record.detail.representations[0]?.unit_count ?? 0;
+}
+
+function sortedMatches(plan: QueryPlan): DemoRecord[] {
+  const matches = records.filter((record) => criterionMatches(record, plan));
+  matches.sort((left, right) => {
+    const a = sortValue(left, plan);
+    const b = sortValue(right, plan);
+    const comparison = typeof a === 'number' && typeof b === 'number'
+      ? a - b
+      : String(a).localeCompare(String(b));
+    if (comparison !== 0) {
+      return plan.descending ? -comparison : comparison;
+    }
+    return left.item.item_ref.localeCompare(right.item.item_ref);
+  });
+  return matches;
+}
+
 export class DemoRaiateaGateway implements RaiateaGateway {
   status(): GatewayStatus {
     return {
@@ -277,7 +319,7 @@ export class DemoRaiateaGateway implements RaiateaGateway {
     plan: QueryPlan,
     request: PageRequest = {},
   ): Promise<SearchPage> {
-    const matches = records.filter((record) => criterionMatches(record, plan));
+    const matches = sortedMatches(plan);
     const selected = page(matches, request);
     return {
       freshness: 'fresh',

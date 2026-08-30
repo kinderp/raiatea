@@ -8,6 +8,28 @@ import {
   validateSearchPage,
 } from './bridgeValidation';
 
+interface MutableFixtureItem {
+  source_ref_id: string | null;
+  freshness: {
+    catalog: string;
+    content: string;
+  };
+  capabilities: string[];
+  extraction: {
+    state: string;
+    current_representation_id?: string;
+    provider_profile_summary?: Record<string, string>;
+  };
+}
+
+interface MutableLibraryFixture {
+  payload: {
+    catalog_freshness: string;
+    counts_basis: string;
+    items: MutableFixtureItem[];
+  } & Record<string, unknown>;
+}
+
 describe('GUI bridge runtime validation', () => {
   it('accepts the shared Python/TypeScript Library fixture', () => {
     const envelope = validateBridgeEnvelope(libraryFixture, 'library.page');
@@ -42,7 +64,11 @@ describe('GUI bridge runtime validation', () => {
   });
 
   it('rejects a non-fresh Library item that still claims current extraction', () => {
-    const copy = structuredClone(libraryFixture);
+    // This test intentionally mutates the valid JSON fixture into a shape that
+    // production TypeScript models would never construct. Widen only the local
+    // test view so runtime validation, rather than compile-time inference, is
+    // what is under test.
+    const copy = structuredClone(libraryFixture) as unknown as MutableLibraryFixture;
     copy.payload.catalog_freshness = 'reconcile-required';
     copy.payload.counts_basis = 'last-known';
     const item = copy.payload.items[0]!;

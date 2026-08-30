@@ -55,7 +55,9 @@ code { color: #9bc6ee; overflow-wrap: anywhere; }
 .demo-notice strong { color: #f5d788; }
 .error-notice { border: 1px solid #713b4f; background: #2d1620; color: #f3a9bf; }
 
-.dock-layout { display: grid; grid-template-columns: minmax(280px, .78fr) minmax(420px, 1.35fr) minmax(250px, .62fr); gap: 12px; align-items: start; padding-top: 14px; }
+.dock-layout { display: grid; gap: 12px; align-items: start; padding-top: 14px; }
+.dock-layout--three { grid-template-columns: minmax(280px, .78fr) minmax(420px, 1.35fr) minmax(250px, .62fr); }
+.dock-layout--two { grid-template-columns: minmax(420px, 1.5fr) minmax(250px, .62fr); }
 .panel-host { min-width: 0; }
 .panel { border: 1px solid var(--line-soft); border-radius: var(--radius); background: linear-gradient(180deg, rgba(14,29,48,.97), rgba(8,20,34,.97)); min-height: 230px; overflow: hidden; box-shadow: 0 16px 45px rgba(0,0,0,.13); }
 .panel__header { min-height: 64px; padding: 13px 15px; border-bottom: 1px solid var(--line-soft); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -115,8 +117,9 @@ code { color: #9bc6ee; overflow-wrap: anywhere; }
 .future-surface__rule { margin: 18px auto 0; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; color: var(--faint); font-size: 10px; }
 
 @media (max-width: 1180px) {
-  .dock-layout { grid-template-columns: minmax(260px, .8fr) minmax(380px, 1.2fr); }
-  .panel-host--inspector { grid-column: 1 / -1; }
+  .dock-layout--three { grid-template-columns: minmax(260px, .8fr) minmax(380px, 1.2fr); }
+  .dock-layout--three .panel-host--inspector { grid-column: 1 / -1; }
+  .dock-layout--two { grid-template-columns: minmax(0, 1fr) minmax(240px, .48fr); }
   .inspector-stack { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 
@@ -129,8 +132,8 @@ code { color: #9bc6ee; overflow-wrap: anywhere; }
   .workspace-shell { padding: 0 10px 14px; }
   .topbar { align-items: stretch; flex-direction: column; padding: 12px 0; }
   .gateway-badge { align-self: flex-start; }
-  .dock-layout { grid-template-columns: 1fr; }
-  .panel-host--inspector { grid-column: auto; }
+  .dock-layout--three, .dock-layout--two { grid-template-columns: 1fr; }
+  .dock-layout--three .panel-host--inspector { grid-column: auto; }
   .inspector-stack, .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .metric-grid { grid-template-columns: 1fr; }
 }

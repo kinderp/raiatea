@@ -5,6 +5,7 @@ on:
     paths:
       - "prototype/p0_vs1/application_facade.py"
       - "prototype/p0_vs1/test_application_facade.py"
+      - "prototype/p0_vs1/test_application_facade_freshness.py"
       - "architecture/gui-application-boundary.md"
       - ".github/workflows/gui-application-facade.yml"
   push:
@@ -12,6 +13,7 @@ on:
     paths:
       - "prototype/p0_vs1/application_facade.py"
       - "prototype/p0_vs1/test_application_facade.py"
+      - "prototype/p0_vs1/test_application_facade_freshness.py"
       - "architecture/gui-application-boundary.md"
       - ".github/workflows/gui-application-facade.yml"
 
@@ -35,4 +37,6 @@ jobs:
       - name: Compile application facade and dependencies
         run: python -m compileall -q prototype/p0_vs1
       - name: Run application facade product-boundary tests
-        run: python -m unittest prototype.p0_vs1.test_application_facade -v
+        run: |
+          python -m unittest prototype.p0_vs1.test_application_facade -v
+          python -m unittest prototype.p0_vs1.test_application_facade_freshness -v

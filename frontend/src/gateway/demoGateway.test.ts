@@ -14,6 +14,14 @@ describe('DemoRaiateaGateway', () => {
     expect(new DemoRaiateaGateway().status().mode).toBe('demo');
   });
 
+  it('keeps synthetic fingerprints inside the application contract shape', async () => {
+    const gateway = new DemoRaiateaGateway();
+    const page = await gateway.libraryPage();
+    for (const item of page.items) {
+      expect(item.content.fingerprint_summary).toMatch(/^sha256:[0-9a-f]{64}$/);
+    }
+  });
+
   it('paginates deterministic Library rows', async () => {
     const gateway = new DemoRaiateaGateway();
     const first = await gateway.libraryPage({ pageSize: 1 });
@@ -33,6 +41,17 @@ describe('DemoRaiateaGateway', () => {
     const result = await gateway.searchPage(textPlan('semiconductors'));
     expect(result.freshness).toBe('fresh');
     expect(result.items).toHaveLength(1);
+    expect(result.items[0]?.item.display.media_type).toBe('application/pdf');
+  });
+
+  it('honors the structured sort field and direction', async () => {
+    const gateway = new DemoRaiateaGateway();
+    const result = await gateway.searchPage({
+      criteria: [],
+      sort_field: 'unit_count',
+      descending: true,
+    });
+    expect(result.items).toHaveLength(3);
     expect(result.items[0]?.item.display.media_type).toBe('application/pdf');
   });
 

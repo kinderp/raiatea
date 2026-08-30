@@ -135,9 +135,11 @@ The preparation command:
 - verifies Node, Rust and exact Tauri CLI versions;
 - creates/recreates only the marked `.raiatea-demo/` workspace;
 - runs `npm ci` against the committed renderer lockfile;
-- regenerates `src-tauri/Cargo.lock` locally;
-- verifies that Cargo resolution against the cross-platform SHA-256 evidence checked into `src-tauri/lock-evidence.json`;
+- verifies the **committed** `src-tauri/Cargo.lock` against the reviewed cross-platform SHA-256 evidence in `src-tauri/lock-evidence.json`;
+- asks Cargo to validate the committed dependency graph with `--locked` and never rewrites the lockfile;
 - prints the next command.
+
+Both JavaScript and Rust dependency graphs are therefore versioned in the repository before the demo starts.
 
 ## Run the live GUI
 
@@ -188,9 +190,9 @@ cargo install tauri-cli --version 2.11.4 --locked --force
 
 Run the preparation command again from the repository root.
 
-### `gui-demo-cargo-lock-drift`
+### `gui-demo-cargo-lock-missing` / `gui-demo-cargo-lock-drift`
 
-Do not bypass the check. Cargo resolved a graph different from the reviewed demo evidence. Update/review the dependency graph before running the demo.
+Do not generate or bypass the lock locally. Restore the reviewed `frontend/src-tauri/Cargo.lock` from Git. The preparation command intentionally refuses a missing or changed Rust dependency graph.
 
 ### Tauri cannot find the intended Python interpreter
 
@@ -215,7 +217,7 @@ The demo intentionally uses a fixed loopback Vite port and `strictPort`. Stop th
 
 - disposable bootstrap on macOS/Linux/Windows, Python 3.10/3.12;
 - browser renderer and live Tauri renderer mode build from committed npm lock;
-- identical Cargo resolution hash across desktop targets;
+- committed Cargo lock hash validated across desktop targets;
 - Rust method/frame tests on macOS/Linux/Windows;
 - real Rust-managed Python sidecar smoke through Representation;
 - `cargo check --locked` on all desktop targets;
@@ -227,3 +229,4 @@ The demo intentionally uses a fixed loopback Vite port and `strictPort`. Stop th
 ## Finding log
 
 - **TD-F1 resolved:** Windows `tauri-build` required `src-tauri/icons/icon.ico`; a valid project icon is now committed. This changes packaging metadata only and does not alter the Desktop Core, bridge, renderer authority, or knowledge semantics.
+- **TD-F2 resolved:** #223 required a committed Cargo lock, while the first proof retained only cross-platform hash evidence. CI demonstrated one identical resolution on Linux/macOS/Windows; that exact `Cargo.lock` is now committed, removed from `.gitignore`, verified read-only by `gui_demo_prepare`, and consumed with Cargo `--locked`.

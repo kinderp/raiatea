@@ -82,6 +82,8 @@ Provider-native records and E-05 record maps remain behind `ExtractionReader`.
 
 The cursor is bound to the representation content basis, so a changed representation invalidates an old cursor instead of silently continuing over different content.
 
+A representation id is not sufficient authority to read old content. Before delegating to `ExtractionReader`, the facade re-composes current catalog/Source/extraction truth and requires the requested representation to remain reachable from a current SourceReference. A stale catalog or a superseded extraction therefore blocks a direct representation read even if the caller retained an older id.
+
 ### Search
 
 `search_page()` delegates actual query semantics to accepted `SearchViewService` and adds application-level pagination/composition.
@@ -130,9 +132,11 @@ When the catalog is stale/reconcile-required:
 - counts are marked `last-known`;
 - current SourceReference is withheld;
 - current extraction is not claimed through that Source;
+- `view-original` / the `original` panel are withheld;
+- direct normalized-representation reads are rejected;
 - search is blocked from returning current hits.
 
-Before final acceptance, the same freshness requirement must guard any capability that promises opening current original bytes (AF-F3).
+Last-known Location remains displayable as catalog history/state evidence; it does not imply that current source bytes are readable.
 
 ## Warning / diagnostic rule
 
@@ -151,7 +155,11 @@ rather than an invented zero.
 
 ## Pagination
 
-Application cursors are opaque, versioned and bound to a deterministic basis. They are not filesystem paths, store offsets or VS1 proof-limit leakage.
+Application cursors are opaque, versioned and bound to a deterministic **application-visible result basis**. They are not filesystem paths, store offsets or VS1 proof-limit leakage.
+
+The basis includes the composed rows, not only the catalog entry list or search source ids. This matters because SourceReference state, extraction status, provider/profile summaries, warnings and capabilities can change without changing the catalog row identity. Continuing with an old cursor after such a change fails as `application-cursor-stale` rather than mixing two result snapshots.
+
+Representation cursors remain independently bound to the exact representation-unit basis.
 
 Current maximum page size is a facade safety bound, not a claim that the whole Library fits in memory or that future remote/federated paging will use the same storage strategy.
 
@@ -181,5 +189,14 @@ The evidence sought by #214 is narrower: prove that a truthful, source-agnostic,
 - absence of raw persistence/Provider authority and absolute temporary paths in public models;
 - replacement of extraction with a fake Source Plane-compatible reader;
 - dependency-light PDF1b contract state proving the same Source Detail/Representation shape without requiring a real Poppler executable.
+
+`test_application_facade_freshness.py` covers the explicit current-original capability fence: stale catalog state may expose last-known relative Location but not `view-original`, an `original` panel, current SourceReference or current extraction.
+
+`test_application_facade_result_basis.py` covers the review findings that are easy to miss in a happy path:
+
+- direct reads through a retained representation id are blocked after catalog freshness is lost;
+- a superseded extraction representation id is not accepted merely because its Provider data still exists;
+- Library cursors invalidate when visible extraction state changes without a catalog-row change;
+- Search cursors invalidate when composed Library/extraction rows change while the deterministic search source-id set remains the same.
 
 Real Poppler execution remains the responsibility of the existing PDF1b real-provider acceptance workflow; the facade test does not counterfeit that evidence.

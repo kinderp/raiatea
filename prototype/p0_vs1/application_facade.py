@@ -391,24 +391,21 @@ class ExtractionReader(Protocol):
 class InRepoExtractionReader:
     """Temporary adapter over current VS1d EPUB and PDF1b persisted state."""
 
-    @staticmethod
-    def _current_rows(snapshot: Any) -> list[tuple[str, dict[str, Any]]]:
+    def __init__(self, scope_id: str) -> None:
+        _require(isinstance(scope_id, str) and scope_id, "application-scope-ref-required")
+        self._scope_id = scope_id
+
+    def _current_rows(self, snapshot: Any) -> list[tuple[str, dict[str, Any]]]:
         payload = getattr(snapshot, "payload", None)
         _require(isinstance(payload, dict), "application-catalog-payload-invalid")
-        vs1b = payload.get("vs1b")
-        scope_id = vs1b.get("scope_ref") if isinstance(vs1b, dict) else None
-        _require(
-            isinstance(scope_id, str) and scope_id,
-            "application-scope-ref-required",
-        )
         rows: list[tuple[str, dict[str, Any]]] = []
         vs1d = payload.get("vs1d")
         if vs1d is not None:
-            validate_vs1d_state(vs1d, scope_id)
+            validate_vs1d_state(vs1d, self._scope_id)
             rows.extend(("vs1d-epub", row) for row in vs1d["extractions"])
         pdf1b = payload.get("pdf1b")
         if pdf1b is not None:
-            validate_pdf1b_state(pdf1b, scope_id)
+            validate_pdf1b_state(pdf1b, self._scope_id)
             rows.extend(
                 ("pdf1b-poppler", row) for row in pdf1b["current_extractions"]
             )
@@ -419,6 +416,10 @@ class InRepoExtractionReader:
         snapshot: Any,
         source_refs: list[dict[str, Any]],
     ) -> dict[str, dict[str, Any]]:
+        # When catalog freshness withholds all current SourceReferences, stale
+        # extraction state is not needed to render last-known Library rows.
+        if not source_refs:
+            return {}
         requested = {row["source_ref_id"] for row in source_refs}
         result: dict[str, dict[str, Any]] = {}
         for state_family, row in self._current_rows(snapshot):
@@ -494,7 +495,7 @@ class RaiateaApplicationFacade:
     ) -> None:
         self._store = store
         self._scope_id = scope_id
-        self._extractions = extraction_reader or InRepoExtractionReader()
+        self._extractions = extraction_reader or InRepoExtractionReader(scope_id)
         self._search = search_service or SearchViewService(store, scope_id)
 
     def _load(self) -> Any:
@@ -591,8 +592,12 @@ class RaiateaApplicationFacade:
             "application-media-type-invalid",
         )
         content_current = source_ref is not None and catalog_freshness == "fresh"
+        original_current = (
+            entry.get("availability") == "known-present"
+            and catalog_freshness == "fresh"
+        )
         capabilities = ["view-history"]
-        if entry.get("availability") == "known-present":
+        if original_current:
             capabilities.append("view-original")
         if content_current:
             capabilities.append("request-extraction")
@@ -745,7 +750,10 @@ class RaiateaApplicationFacade:
         )
 
         panels = ["history"]
-        if entry["availability"] == "known-present":
+        if (
+            entry["availability"] == "known-present"
+            and freshness == "fresh"
+        ):
             panels.insert(0, "original")
         if extraction is not None:
             panels.extend(

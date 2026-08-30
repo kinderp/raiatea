@@ -10,13 +10,15 @@ React / TypeScript renderer
         v
 RaiateaGateway
         |
-        +-- DemoRaiateaGateway
+        +-- DemoRaiateaGateway        [normal Vite/browser development]
         |
-        +-- LiveRaiateaGateway
+        +-- LiveRaiateaGateway        [Tauri live demo]
                 |
          ApplicationTransport
                 |
-        future Desktop Core adapter
+         TauriApplicationTransport
+                |
+        Rust / Tauri Desktop Core
                 |
         local ApplicationFacade sidecar
                 |
@@ -25,21 +27,21 @@ RaiateaGateway
 
 The renderer does not import Python persistence, SourcePlugin, Provider-native or E-05 records and does not own process launch, JSON-RPC framing or sidecar lifecycle.
 
-`DemoRaiateaGateway` remains deterministic renderer-development data and is visibly labelled **Prototype data**. `LiveRaiateaGateway` is the #220 transport-neutral live client: it consumes an abstract `ApplicationTransport` and validates every returned bridge payload at runtime before exposing it to components.
+`DemoRaiateaGateway` remains deterministic renderer-development data and is visibly labelled **Prototype data**. `LiveRaiateaGateway` consumes an abstract `ApplicationTransport` and validates every returned bridge payload at runtime before exposing it to components.
 
-## Live bridge truth boundary
+The Tauri demo selects live mode through `.env.tauri`; normal `npm run dev` stays in demo mode. Components do not import Tauri.
 
-The current bridge candidate preserves these rules on both Python and TypeScript sides:
+## Live desktop authority boundary
 
-- only Raiatea-specific read methods are exposed;
+- Python process lifecycle and trusted bootstrap belong to Rust/Desktop Core;
+- the main Tauri window has one custom application permission only: `raiatea_application_request`;
+- no shell, filesystem or HTTP plugin is installed or granted;
+- the Rust command accepts only the five ADR-0004 read methods;
 - host filesystem/root authority never belongs to renderer requests or results;
-- current catalog Location is an authorized-scope relative projection only;
-- stale Search is blocked and carries no current rows;
+- stale Search cannot carry current rows;
 - non-fresh catalog/source state cannot be upgraded into current Source/content claims;
 - retained representation ids still pass through the Python ApplicationFacade currentness fence;
 - bridge/process success does not establish knowledge truth.
-
-The current `App` intentionally instantiates the demo gateway until a trusted Desktop Core/Tauri adapter is proven. Switching to live must be a gateway-composition decision, not a component rewrite.
 
 ## Truth-state rendering
 
@@ -50,7 +52,7 @@ The renderer distinguishes an empty current result from an unavailable current r
 - a non-fresh Library may show last-known catalog rows, but it displays a prominent last-known notice rather than implying current Source/content access;
 - live adapters must not turn `stale`, `not-established` or last-known state into empty/current UI claims.
 
-## Run locally
+## Browser/demo development
 
 Requires Node 22.12+.
 
@@ -70,6 +72,20 @@ npm run build
 
 `package-lock.json` is committed and CI installs strictly through `npm ci`.
 
+## Live Tauri demo
+
+See `architecture/tauri-live-demo.md` for prerequisites, the disposable demo-state contract and the CI-proven local flow.
+
+From the repository root, once prerequisites are installed:
+
+```bash
+python3 -m prototype.p0_vs1.gui_demo_prepare
+cd frontend
+npm run tauri:dev
+```
+
+Windows uses `python` instead of `python3` for the preparation command.
+
 ## Panel architecture
 
 The visual layout is still static, but content is separated as:
@@ -86,12 +102,11 @@ Dockview remains a compatible future candidate but is not yet a dependency.
 
 ## Deliberately absent
 
-- Tauri / desktop packaging;
-- Rust/Desktop Core adapter;
-- renderer shell/process permissions;
+- production installers/signing/notarization;
+- bundled standalone Python;
+- real user filesystem-scope onboarding;
+- generic renderer shell/process authority;
 - localhost HTTP/WebSocket API;
-- Python executable bundling;
-- real filesystem-scope onboarding;
 - drag/drop or saved layouts;
 - Explore / Observatory / Horizon / Agora logic;
 - graph/map/timeline engines;

@@ -3,4 +3,3 @@ dist/
 .vite/
 coverage/
 src-tauri/target/
-src-tauri/Cargo.lock

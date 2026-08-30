@@ -1,0 +1,83 @@
+name: GUI live bridge one-shot hardening
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/gui-live-bridge-hardening-once.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  harden:
+    if: >-
+      github.repository == 'kinderp/raiatea' &&
+      github.event.pull_request.head.ref == 'feature/gui-live-bridge' &&
+      github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Apply bounded BR-F3/BR-F4 fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f"expected-one-match:{path}:found={count}")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "prototype/p0_vs1/application_bridge_sidecar.py",
+              '''        try:\n            request = decode_frame(raw)\n            if "method" not in request:\n                raise ApplicationBridgeContractError("bridge-request-expected")\n        except ApplicationBridgeContractError:\n            _write_response(\n                output_stream,\n                error_message(None, JSONRPC_PARSE_ERROR, "bridge-invalid-request-frame"),\n            )\n            continue\n''',
+              '''        try:\n            request = decode_frame(raw)\n            if "method" not in request:\n                raise ApplicationBridgeContractError("bridge-request-expected")\n        except ApplicationBridgeContractError as exc:\n            # JSON text/UTF-8 failures are parse errors. A syntactically valid\n            # JSON value that violates the closed bridge request contract is an\n            # invalid request instead; do not collapse those two protocol facts.\n            contract_error = str(exc)\n            parse_error = contract_error in {\n                "bridge-malformed-json-frame",\n                "bridge-frame-missing-newline",\n                "bridge-multiple-lines-in-frame",\n                "bridge-empty-frame",\n            }\n            _write_response(\n                output_stream,\n                error_message(\n                    None,\n                    JSONRPC_PARSE_ERROR if parse_error else JSONRPC_INVALID_REQUEST,\n                    "bridge-parse-error" if parse_error else "bridge-invalid-request",\n                ),\n            )\n            continue\n''',
+          )
+
+          replace_once(
+              "prototype/p0_vs1/test_application_bridge_sidecar.py",
+              '''        rejected = decode_frame(self.process.stdout.readline())\n        self.assertEqual(rejected["error"]["code"], -32700)\n\n        unknown = self._rpc("rpc:unknown", "system.shell", {})\n''',
+              '''        rejected = decode_frame(self.process.stdout.readline())\n        self.assertEqual(rejected["error"]["code"], -32600)\n        self.assertEqual(rejected["error"]["message"], "bridge-invalid-request")\n\n        unknown = self._rpc("rpc:unknown", "system.shell", {})\n''',
+          )
+
+          replace_once(
+              "frontend/src/gateway/bridgeValidation.ts",
+              '''  if (contentState !== 'current' && contentState !== 'not-established') {\n    fail('content-freshness-invalid');\n  }\n  if (catalog !== 'fresh' && (sourceRef !== null || contentState === 'current')) {\n    fail('nonfresh-item-cannot-claim-current-source');\n  }\n  return {\n''',
+              '''  if (contentState !== 'current' && contentState !== 'not-established') {\n    fail('content-freshness-invalid');\n  }\n  const extraction = validateExtractionProjection(row.extraction);\n  const capabilities = stringArray(row.capabilities, 'capabilities');\n  if (\n    catalog !== 'fresh' &&\n    (sourceRef !== null ||\n      contentState === 'current' ||\n      extraction.state === 'current' ||\n      capabilities.includes('view-original') ||\n      capabilities.includes('request-extraction'))\n  ) {\n    fail('nonfresh-item-cannot-claim-current-source');\n  }\n  return {\n''',
+          )
+
+          replace_once(
+              "frontend/src/gateway/bridgeValidation.ts",
+              '''    extraction: validateExtractionProjection(row.extraction),\n    freshness: { catalog, content: contentState },\n    warnings: validateWarningSummary(row.warnings),\n    capabilities: stringArray(row.capabilities, 'capabilities'),\n''',
+              '''    extraction,\n    freshness: { catalog, content: contentState },\n    warnings: validateWarningSummary(row.warnings),\n    capabilities,\n''',
+          )
+
+          replace_once(
+              "frontend/src/gateway/bridgeValidation.test.ts",
+              '''  it('rejects stale search carrying current rows', () => {\n''',
+              '''  it('rejects a non-fresh Library item that still claims current extraction', () => {\n    const copy = structuredClone(libraryFixture);\n    copy.payload.catalog_freshness = 'reconcile-required';\n    copy.payload.counts_basis = 'last-known';\n    const item = copy.payload.items[0]!;\n    item.source_ref_id = null;\n    item.freshness.catalog = 'reconcile-required';\n    item.freshness.content = 'not-established';\n    item.capabilities = ['view-history'];\n    item.extraction = {\n      state: 'current',\n      current_representation_id: 'representation:stale',\n      provider_profile_summary: {\n        provider_id: 'test-provider',\n        route_profile: 'test-route',\n      },\n    };\n    expect(() => validateLibraryPage(copy.payload)).toThrow(\n      'nonfresh-item-cannot-claim-current-source',\n    );\n  });\n\n  it('rejects stale search carrying current rows', () => {\n''',
+          )
+          PY
+      - name: Self-remove one-shot workflow
+        run: git rm .github/workflows/gui-live-bridge-hardening-once.yml
+      - name: Commit bounded hardening
+        env:
+          HEAD_BRANCH: ${{ github.event.pull_request.head.ref }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add prototype/p0_vs1/application_bridge_sidecar.py \
+                  prototype/p0_vs1/test_application_bridge_sidecar.py \
+                  frontend/src/gateway/bridgeValidation.ts \
+                  frontend/src/gateway/bridgeValidation.test.ts
+          git diff --cached --check
+          git commit -m "Harden GUI bridge request and freshness semantics"
+          git push origin "HEAD:${HEAD_BRANCH}"

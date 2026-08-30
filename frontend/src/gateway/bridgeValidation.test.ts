@@ -1,0 +1,63 @@
+import { describe, expect, it } from 'vitest';
+
+import libraryFixture from './fixtures/bridge-library-page.json';
+import {
+  BridgeValidationError,
+  validateBridgeEnvelope,
+  validateLibraryPage,
+  validateSearchPage,
+} from './bridgeValidation';
+
+describe('GUI bridge runtime validation', () => {
+  it('accepts the shared Python/TypeScript Library fixture', () => {
+    const envelope = validateBridgeEnvelope(libraryFixture, 'library.page');
+    const page = validateLibraryPage(envelope.payload);
+    expect(page.catalog_freshness).toBe('fresh');
+    expect(page.items[0]?.location.current_relative_location).toBe(
+      'Books/fixture.epub',
+    );
+  });
+
+  it('rejects host authority recursively', () => {
+    expect(() =>
+      validateBridgeEnvelope(
+        {
+          bridge_version: 'raiatea.gui-application-bridge.0.1.0',
+          method: 'library.page',
+          payload: { nested: { host_path: '/tmp/private' } },
+        },
+        'library.page',
+      ),
+    ).toThrow(BridgeValidationError);
+  });
+
+  it('rejects absolute and traversing display Locations', () => {
+    for (const badLocation of ['/tmp/book.epub', '../book.epub', 'C:\\book.epub']) {
+      const copy = structuredClone(libraryFixture);
+      copy.result = undefined;
+      const payload = copy.payload;
+      payload.items[0]!.location.current_relative_location = badLocation;
+      expect(() => validateLibraryPage(payload)).toThrow(
+        /current-relative-location/,
+      );
+    }
+  });
+
+  it('rejects stale search carrying current rows', () => {
+    expect(() =>
+      validateSearchPage({
+        freshness: 'stale',
+        blocked_reason: 'index-not-current',
+        interpreted_plan: {
+          criteria: [],
+          sort_field: 'source_ref_id',
+          descending: false,
+        },
+        total_known_matches: null,
+        cursor: null,
+        next_cursor: null,
+        items: [{ item: libraryFixture.payload.items[0] }],
+      }),
+    ).toThrow('stale-search-must-withhold-current-results');
+  });
+});

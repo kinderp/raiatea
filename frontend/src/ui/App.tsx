@@ -210,11 +210,17 @@ export function App() {
     };
   }, [library]);
 
+  function clearSearch() {
+    setSearch(null);
+    setSearchText('');
+    setSelectedItem(library?.items[0] ?? null);
+  }
+
   async function runSearch(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const value = searchText.trim();
     if (value.length === 0) {
-      setSearch(null);
+      clearSearch();
       return;
     }
     const plan: QueryPlan = {
@@ -223,7 +229,9 @@ export function App() {
       descending: false,
     };
     try {
-      setSearch(await gateway.searchPage(plan, { pageSize: 50 }));
+      const result = await gateway.searchPage(plan, { pageSize: 50 });
+      setSearch(result);
+      setSelectedItem(result.items[0]?.item ?? null);
       setSurface('library');
     } catch (reason: unknown) {
       setError(reason instanceof Error ? reason.message : 'Search failed');
@@ -318,7 +326,7 @@ export function App() {
               placeholder="Search extracted text…"
             />
             <button type="submit">Search</button>
-            {search === null ? null : <button type="button" className="button-quiet" onClick={() => setSearch(null)}>Clear</button>}
+            {search === null ? null : <button type="button" className="button-quiet" onClick={clearSearch}>Clear</button>}
           </form>
           <div className="gateway-badge" data-mode={status.mode}>
             <span>{status.label}</span>

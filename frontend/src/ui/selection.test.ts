@@ -49,7 +49,7 @@ describe('visible selection policy', () => {
     expect(firstLibrarySelection(null)).toBeNull();
   });
 
-  it('moves context to the first visible search result or clears it', () => {
+  it('moves context to the first visible fresh search result or clears it', () => {
     const match = item('match');
     const base: Omit<SearchPage, 'items' | 'total_known_matches'> = {
       freshness: 'fresh',
@@ -64,5 +64,21 @@ describe('visible selection policy', () => {
       items: [{ item: match, matched_content_refs: [], match_snippets: [] }],
     })?.item_ref).toBe(match.item_ref);
     expect(firstSearchSelection({ ...base, total_known_matches: 0, items: [] })).toBeNull();
+  });
+
+  it('never promotes context from a stale search page', () => {
+    const match = item('stale-match');
+    const stale: SearchPage = {
+      freshness: 'stale',
+      blocked_reason: 'index-not-current',
+      interpreted_plan: { criteria: [], sort_field: 'source_ref_id', descending: false },
+      total_known_matches: null,
+      cursor: null,
+      next_cursor: null,
+      // Defensive test: even if a future/malformed adapter supplied rows, stale
+      // search state must not become selected current context.
+      items: [{ item: match, matched_content_refs: [], match_snippets: [] }],
+    };
+    expect(firstSearchSelection(stale)).toBeNull();
   });
 });

@@ -1,0 +1,50 @@
+{
+  "bridge_version": "raiatea.gui-application-bridge.0.1.0",
+  "method": "library.page",
+  "payload": {
+    "catalog_freshness": "fresh",
+    "counts_basis": "current",
+    "basis": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "total_known_items": 1,
+    "cursor": null,
+    "next_cursor": null,
+    "items": [
+      {
+        "item_ref": "app-item:fixture",
+        "catalog_entry_ref": "catalog:fixture",
+        "source_ref_id": "source-ref:fixture",
+        "logical_candidate_ref": "logical-candidate:fixture",
+        "stored_instance_ref": "stored-instance:fixture",
+        "display": {
+          "title": null,
+          "fallback_name": "fixture.epub",
+          "media_type": "application/epub+zip",
+          "kind": "document-source"
+        },
+        "location": {
+          "scope_ref": "scope:fixture",
+          "current_relative_location": "Books/fixture.epub",
+          "availability": "known-present",
+          "history_count": 0
+        },
+        "content": {
+          "byte_length": 1234,
+          "fingerprint_summary": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+        },
+        "extraction": {
+          "state": "not-established"
+        },
+        "freshness": {
+          "catalog": "fresh",
+          "content": "current"
+        },
+        "warnings": {
+          "state": "not-established",
+          "count": null,
+          "highest_severity": null
+        },
+        "capabilities": ["view-history", "view-original", "request-extraction"]
+      }
+    ]
+  }
+}

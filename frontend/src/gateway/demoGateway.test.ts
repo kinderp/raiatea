@@ -10,8 +10,8 @@ const textPlan = (value: string): QueryPlan => ({
 });
 
 describe('DemoRaiateaGateway', () => {
-  it('labels itself as demo data', () => {
-    expect(new DemoRaiateaGateway().status().mode).toBe('demo');
+  it('labels itself as demo data', async () => {
+    expect((await new DemoRaiateaGateway().status()).mode).toBe('demo');
   });
 
   it('keeps synthetic fingerprints inside the application contract shape', async () => {
@@ -67,5 +67,15 @@ describe('DemoRaiateaGateway', () => {
     expect(detail.representations[0]?.coordinate_families).toContain(
       'pdf-page-geometry',
     );
+  });
+
+  it('implements representation paging on the common gateway surface', async () => {
+    const gateway = new DemoRaiateaGateway();
+    const page = await gateway.libraryPage();
+    const detail = await gateway.sourceDetail(page.items[0]!.item_ref);
+    const representationId = detail.representations[0]!.representation_id;
+    const representation = await gateway.representationPage(representationId);
+    expect(representation.representation_id).toBe(representationId);
+    expect(representation.units).toHaveLength(1);
   });
 });

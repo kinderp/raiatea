@@ -1,0 +1,69 @@
+name: GUI live application bridge
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/application_bridge_*.py"
+      - "prototype/p0_vs1/test_application_bridge_*.py"
+      - "frontend/src/gateway/**"
+      - "frontend/src/ui/App.tsx"
+      - "adr/0004-gui-local-application-bridge.md"
+      - "architecture/gui-live-bridge.md"
+      - ".github/workflows/gui-live-bridge.yml"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/application_bridge_*.py"
+      - "prototype/p0_vs1/test_application_bridge_*.py"
+      - "frontend/src/gateway/**"
+      - "frontend/src/ui/App.tsx"
+      - "adr/0004-gui-local-application-bridge.md"
+      - "architecture/gui-live-bridge.md"
+      - ".github/workflows/gui-live-bridge.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  python-bridge:
+    name: Python bridge / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile bridge and Application Layer
+        run: python -m compileall -q prototype/p0_vs1
+      - name: Run bridge contract tests
+        run: python -m unittest prototype.p0_vs1.test_application_bridge_contract -v
+      - name: Run real sidecar/ApplicationFacade tests
+        run: python -m unittest prototype.p0_vs1.test_application_bridge_sidecar -v
+
+  renderer-bridge:
+    name: TypeScript live gateway
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install locked frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Run gateway/bridge tests
+        working-directory: frontend
+        run: npm test
+      - name: Build production renderer
+        working-directory: frontend
+        run: npm run build

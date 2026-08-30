@@ -4,6 +4,8 @@ import type {
   LibraryItem,
   LibraryPage,
   QueryPlan,
+  RepresentationPage,
+  RepresentationUnit,
   SearchPage,
   SourceDetail,
 } from './models';
@@ -12,6 +14,7 @@ interface DemoRecord {
   item: LibraryItem;
   searchText: string;
   detail: SourceDetail;
+  units: RepresentationUnit[];
 }
 
 const measuredNoWarnings = {
@@ -161,6 +164,32 @@ function makeDetail(item: LibraryItem): SourceDetail {
   };
 }
 
+function makeUnits(item: LibraryItem): RepresentationUnit[] {
+  const pdf = item.display.media_type === 'application/pdf';
+  return [
+    {
+      unit_ref: `unit:${item.item_ref}:0`,
+      surface: {
+        state: 'present',
+        value_state: 'populated',
+        value: item.display.fallback_name.replace(/\.(pdf|epub)$/i, ''),
+      },
+      semantic_role: {
+        state: 'present',
+        value_state: 'populated',
+        value: 'heading',
+      },
+      coordinate: {
+        state: 'present',
+        value_state: 'populated',
+        value: pdf
+          ? { kind: 'pdf-page-geometry', page_index: 0 }
+          : { kind: 'epub-logical', resource: 'OEBPS/ch1.xhtml' },
+      },
+    },
+  ];
+}
+
 const kuhn = makeItem(
   'kuhn',
   'The Structure of Scientific Revolutions.epub',
@@ -192,18 +221,21 @@ const records: DemoRecord[] = [
     searchText:
       'paradigm scientific revolutions normal science anomaly research history',
     detail: makeDetail(kuhn),
+    units: makeUnits(kuhn),
   },
   {
     item: aiInfrastructure,
     searchText:
       'artificial intelligence data centres semiconductors energy infrastructure compute',
     detail: makeDetail(aiInfrastructure),
+    units: makeUnits(aiInfrastructure),
   },
   {
     item: energy,
     searchText:
       'energy grid storage batteries electricity transition systems infrastructure',
     detail: makeDetail(energy),
+    units: makeUnits(energy),
   },
 ];
 
@@ -285,7 +317,7 @@ function sortedMatches(plan: QueryPlan): DemoRecord[] {
 }
 
 export class DemoRaiateaGateway implements RaiateaGateway {
-  status(): GatewayStatus {
+  async status(): Promise<GatewayStatus> {
     return {
       mode: 'demo',
       label: 'Prototype data',
@@ -333,6 +365,27 @@ export class DemoRaiateaGateway implements RaiateaGateway {
         matched_content_refs: [],
         match_snippets: [],
       })),
+    };
+  }
+
+  async representationPage(
+    representationId: string,
+    request: PageRequest = {},
+  ): Promise<RepresentationPage> {
+    const record = records.find(
+      (candidate) =>
+        candidate.detail.representations[0]?.representation_id === representationId,
+    );
+    if (record === undefined) {
+      throw new Error('demo-representation-not-found');
+    }
+    const selected = page(record.units, request);
+    return {
+      representation_id: representationId,
+      basis: `demo-basis:${representationId}`,
+      cursor: selected.cursor,
+      next_cursor: selected.nextCursor,
+      units: selected.rows,
     };
   }
 }

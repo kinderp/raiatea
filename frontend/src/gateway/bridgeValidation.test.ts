@@ -34,10 +34,8 @@ describe('GUI bridge runtime validation', () => {
   it('rejects absolute and traversing display Locations', () => {
     for (const badLocation of ['/tmp/book.epub', '../book.epub', 'C:\\book.epub']) {
       const copy = structuredClone(libraryFixture);
-      copy.result = undefined;
-      const payload = copy.payload;
-      payload.items[0]!.location.current_relative_location = badLocation;
-      expect(() => validateLibraryPage(payload)).toThrow(
+      copy.payload.items[0]!.location.current_relative_location = badLocation;
+      expect(() => validateLibraryPage(copy.payload)).toThrow(
         /current-relative-location/,
       );
     }
@@ -56,7 +54,13 @@ describe('GUI bridge runtime validation', () => {
         total_known_matches: null,
         cursor: null,
         next_cursor: null,
-        items: [{ item: libraryFixture.payload.items[0] }],
+        items: [
+          {
+            item: libraryFixture.payload.items[0],
+            matched_content_refs: [],
+            match_snippets: [],
+          },
+        ],
       }),
     ).toThrow('stale-search-must-withhold-current-results');
   });

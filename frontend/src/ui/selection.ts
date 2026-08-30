@@ -5,5 +5,8 @@ export function firstLibrarySelection(page: LibraryPage | null): LibraryItem | n
 }
 
 export function firstSearchSelection(page: SearchPage): LibraryItem | null {
+  if (page.freshness !== 'fresh') {
+    return null;
+  }
   return page.items[0]?.item ?? null;
 }

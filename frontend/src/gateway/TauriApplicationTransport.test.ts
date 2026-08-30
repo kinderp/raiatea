@@ -13,7 +13,7 @@ describe('TauriApplicationTransport', () => {
       command: string,
       args?: Record<string, unknown>,
     ): Promise<T> => {
-      calls.push({ command, args });
+      calls.push(args === undefined ? { command } : { command, args });
       return {
         bridge_version: 'raiatea.gui-application-bridge.0.1.0',
         method: 'gateway.status',

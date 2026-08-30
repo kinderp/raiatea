@@ -12,6 +12,7 @@ import type { RaiateaGateway } from '../gateway/RaiateaGateway';
 import { DockLayout } from './DockLayout';
 import { Panel } from './Panel';
 import { createPanelCapabilities } from './panels';
+import { searchBannerModel, visibleLibraryPage } from './presentation';
 import { firstLibrarySelection, firstSearchSelection } from './selection';
 
 const gateway: RaiateaGateway = demoGateway;
@@ -261,20 +262,22 @@ export function App() {
     if (surface === 'activity') {
       return <Panel id="activity" title="Activity" region="primary" capabilities={fixedPanel}><Placeholder title="Activity" description="Processing runs, reconciliation, warnings and changes will be projected here through dedicated read models." /></Panel>;
     }
+    const banner = search === null ? null : searchBannerModel(search);
     return (
       <Panel id="library" title="Library" region="primary" capabilities={fixedPanel} eyebrow={library?.catalog_freshness ?? 'loading'}>
-        {search === null ? null : (
-          <div className="search-result-banner">
-            Search: <strong>{search.interpreted_plan.criteria[0]?.value}</strong> · {search.total_known_matches ?? 0} match(es)
+        {library !== null && library.catalog_freshness !== 'fresh' ? (
+          <div className="freshness-notice">
+            <strong>Last-known catalog state.</strong> Reconciliation is required before current Source/content access is established.
+          </div>
+        ) : null}
+        {banner === null ? null : (
+          <div className={`search-result-banner${banner.kind === 'blocked' ? ' search-result-banner--blocked' : ''}`}>
+            {banner.message}
           </div>
         )}
         {library === null ? <div className="empty-state">Loading Library…</div> : (
           <LibraryList
-            page={search === null ? library : {
-              ...library,
-              total_known_items: search.total_known_matches ?? 0,
-              items: search.items.map((row) => row.item),
-            }}
+            page={visibleLibraryPage(library, search)}
             selected={selectedItem?.item_ref ?? null}
             onSelect={setSelectedItem}
           />

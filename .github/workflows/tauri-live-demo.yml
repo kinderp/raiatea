@@ -29,11 +29,8 @@ on:
       - "frontend/src-tauri/**"
       - ".github/workflows/tauri-live-demo.yml"
 
-# Temporary write permission exists only to commit the already verified
-# Cargo.lock on same-repository PR #224. Final reviewed workflow returns to
-# contents: read and contains no self-modification step.
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: tauri-live-demo-${{ github.event.pull_request.number || github.ref }}
@@ -93,8 +90,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.head_ref || github.ref }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -114,25 +109,11 @@ jobs:
             librsvg2-dev
       - name: Show Rust toolchain
         run: rustc --version && cargo --version
-      - name: Resolve Rust dependency graph
+      - name: Verify committed Rust lock evidence
+        run: python -c "import hashlib,json,pathlib; root=pathlib.Path('frontend/src-tauri'); expected=json.loads((root/'lock-evidence.json').read_text())['cargo_lock_sha256']; lock=root/'Cargo.lock'; assert lock.is_file(), 'cargo-lock-missing'; actual=hashlib.sha256(lock.read_bytes()).hexdigest(); print('Cargo.lock sha256',actual); assert actual == expected, f'cargo-lock-drift:{actual}'"
+      - name: Validate locked Rust metadata
         working-directory: frontend/src-tauri
-        run: cargo generate-lockfile
-      - name: Verify exact Rust lock evidence
-        run: python -c "import hashlib,json,pathlib; root=pathlib.Path('frontend/src-tauri'); expected=json.loads((root/'lock-evidence.json').read_text())['cargo_lock_sha256']; actual=hashlib.sha256((root/'Cargo.lock').read_bytes()).hexdigest(); print('Cargo.lock sha256',actual); assert actual == expected, f'cargo-lock-drift:{actual}'"
-      - name: Commit exact reviewed Cargo lock once
-        if: ${{ runner.os == 'Linux' && github.event_name == 'pull_request' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -f frontend/src-tauri/Cargo.lock
-          if git diff --cached --quiet; then
-            echo "Cargo.lock already committed"
-          else
-            git commit -m "Pin Tauri desktop dependencies"
-            git push origin "HEAD:${GITHUB_HEAD_REF}"
-          fi
+        run: cargo metadata --locked --format-version 1 --no-deps
       - name: Test bounded Desktop Core
         working-directory: frontend/src-tauri
         run: cargo test --locked

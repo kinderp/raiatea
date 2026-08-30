@@ -1,0 +1,38 @@
+name: GUI application facade
+
+on:
+  pull_request:
+    paths:
+      - "prototype/p0_vs1/application_facade.py"
+      - "prototype/p0_vs1/test_application_facade.py"
+      - "architecture/gui-application-boundary.md"
+      - ".github/workflows/gui-application-facade.yml"
+  push:
+    branches: [main]
+    paths:
+      - "prototype/p0_vs1/application_facade.py"
+      - "prototype/p0_vs1/test_application_facade.py"
+      - "architecture/gui-application-boundary.md"
+      - ".github/workflows/gui-application-facade.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  facade:
+    name: Application facade / ${{ matrix.os }} / Python ${{ matrix.python }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.10", "3.12"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Compile application facade and dependencies
+        run: python -m compileall -q prototype/p0_vs1
+      - name: Run application facade product-boundary tests
+        run: python -m unittest prototype.p0_vs1.test_application_facade -v

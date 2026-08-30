@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 
 import { App } from './ui/App';
 import './ui/styles.css';
+import './ui/truth.css';
 
 const root = document.getElementById('root');
 if (root === null) {

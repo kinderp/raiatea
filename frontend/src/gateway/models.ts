@@ -63,6 +63,27 @@ export interface RepresentationSummary {
   evidence_state_by_family: Record<string, string[]>;
 }
 
+export interface EvidenceEnvelopeView {
+  state: string;
+  value_state?: string;
+  value?: unknown;
+}
+
+export interface RepresentationUnit {
+  unit_ref: string;
+  surface: EvidenceEnvelopeView;
+  semantic_role: EvidenceEnvelopeView;
+  coordinate: EvidenceEnvelopeView;
+}
+
+export interface RepresentationPage {
+  representation_id: string;
+  basis: string;
+  cursor: string | null;
+  next_cursor: string | null;
+  units: RepresentationUnit[];
+}
+
 export interface ExtractionSummary {
   state: 'current';
   state_family: string;

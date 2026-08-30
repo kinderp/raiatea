@@ -6,7 +6,7 @@ Depends on: ADR-0003 (React renderer), ADR-0004 (local GUI Application Bridge)
 
 ## What this demo proves
 
-This is the first Raiatea GUI intended to render **real local Raiatea Application Layer state** rather than TypeScript demo fixtures.
+This is the first Raiatea GUI that is intended to render **real local Raiatea Application Layer state** rather than TypeScript demo fixtures.
 
 ```text
 .raiatea-demo/
@@ -35,9 +35,15 @@ The demo is deliberately disposable. It does **not** import, scan, overwrite or 
 
 ## Authority boundary
 
-The web renderer does not receive filesystem/catalog-store paths, generic process launch or shell APIs, filesystem/HTTP plugins, the Python process handle, or JSON-RPC framing/correlation authority.
+The web renderer does not receive:
 
-The main Tauri window has one custom application permission enabling only `raiatea_application_request`. The Rust command accepts only the five ADR-0004 read methods:
+- filesystem or catalog-store paths;
+- generic process launch or shell APIs;
+- filesystem or HTTP plugins;
+- the Python process handle;
+- JSON-RPC framing/correlation authority.
+
+The main Tauri window is associated with one custom capability whose only permission enables the application command `raiatea_application_request`. The Rust command itself accepts only the five ADR-0004 read methods:
 
 - `gateway.status`;
 - `library.page`;
@@ -133,8 +139,6 @@ The preparation command:
 - validates Cargo metadata with `--locked` without rewriting the dependency graph;
 - prints the next command.
 
-`frontend/src-tauri/Cargo.lock` is forced to LF by repository `.gitattributes` so its reviewed byte identity is stable on Windows, macOS and Linux.
-
 ## Run the live GUI
 
 ```bash
@@ -222,6 +226,5 @@ The demo intentionally uses a fixed loopback Vite port and `strictPort`. Stop th
 
 ## Finding log
 
-- **TD-F1 resolved:** Windows `tauri-build` required `src-tauri/icons/icon.ico`; a valid project icon is committed. This changes packaging metadata only and does not alter the Desktop Core, bridge, renderer authority, or knowledge semantics.
+- **TD-F1 resolved:** Windows `tauri-build` required `src-tauri/icons/icon.ico`; a valid project icon is now committed. This changes packaging metadata only and does not alter the Desktop Core, bridge, renderer authority, or knowledge semantics.
 - **TD-F2 resolved:** #223 required a committed Cargo lock, while the first proof retained only cross-platform hash evidence. CI demonstrated one identical resolution on Linux/macOS/Windows; that exact `Cargo.lock` is now committed, removed from `.gitignore`, verified read-only by `gui_demo_prepare`, and consumed with Cargo `--locked`.
-- **TD-F3 resolved:** Windows checkout converted the text lockfile to CRLF, invalidating byte-level SHA evidence before Cargo ran. `.gitattributes` now forces `frontend/src-tauri/Cargo.lock` to LF on every desktop platform; Windows subsequently passes the same committed-lock hash validation as macOS/Linux.

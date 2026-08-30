@@ -1,8 +1,9 @@
 # ADR-0003 — Web-capable React renderer for the Raiatea GUI
 
-Status: **Proposed**
+Status: **Accepted**
 
 Issue: #217  
+Implementation PR: #218  
 Architecture input: #211 / PR #213  
 Executable application boundary: #214 / PR #216
 
@@ -70,18 +71,22 @@ The content boundary must remain compatible with a later docking engine. Dockvie
 - React read models must stay synchronized with the application boundary through explicit contract tests rather than informal copying;
 - desktop packaging remains incomplete until a later decision.
 
-## Evidence required before acceptance
+## Acceptance evidence
 
-This ADR remains `Proposed` until #217 demonstrates:
+The candidate was accepted after #217 demonstrated the required evidence on reviewed head `b0fc85b1da820b39656d555284fd49ae46318943`:
 
-1. strict TypeScript build;
-2. deterministic gateway tests;
-3. production Vite build in CI;
-4. a visible AppShell with Library, Source Detail, search and Inspector composition;
-5. no direct prototype/Provider schema dependency;
-6. explicit demo-data labelling;
-7. a reproducible dependency lock;
-8. two clean review rounds.
+1. strict TypeScript typecheck — success;
+2. deterministic gateway and renderer-policy tests — success;
+3. production Vite build — success;
+4. executable AppShell with Library, Source Detail, structured Search and Inspector composition;
+5. renderer accesses backend semantics only through `RaiateaGateway` application read models;
+6. deterministic fixtures are persistently labelled as Prototype data and never presented as user/current Raiatea knowledge;
+7. exact `package-lock.json` committed; final CI uses read-only `npm ci` only;
+8. stale/blocked and last-known states remain visibly distinct from fresh empty/current states;
+9. GUI AppShell workflow run `33301084979` — success;
+10. two consecutive clean reviews on unchanged candidate head: review `5060311622`, then review `5060312903`; zero open review threads.
+
+The temporary one-time dependency-lock bootstrap permission was removed before acceptance. The accepted workflow has `contents: read` only and no self-modification path.
 
 ## Not decided here
 

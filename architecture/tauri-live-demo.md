@@ -223,3 +223,7 @@ The demo intentionally uses a fixed loopback Vite port and `strictPort`. Stop th
 - `cargo tauri info` and `cargo tauri build --no-bundle --ci` with tauri-cli 2.11.4;
 - all prior GUI/bridge/VS1/PDF regressions;
 - two consecutive clean reviews on the frozen final head.
+
+## Finding log
+
+- **TD-F1 resolved:** Windows `tauri-build` required `src-tauri/icons/icon.ico`; a valid project icon is now committed. This changes packaging metadata only and does not alter the Desktop Core, bridge, renderer authority, or knowledge semantics.

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 
-import { demoGateway } from '../gateway/demoGateway';
+import { gateway } from '../gateway/gatewayComposition';
 import type {
   GatewayStatus,
   LibraryItem,
@@ -9,14 +9,12 @@ import type {
   SearchPage,
   SourceDetail,
 } from '../gateway/models';
-import type { RaiateaGateway } from '../gateway/RaiateaGateway';
 import { DockLayout } from './DockLayout';
 import { Panel } from './Panel';
 import { createPanelCapabilities } from './panels';
 import { searchBannerModel, visibleLibraryPage } from './presentation';
 import { firstLibrarySelection, firstSearchSelection } from './selection';
 
-const gateway: RaiateaGateway = demoGateway;
 const fixedPanel = createPanelCapabilities();
 
 type Surface = 'home' | 'library' | 'explore' | 'world' | 'activity';
@@ -70,7 +68,7 @@ function SourceContent({ detail }: { detail: SourceDetail | null }) {
       <div className="semantic-preview">
         <div className="semantic-preview__label">Normalized representation</div>
         <h3>Evidence-bearing content is ready for the renderer bridge.</h3>
-        <p>This first frontend slice renders the application read-model boundary only. It does not read E-05 or Provider-native records directly.</p>
+        <p>This renderer consumes the Application Layer read model only. It does not read E-05 or Provider-native records directly.</p>
         <dl className="metric-grid">
           <div><dt>Units</dt><dd>{representation?.unit_count ?? '—'}</dd></div>
           <div><dt>Coordinates</dt><dd>{representation?.coordinate_families.join(', ') || 'not established'}</dd></div>

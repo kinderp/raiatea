@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-raiatea-application-request"
+description = "Allows the main Raiatea renderer to call only the bounded application bridge command."
+commands.allow = ["raiatea_application_request"]

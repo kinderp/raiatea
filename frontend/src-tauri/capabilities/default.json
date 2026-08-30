@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "Allows the main Raiatea window to invoke only the bounded Raiatea application bridge command.",
+  "windows": ["main"],
+  "permissions": ["allow-raiatea-application-request"]
+}
